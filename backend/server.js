@@ -10,17 +10,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const express = require('express');
-const cors = require('cors');
-const { createClient } = require('@supabase/supabase-js');
-const dotenv = require('dotenv');
-const fs = require('fs');
-const path = require('path');
-
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 3001;
 
 // Supabase Config
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;

@@ -701,28 +701,36 @@ export const heldSalesAPI = {
 // ============ SHORTCUTS API ============
 export const shortcutsAPI = {
     getAll: async () => {
-        const { data, error } = await supabase.from('shortcuts').select('*');
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) return response({ success: true, shortcuts: [] });
+
+        const { data, error } = await supabase.from('shortcuts').select('*').eq('company_code', companyCode);
         return response({ success: true, shortcuts: data || [] }, error);
     },
     addCategory: async (name) => {
+        const companyCode = getCurrentCompanyCode();
         const { error } = await supabase
             .from('shortcuts')
-            .insert([{ name, items: [] }]);
+            .insert([{ name, items: [], company_code: companyCode }]);
         return response({ success: true, message: 'Kategori eklendi' }, error);
     },
     updateCategory: async (name, data) => {
+        const companyCode = getCurrentCompanyCode();
         // Note: 'name' is unique key but id is safer? Using name as requested by existing interface
         const { error } = await supabase
             .from('shortcuts')
             .update(data)
-            .eq('name', name);
+            .eq('name', name)
+            .eq('company_code', companyCode);
         return response({ success: true, message: 'Güncellendi' }, error);
     },
     deleteCategory: async (name) => {
+        const companyCode = getCurrentCompanyCode();
         const { error } = await supabase
             .from('shortcuts')
             .delete()
-            .eq('name', name);
+            .eq('name', name)
+            .eq('company_code', companyCode);
         return response({ success: true, message: 'Silindi' }, error);
     },
 };
@@ -730,26 +738,41 @@ export const shortcutsAPI = {
 // ============ INVOICES API ============
 export const invoicesAPI = {
     getAll: async () => {
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) return response({ success: true, invoices: [] });
+
         const { data, error } = await supabase
             .from('invoices')
             .select('*')
+            .eq('company_code', companyCode)
             .order('date', { ascending: false });
         return response({ success: true, invoices: data || [] }, error);
     },
     syncBatch: async (invoices) => {
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) throw new Error("Şirket kodu bulunamadı.");
+
+        // Add company_code to each invoice ensuring data isolation
+        const securedInvoices = invoices.map(inv => ({
+            ...inv,
+            company_code: companyCode
+        }));
+
         // Upsert based on UUID or invoice_number to avoid duplicates
         const { data, error } = await supabase
             .from('invoices')
-            .upsert(invoices, { onConflict: 'uuid' })
+            .upsert(securedInvoices, { onConflict: 'uuid' }) // UUID + Company Code typically
             .select();
 
         return response({ success: true, message: `${invoices.length} fatura senkronize edildi.`, data }, error);
     },
     updateStatus: async (id, status) => {
+        const companyCode = getCurrentCompanyCode();
         const { error } = await supabase
             .from('invoices')
             .update({ status })
-            .eq('id', id);
+            .eq('id', id)
+            .eq('company_code', companyCode);
         return response({ success: true, message: 'Durum güncellendi' }, error);
     }
 };

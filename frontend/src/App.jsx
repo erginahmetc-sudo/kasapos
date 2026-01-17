@@ -8,6 +8,7 @@ import RegisterPage from './pages/RegisterPage';
 import EmailSuccessPage from './pages/EmailSuccessPage';
 
 import POSPage from './pages/POSPage';
+import MobilePOSPage from './pages/MobilePOSPage';
 import ProductsPage from './pages/ProductsPage';
 import CustomersPage from './pages/CustomersPage';
 import CustomerDetailPage from './pages/CustomerDetailPage';
@@ -105,6 +106,14 @@ function App() {
                 <Layout>
                   <SettingsPage />
                 </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mobile-pos"
+            element={
+              <ProtectedRoute permission="can_view_pos">
+                <MobilePOSPage />
               </ProtectedRoute>
             }
           />

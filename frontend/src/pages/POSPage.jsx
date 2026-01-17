@@ -1,10 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { productsAPI, salesAPI, customersAPI, shortcutsAPI, heldSalesAPI } from '../services/api';
 import { birFaturaAPI } from '../services/birFaturaService';
 import { useAuth } from '../context/AuthContext';
 
+// Mobile detection hook
+function useMobileRedirect() {
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const checkMobile = () => {
+            if (window.innerWidth < 768) {
+                navigate('/mobile-pos', { replace: true });
+            }
+        };
+
+        // Check on mount
+        checkMobile();
+
+        // Optional: check on resize (uncomment if you want live detection)
+        // window.addEventListener('resize', checkMobile);
+        // return () => window.removeEventListener('resize', checkMobile);
+    }, [navigate]);
+}
+
 export default function POSPage() {
+    // Mobile redirect - if screen is small, go to mobile POS
+    useMobileRedirect();
+
     const { user, logout } = useAuth();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState(['Tümü']);

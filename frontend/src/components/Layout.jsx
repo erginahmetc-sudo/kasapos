@@ -44,13 +44,12 @@ export default function Layout({ children }) {
                                         <>
                                             <button
                                                 onClick={() => setShowShortcutsModal(true)}
-                                                className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                                className="flex items-center gap-2 px-3 py-2 mr-4 rounded-xl transition-all duration-200 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                                                 title="Klavye Kısayolları"
                                             >
                                                 <span className="text-lg">⌨️</span>
                                                 <span>Kısayollar</span>
                                             </button>
-                                            <div className="h-6 w-px bg-gray-300 mx-6 shrink-0"></div>
                                         </>
                                     )}
                                     <Link

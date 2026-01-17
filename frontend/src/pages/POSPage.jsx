@@ -391,7 +391,8 @@ export default function POSPage() {
             alert('İsim Soyisim zorunludur!');
             return;
         }
-        setCustomer(`${retailCustomerForm.name} (Perakende)`);
+        // Müşteri adını olduğu gibi kaydet (Perakende eki ekleme)
+        setCustomer(retailCustomerForm.name.trim());
         setShowRetailCustomerModal(false);
         setShowCustomerModal(false);
     };

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { Html5Qrcode } from 'html5-qrcode';
 import { productsAPI, salesAPI, customersAPI, shortcutsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -32,10 +33,10 @@ export default function MobilePOSPage() {
     const [scannerError, setScannerError] = useState('');
 
     // Barcode scanner refs
-    const videoRef = useRef(null);
-    const streamRef = useRef(null);
-    const scanningRef = useRef(false);
+    const html5QrCodeRef = useRef(null);
+    const scannerContainerRef = useRef(null);
     const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+    const lastScannedRef = useRef('');
 
     useEffect(() => {
         loadProducts();
@@ -230,76 +231,54 @@ export default function MobilePOSPage() {
     const startBarcodeScanner = async () => {
         setScannerError('');
         setShowBarcodeScanner(true);
-        scanningRef.current = true;
+        lastScannedRef.current = '';
 
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            });
+        // Wait for DOM to render
+        setTimeout(async () => {
+            try {
+                const html5QrCode = new Html5Qrcode('barcode-scanner-container');
+                html5QrCodeRef.current = html5QrCode;
 
-            streamRef.current = stream;
+                await html5QrCode.start(
+                    { facingMode: 'environment' },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 150 },
+                        aspectRatio: 1.0
+                    },
+                    (decodedText) => {
+                        // Prevent duplicate scans
+                        if (decodedText !== lastScannedRef.current) {
+                            lastScannedRef.current = decodedText;
+                            console.log('Barkod bulundu:', decodedText);
+                            addProductByBarcode(decodedText);
 
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play();
-
-                // Check if BarcodeDetector is available (Chrome/Edge)
-                if ('BarcodeDetector' in window) {
-                    const barcodeDetector = new window.BarcodeDetector({
-                        formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e']
-                    });
-
-                    const detectBarcode = async () => {
-                        if (!scanningRef.current || !videoRef.current) return;
-
-                        try {
-                            const barcodes = await barcodeDetector.detect(videoRef.current);
-                            if (barcodes.length > 0) {
-                                const barcode = barcodes[0].rawValue;
-                                console.log('Barkod bulundu:', barcode);
-
-                                if (addProductByBarcode(barcode)) {
-                                    // Optionally keep scanning or close
-                                    // stopBarcodeScanner();
-                                }
-                            }
-                        } catch (err) {
-                            console.error('Barkod algılama hatası:', err);
+                            // Reset after 2 seconds to allow same barcode again
+                            setTimeout(() => {
+                                lastScannedRef.current = '';
+                            }, 2000);
                         }
-
-                        if (scanningRef.current) {
-                            requestAnimationFrame(detectBarcode);
-                        }
-                    };
-
-                    // Start detection after video is ready
-                    videoRef.current.onloadedmetadata = () => {
-                        detectBarcode();
-                    };
-                } else {
-                    setScannerError('Bu tarayıcı barkod okumayı desteklemiyor. Chrome veya Edge kullanın.');
-                }
+                    },
+                    (errorMessage) => {
+                        // Ignore scanning errors (normal when no barcode in view)
+                    }
+                );
+            } catch (err) {
+                console.error('Kamera başlatma hatası:', err);
+                setScannerError('Kamera açılamadı. Lütfen kamera izni verin.');
             }
-        } catch (err) {
-            console.error('Kamera başlatma hatası:', err);
-            setScannerError('Kamera açılamadı. Lütfen kamera izni verin.');
-        }
+        }, 100);
     };
 
-    const stopBarcodeScanner = () => {
-        scanningRef.current = false;
-
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
+    const stopBarcodeScanner = async () => {
+        if (html5QrCodeRef.current) {
+            try {
+                await html5QrCodeRef.current.stop();
+                html5QrCodeRef.current.clear();
+            } catch (err) {
+                console.error('Scanner stop error:', err);
+            }
+            html5QrCodeRef.current = null;
         }
 
         setShowBarcodeScanner(false);
@@ -794,13 +773,11 @@ export default function MobilePOSPage() {
                         &times;
                     </button>
 
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-[90%] max-w-[640px] h-auto rounded-xl border-4 border-white"
-                    />
+                    {/* Scanner container for html5-qrcode */}
+                    <div
+                        id="barcode-scanner-container"
+                        className="w-[90%] max-w-[400px] rounded-xl overflow-hidden"
+                    ></div>
 
                     <p className="text-white text-lg mt-4">Barkodu kameraya gösterin...</p>
 

@@ -608,7 +608,7 @@ export default function InvoicesPage() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-0px)] transition-all duration-300">
+        <div className="flex h-[calc(100vh-64px)] transition-all duration-300 overflow-hidden">
             {/* Preview Modal (In-App) */}
             {previewModalOpen && previewHtml && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import KeyboardShortcutsModal from './modals/KeyboardShortcutsModal';
 
 const menuItems = [
     { path: '/', label: 'Satış Ekranı', icon: '🛒', permission: 'can_view_pos' },
@@ -14,6 +16,7 @@ const menuItems = [
 export default function Layout({ children }) {
     const { user, logout, hasPermission } = useAuth();
     const location = useLocation();
+    const [showShortcutsModal, setShowShortcutsModal] = useState(false);
 
     const visibleMenuItems = menuItems.filter(item =>
         hasPermission(item.permission)
@@ -36,18 +39,29 @@ export default function Layout({ children }) {
                         {/* Center: Desktop Navigation */}
                         <nav className="hidden md:flex items-center justify-center flex-1 gap-6">
                             {visibleMenuItems.map((item) => (
-                                <Link
-                                    key={item.path}
-                                    to={item.path}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 text-sm font-medium
-                                        ${location.pathname === item.path
-                                            ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100/50'
-                                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                                        }`}
-                                >
-                                    <span className="text-lg">{item.icon}</span>
-                                    <span>{item.label}</span>
-                                </Link>
+                                <div key={item.path} className="flex items-center">
+                                    {item.path === '/settings' && (
+                                        <button
+                                            onClick={() => setShowShortcutsModal(true)}
+                                            className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 text-sm font-medium mr-6 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                            title="Klavye Kısayolları"
+                                        >
+                                            <span className="text-lg">⌨️</span>
+                                            <span>Kısayollar</span>
+                                        </button>
+                                    )}
+                                    <Link
+                                        to={item.path}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 text-sm font-medium
+                                            ${location.pathname === item.path
+                                                ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100/50'
+                                                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                            }`}
+                                    >
+                                        <span className="text-lg">{item.icon}</span>
+                                        <span>{item.label}</span>
+                                    </Link>
+                                </div>
                             ))}
                         </nav>
 
@@ -90,6 +104,15 @@ export default function Layout({ children }) {
             <main className="flex-1 pb-20 md:pb-6 pt-4 px-4 sm:px-6 lg:px-8 max-w-[1920px] mx-auto w-full">
                 {children}
             </main>
+
+            {showShortcutsModal && (
+                <KeyboardShortcutsModal
+                    onClose={() => setShowShortcutsModal(false)}
+                    onSave={(newShortcuts) => {
+                        window.dispatchEvent(new CustomEvent('shortcuts-updated', { detail: newShortcuts }));
+                    }}
+                />
+            )}
 
             {/* Bottom Navigation (Mobile Only) */}
             <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-50 pb-safe">

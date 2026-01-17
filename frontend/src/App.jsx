@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import EmailSuccessPage from './pages/EmailSuccessPage';
 
 import POSPage from './pages/POSPage';
 import ProductsPage from './pages/ProductsPage';
@@ -23,6 +24,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/email-success" element={<EmailSuccessPage />} />
 
 
           {/* Protected Routes */}

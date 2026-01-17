@@ -1,12 +1,58 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { customersAPI } from '../services/api';
+import SaleDetailModal from '../components/modals/SaleDetailModal';
 
 export default function CustomerDetailPage() {
     const { customerName } = useParams();
     const [customer, setCustomer] = useState(null);
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedSale, setSelectedSale] = useState(null);
+
+    const handleTransactionClick = (tx) => {
+        // Only open modal for sales (where we have products or items)
+        // If it's a payment, we don't show sale detail modal but maybe a simple info?
+        // Actually, requirement says "Diğer işlem türü satırlarına tıklayarak satış detaylarını görüntüleyebilme"
+
+        // Check if it's a sale transaction (has sale_code or is not a payment type)
+        if (tx.transactionType === 'Fatura' || tx.transactionType === 'Nakit' || tx.transactionType === 'K.Kartı' || tx.transactionType === 'Veresiye') {
+            // Adapt tx to sale object expected by SaleDetailModal
+            // The modal expects { sale_code, customer, payment_method, date, total, items/products ... }
+
+            // If tx comes from sales table join, it might have items.
+            // If it comes from customer_transactions view/rpc, check structure.
+            // Assuming getTransactions returns enough info or we might need to fetch sale detail?
+            // Let's assume tx object has enough info for now or we pass what we have.
+            // Note: processedTransactions adds fields. Use raw tx if needed but processed is fine too.
+
+            const saleObj = {
+                sale_code: tx.sale_code || tx.id, // Fallback
+                customer: customer.name,
+                payment_method: tx.payment_method,
+                date: tx.created_at,
+                total: tx.total,
+                items: tx.products || [], // Access jsonb products
+                is_deleted: false // Assuming history items are valid
+            };
+            setSelectedSale(saleObj);
+        }
+    };
+
+    const handleDeletePayment = async (e, tx) => {
+        e.stopPropagation(); // Prevent row click
+
+        if (!confirm('Bu ödemeyi silmek müşterinin borcunu artıracaktır. Emin misiniz?')) return;
+
+        try {
+            await customersAPI.deletePayment(tx.id, customer.id, tx.total); // tx.total is amount for payment
+            alert('Ödeme silindi.');
+            loadCustomerData();
+        } catch (error) {
+            console.error(error);
+            alert('Hata: ' + (error.message || 'Ödeme silinemedi'));
+        }
+    };
 
     useEffect(() => {
         loadCustomerData();
@@ -206,7 +252,8 @@ export default function CustomerDetailPage() {
                                         return (
                                             <tr
                                                 key={tx.id || idx}
-                                                className={`${tx.rowColor} border-b border-gray-200 hover:opacity-80`}
+                                                className={`${tx.rowColor} border-b border-gray-200 hover:opacity-80 cursor-pointer transition-colors`}
+                                                onClick={() => handleTransactionClick(tx)}
                                             >
                                                 <td className="px-3 py-2 border-r border-gray-200 font-medium">
                                                     {customer.customer_code}
@@ -239,8 +286,19 @@ export default function CustomerDetailPage() {
                                                     }`}>
                                                     {tx.transactionType}
                                                 </td>
-                                                <td className="px-3 py-2 text-left max-w-md truncate" title={tx.description || ''}>
-                                                    {tx.products?.map(p => p.name).join(', ') || tx.description || '-'}
+                                                <td className="px-3 py-2 text-left max-w-md flex justify-between items-center group">
+                                                    <span className="truncate" title={tx.description || ''}>
+                                                        {tx.products?.map(p => p.name).join(', ') || tx.description || '-'}
+                                                    </span>
+                                                    {tx.transactionType === 'Ödeme' && (
+                                                        <button
+                                                            onClick={(e) => handleDeletePayment(e, tx)}
+                                                            className="ml-2 px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold hover:bg-red-200 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            title="Ödemeyi Sil"
+                                                        >
+                                                            Sil
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );
@@ -274,6 +332,22 @@ export default function CustomerDetailPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Sale Detail Modal */}
+            {selectedSale && (
+                <SaleDetailModal
+                    sale={selectedSale}
+                    onClose={() => setSelectedSale(null)}
+                    onUpdate={() => {
+                        loadCustomerData();
+                        setSelectedSale(null);
+                    }}
+                    onDelete={() => {
+                        loadCustomerData();
+                        setSelectedSale(null);
+                    }}
+                />
+            )}
         </div>
     );
 }

@@ -11,6 +11,7 @@ export default function SettingsPage() {
     // Settings State
     const [askQuantity, setAskQuantity] = useState(false);
     const [cancelPassword, setCancelPassword] = useState('123456');
+    const [editSalePassword, setEditSalePassword] = useState('123456');
     const [showTotalSales, setShowTotalSales] = useState(true);
     const [showTotalRevenue, setShowTotalRevenue] = useState(true);
     const [showInvoiceTotal, setShowInvoiceTotal] = useState(true);
@@ -34,6 +35,7 @@ export default function SettingsPage() {
             if (data) {
                 if (data['pos_settings_ask_quantity'] !== undefined) setAskQuantity(data['pos_settings_ask_quantity']);
                 if (data['sales_cancel_password']) setCancelPassword(data['sales_cancel_password']);
+                if (data['sales_edit_password']) setEditSalePassword(data['sales_edit_password']);
                 if (data['sales_show_total_sales'] !== undefined) setShowTotalSales(data['sales_show_total_sales']);
                 if (data['sales_show_total_revenue'] !== undefined) setShowTotalRevenue(data['sales_show_total_revenue']);
                 if (data['invoices_show_total'] !== undefined) setShowInvoiceTotal(data['invoices_show_total']);
@@ -65,11 +67,13 @@ export default function SettingsPage() {
     const handlePasswordChange = async (e) => {
         const newPassword = e.target.value;
         setCancelPassword(newPassword);
-        // Debounce saving if needed, but for password field usually we save on blur or specific button?
-        // For now, let's just save on every change like before (localStorage behavior)
-        // Or better: update state, but save on Blur is cleaner API-wise. 
-        // But to keep behavior same:
         updateSetting('sales_cancel_password', newPassword);
+    };
+
+    const handleEditSalePasswordChange = async (e) => {
+        const newPassword = e.target.value;
+        setEditSalePassword(newPassword);
+        updateSetting('sales_edit_password', newPassword);
     };
 
     const toggleShowTotalSales = () => {
@@ -101,7 +105,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="p-6">
+        <div className="h-[calc(100vh-64px)] overflow-y-auto p-6">
             <h1 className="text-2xl font-bold text-gray-800 mb-6">Ayarlar</h1>
 
             <div className="bg-white rounded-xl shadow-md p-6">
@@ -170,6 +174,26 @@ export default function SettingsPage() {
                                 value={cancelPassword}
                                 onChange={handlePasswordChange}
                                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-center font-mono w-32"
+                                placeholder="******"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-orange-50 rounded-lg border border-orange-200">
+                        <div>
+                            <h3 className="font-semibold text-orange-800">Satış Detaylarını Değiştirme Parolası</h3>
+                            <p className="text-sm text-orange-600 mt-1">
+                                Geçmiş satışların detaylarını düzenlerken sorulacak parolayı belirleyin.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-600">Parola:</span>
+                            <input
+                                type="text"
+                                value={editSalePassword}
+                                onChange={handleEditSalePasswordChange}
+                                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-center font-mono w-32"
                                 placeholder="******"
                             />
                         </div>

@@ -145,10 +145,10 @@ export default function CustomersPage() {
             .map(c => c.customer_code)
             .filter(code => code && /^M\d+$/.test(code))
             .map(code => parseInt(code.substring(1), 10));
-        
+
         // Find the maximum number, default to 0 if no codes exist
         const maxNum = existingCodes.length > 0 ? Math.max(...existingCodes) : 0;
-        
+
         // Generate next code with 4-digit padding (M0001, M0002, etc.)
         const nextNum = maxNum + 1;
         return `M${nextNum.toString().padStart(4, '0')}`;
@@ -280,7 +280,7 @@ export default function CustomersPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="h-[calc(100vh-64px)] bg-gray-100 flex flex-col overflow-hidden">
             {/* Header */}
             <header className="bg-gradient-to-r from-slate-50 via-white to-blue-50/30 px-6 py-5 shadow-sm border-b border-gray-100">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -336,10 +336,10 @@ export default function CustomersPage() {
             </header>
 
             {/* Main Content */}
-            <div className="p-5">
-                <div className="flex gap-5">
+            <div className="flex-1 overflow-hidden p-5 flex flex-col">
+                <div className="flex gap-5 h-full">
                     {/* Sidebar */}
-                    <div className="w-64 bg-white rounded-lg shadow-md p-5 h-fit flex-shrink-0">
+                    <div className="w-64 bg-white rounded-lg shadow-md p-5 h-full overflow-y-auto flex-shrink-0">
                         <h3 className="text-lg font-semibold border-b-2 border-gray-100 pb-2 mb-4">Filtreleme</h3>
 
                         <div className="mb-5">
@@ -377,7 +377,7 @@ export default function CustomersPage() {
                     </div>
 
                     {/* Table */}
-                    <div className="flex-1 bg-white rounded-lg shadow-md p-5 overflow-x-auto">
+                    <div className="flex-1 bg-white rounded-lg shadow-md p-5 overflow-auto h-full">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { salesAPI, customersAPI, productsAPI } from '../services/api';
+import SaleDetailModal from '../components/modals/SaleDetailModal';
 
 export default function SalesPage() {
     const [sales, setSales] = useState([]);
@@ -9,12 +10,7 @@ export default function SalesPage() {
     const [showCustomerModal, setShowCustomerModal] = useState(false);
     const [showAddProductModal, setShowAddProductModal] = useState(false);
     const [selectedSale, setSelectedSale] = useState(null);
-    const [editedProducts, setEditedProducts] = useState([]);
     const [customers, setCustomers] = useState([]);
-    const [products, setProducts] = useState([]);
-    const [customerSearch, setCustomerSearch] = useState('');
-    const [productSearch, setProductSearch] = useState('');
-    const [saving, setSaving] = useState(false);
 
     // Filter states
     const [filters, setFilters] = useState({
@@ -93,15 +89,6 @@ export default function SalesPage() {
         }
     };
 
-    const loadProducts = async () => {
-        try {
-            const response = await productsAPI.getAll();
-            setProducts(response.data?.products || []);
-        } catch (error) {
-            console.error('Ürünler yüklenirken hata:', error);
-        }
-    };
-
     const openCustomerModal = async () => {
         await loadCustomers();
         setCustomerSearch('');
@@ -115,12 +102,6 @@ export default function SalesPage() {
 
     const filteredCustomers = customers.filter(c =>
         c.name?.toLowerCase().includes(customerSearch.toLowerCase())
-    );
-
-    const filteredProducts = products.filter(p =>
-        p.name?.toLowerCase().includes(productSearch.toLowerCase()) ||
-        p.stock_code?.toLowerCase().includes(productSearch.toLowerCase()) ||
-        p.barcode?.includes(productSearch)
     );
 
     // Normalize Turkish characters for sorting
@@ -184,92 +165,7 @@ export default function SalesPage() {
 
     const openDetailModal = (sale) => {
         setSelectedSale(sale);
-        // Database stores products as 'items' or 'products' - handle both
-        const productItems = sale.items || sale.products || [];
-        setEditedProducts(JSON.parse(JSON.stringify(productItems)));
         setShowDetailModal(true);
-    };
-
-    const handleDeleteSale = async (saleCode) => {
-        const storedPassword = localStorage.getItem('sales_cancel_password') || '123456';
-        const password = prompt('Satışı iptal etmek için parolayı girin:');
-
-        if (!password) return;
-
-        if (password !== storedPassword) {
-            alert('Hatalı parola!');
-            return;
-        }
-
-        try {
-            await salesAPI.delete(saleCode);
-            loadSales();
-            setShowDetailModal(false);
-            alert('Satış başarıyla iptal edildi.');
-        } catch (error) {
-            alert('Hata: ' + (error.response?.data?.message || error.message));
-        }
-    };
-
-    const handleUpdateProduct = (index, field, value) => {
-        setEditedProducts(prev => {
-            const updated = [...prev];
-            updated[index] = { ...updated[index], [field]: value };
-            return updated;
-        });
-    };
-
-    const handleDeleteProduct = (index) => {
-        if (confirm('Bu ürünü satıştan kaldırmak istediğinize emin misiniz?')) {
-            setEditedProducts(prev => prev.filter((_, i) => i !== index));
-        }
-    };
-
-    const openAddProductModal = async () => {
-        await loadProducts();
-        setProductSearch('');
-        setShowAddProductModal(true);
-    };
-
-    const addProductToSale = (product) => {
-        const newProduct = {
-            id: product.id,
-            name: product.name,
-            stock_code: product.stock_code,
-            barcode: product.barcode,
-            price: product.price,
-            quantity: 1,
-            discount_rate: 0
-        };
-        setEditedProducts(prev => [...prev, newProduct]);
-        setShowAddProductModal(false);
-    };
-
-    const calculateTotal = () => {
-        return editedProducts.reduce((sum, p) => {
-            const lineTotal = (p.price * p.quantity) * (1 - (p.discount_rate || 0) / 100);
-            return sum + lineTotal;
-        }, 0);
-    };
-
-    const handleSaveChanges = async () => {
-        if (!selectedSale) return;
-
-        setSaving(true);
-        try {
-            const newTotal = calculateTotal();
-            await salesAPI.update(selectedSale.sale_code, {
-                products: editedProducts,
-                total: newTotal
-            });
-            alert('Satış başarıyla güncellendi!');
-            loadSales();
-            setShowDetailModal(false);
-        } catch (error) {
-            alert('Güncelleme hatası: ' + (error.message || 'Bilinmeyen hata'));
-        } finally {
-            setSaving(false);
-        }
     };
 
     const formatDate = (dateStr) => {
@@ -287,7 +183,7 @@ export default function SalesPage() {
     const totalSales = sortedSales.reduce((sum, s) => sum + (s.total || 0), 0);
 
     return (
-        <div className="flex h-[calc(100vh-0px)] transition-all duration-300">
+        <div className="flex h-[calc(100vh-64px)] transition-all duration-300 overflow-hidden">
             {/* Sidebar Overlay (Mobile) */}
             {filterOpen && (
                 <div
@@ -659,282 +555,20 @@ export default function SalesPage() {
                 </div>
             )}
 
-            {/* Sale Detail Modal - Large, Editable, Modern Design */}
+            {/* Sale Detail Modal */}
             {showDetailModal && selectedSale && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-                        {/* Header with Gradient */}
-                        <div className="bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 px-6 py-5">
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-2xl font-bold text-white">Satis Detayi</h3>
-                                        <p className="text-white/80 text-sm font-mono">{selectedSale.sale_code}</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setShowDetailModal(false)}
-                                    className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-all"
-                                >
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white">
-                            {/* Sale Info */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                <div className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
-                                    <p className="text-gray-500 text-sm">Musteri</p>
-                                    <p className="font-bold text-gray-800">{selectedSale.customer}</p>
-                                </div>
-                                <div className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
-                                    <p className="text-gray-500 text-sm">Odeme</p>
-                                    <p className="font-bold text-gray-800">{selectedSale.payment_method}</p>
-                                </div>
-                                <div className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
-                                    <p className="text-gray-500 text-sm">Tarih</p>
-                                    <p className="font-bold text-gray-800">{formatDate(selectedSale.date)}</p>
-                                </div>
-                                <div className="bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg p-4 text-white shadow-lg">
-                                    <p className="text-emerald-100 text-sm">Toplam</p>
-                                    <p className="text-2xl font-bold">₺{calculateTotal().toFixed(2)}</p>
-                                </div>
-                            </div>
-
-                            {/* Products Table - Editable */}
-                            <div className="mb-4 flex justify-between items-center">
-                                <h3 className="font-bold text-gray-800 text-lg">Urunler</h3>
-                                <button
-                                    onClick={openAddProductModal}
-                                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md flex items-center gap-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                    Urun Ekle
-                                </button>
-                            </div>
-
-                            <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-100">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Stok Kodu</th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Urun Adi</th>
-                                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-24">Miktar</th>
-                                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-32">Fiyat</th>
-                                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-24">Iskonto %</th>
-                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Toplam</th>
-                                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-16">Sil</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {editedProducts.map((p, i) => {
-                                            const lineTotal = (p.price * p.quantity) * (1 - (p.discount_rate || 0) / 100);
-                                            return (
-                                                <tr key={i} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3 text-gray-500 text-sm font-mono">{p.stock_code || '-'}</td>
-                                                    <td className="px-4 py-3 font-medium text-gray-800">{p.name}</td>
-                                                    <td className="px-4 py-3">
-                                                        <input
-                                                            type="number"
-                                                            value={p.quantity}
-                                                            onChange={(e) => handleUpdateProduct(i, 'quantity', parseFloat(e.target.value) || 0)}
-                                                            className="w-full px-2 py-1.5 text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                            min="0"
-                                                            step="0.01"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <input
-                                                            type="number"
-                                                            value={p.price}
-                                                            onChange={(e) => handleUpdateProduct(i, 'price', parseFloat(e.target.value) || 0)}
-                                                            className="w-full px-2 py-1.5 text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                            min="0"
-                                                            step="0.01"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <input
-                                                            type="number"
-                                                            value={p.discount_rate || 0}
-                                                            onChange={(e) => handleUpdateProduct(i, 'discount_rate', parseFloat(e.target.value) || 0)}
-                                                            className="w-full px-2 py-1.5 text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                            min="0"
-                                                            max="100"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-semibold text-gray-800">₺{lineTotal.toFixed(2)}</td>
-                                                    <td className="px-4 py-3 text-center">
-                                                        <button
-                                                            onClick={() => handleDeleteProduct(i)}
-                                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                        >
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                                {editedProducts.length === 0 && (
-                                    <div className="text-center py-8 text-gray-500">
-                                        Henuz urun eklenmedi
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/80">
-                            <div className="flex items-center justify-between gap-4">
-                                {!selectedSale.is_deleted && (
-                                    <button
-                                        onClick={() => handleDeleteSale(selectedSale.sale_code)}
-                                        className="px-6 py-3 bg-red-50 text-red-600 rounded-lg font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                        Satisi Iptal Et
-                                    </button>
-                                )}
-                                <div className="flex-1"></div>
-                                <button
-                                    onClick={() => setShowDetailModal(false)}
-                                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition-colors"
-                                >
-                                    Iptal
-                                </button>
-                                <button
-                                    onClick={handleSaveChanges}
-                                    disabled={saving}
-                                    className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg font-bold hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/30 flex items-center gap-2 disabled:opacity-50"
-                                >
-                                    {saving ? (
-                                        <>
-                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                            Kaydediliyor...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            Degisiklikleri Kaydet
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Add Product Modal */}
-            {showAddProductModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
-                    <div className="bg-white rounded-lg w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 px-6 py-5">
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-2xl font-bold text-white">Urun Ekle</h3>
-                                        <p className="text-white/80 text-sm">{products.length} urun mevcut</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setShowAddProductModal(false)}
-                                    className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-all"
-                                >
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            {/* Search */}
-                            <div className="mt-4 relative">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                                    <svg className="w-5 h-5 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    value={productSearch}
-                                    onChange={(e) => setProductSearch(e.target.value)}
-                                    placeholder="Urun adi, stok kodu veya barkod..."
-                                    className="w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-sm text-white placeholder-purple-200 rounded-lg border border-white/30 focus:outline-none focus:bg-white/30 focus:border-white/50 transition-all"
-                                    autoFocus
-                                />
-                            </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
-                            {filteredProducts.length === 0 ? (
-                                <div className="text-center py-12 text-gray-500">Urun bulunamadi</div>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-2">
-                                    {filteredProducts.slice(0, 50).map((product) => (
-                                        <div
-                                            key={product.id}
-                                            onClick={() => addProductToSale(product)}
-                                            className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-lg hover:border-purple-200 transition-all duration-300 cursor-pointer overflow-hidden group p-4 flex items-center gap-4"
-                                        >
-                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                                </svg>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-bold text-gray-800 truncate group-hover:text-purple-600 transition-colors">{product.name}</h4>
-                                                <p className="text-sm text-gray-500">{product.stock_code} | {product.barcode}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-lg font-bold text-purple-600">₺{product.price?.toFixed(2)}</p>
-                                                <p className="text-xs text-gray-500">Stok: {product.stock}</p>
-                                            </div>
-                                            <svg className="w-5 h-5 text-gray-300 group-hover:text-purple-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                            </svg>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/80">
-                            <button
-                                onClick={() => setShowAddProductModal(false)}
-                                className="w-full py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition-colors"
-                            >
-                                Iptal
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <SaleDetailModal
+                    sale={selectedSale}
+                    onClose={() => setShowDetailModal(false)}
+                    onUpdate={() => {
+                        loadSales();
+                        setShowDetailModal(false);
+                    }}
+                    onDelete={() => {
+                        loadSales();
+                        setShowDetailModal(false);
+                    }}
+                />
             )}
         </div>
     );

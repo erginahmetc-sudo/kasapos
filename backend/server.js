@@ -48,10 +48,22 @@ function saveConfig(newConfig) {
 // Actually, let's just use loadConfig().SECRET_TOKEN when needed.
 
 // Supabase Config (Will need to be set in .env or hardcoded by user if running locally)
-const SUPABASE_URL = process.env.SUPABASE_URL || "YOUR_SUPABASE_URL";
-const SUPABASE_KEY = process.env.SUPABASE_KEY || "YOUR_SUPABASE_KEY";
+// Supabase Config
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+let supabase;
+
+try {
+    if (!SUPABASE_URL || !SUPABASE_URL.startsWith('http')) {
+        console.warn("WARNING: Invalid or missing SUPABASE_URL. Backend API may fail.");
+    } else {
+        supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log("Supabase client initialized successfully.");
+    }
+} catch (error) {
+    console.error("Failed to initialize Supabase client:", error.message);
+}
 
 app.use(cors());
 app.use(express.json());
@@ -69,6 +81,9 @@ async function authenticateUser(req, res, next) {
     }
 
     try {
+        if (!supabase) {
+            return res.status(503).json({ error: "Sunucu veritabanı bağlantısı yapılandırılmamış." });
+        }
         const { data: { user }, error } = await supabase.auth.getUser(token);
         if (error || !user) {
             return res.status(403).json({ error: "Geçersiz veya süresi dolmuş oturum" });
@@ -135,6 +150,11 @@ app.post('/api/orders', async (req, res) => {
     const orderCodeFilter = filterData.OrderCode;
 
     // 2. Fetch Sales from Supabase
+    if (!supabase) {
+        console.error("Supabase not initialized, cannot fetch orders.");
+        return res.status(503).json({ "Orders": [], "error": "Veritabanı bağlantısı yok" });
+    }
+
     let query = supabase
         .from('sales')
         .select('*')

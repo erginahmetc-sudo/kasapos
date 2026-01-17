@@ -11,12 +11,11 @@ const response = (data, error) => {
 
 // ============ AUTH API ============
 export const authAPI = {
-    login: async (email, password) => {
-
+    login: async (email, password, companyCode) => {
 
         // Enforce Email Usage
         if (!email.includes('@')) {
-            throw { response: { data: { message: 'Lütfen kullanıcı adı yerine kayıtlı E-posta adresinizi giriniz. (Kullanıcı adı ile giriş desteklenmemektedir)' } } };
+            throw { response: { data: { message: 'Lütfen e-posta adresinizi giriniz.' } } };
         }
 
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -26,28 +25,31 @@ export const authAPI = {
 
         if (error) {
             if (error.message.includes('Email not confirmed')) {
-                throw { response: { data: { message: 'E-posta adresiniz henüz onaylanmamış. Lütfen e-postanızı kontrol edin veya Supabase panelinden "Confirm Email" ayarını kapatın.' } } };
+                throw { response: { data: { message: 'E-posta adresiniz henüz onaylanmamış.' } } };
             }
-            if (error.message.includes('Email logins are disabled')) {
-                throw { response: { data: { message: 'Supabase ayarlarında "Email Provider" kapalı. Lütfen Supabase panelinden Authentication -> Providers -> Email seçeneğini aktif edin.' } } };
-            }
-            throw { response: { data: { message: error.message || 'Giriş yapılamadı.' } } };
+            throw { response: { data: { message: 'Giriş yapılamadı. Bilgilerinizi kontrol edin.' } } };
         }
 
-        // Fetch user profile for role/permissions
+        // Fetch user profile for role/permissions AND Company Code
         const { data: profile, error: profileError } = await supabase
             .from('user_profiles')
             .select('*')
             .eq('id', data.user.id)
             .single();
 
-        let finalProfile = profile;
-
-        // If profile missing (or RLS error), default to empty or create
-        if (!finalProfile) {
-            console.warn('Profile missing, using defaults', profileError);
-            finalProfile = { role: 'user', permissions: {} };
+        // Security Check: Company Code Match
+        if (profile) {
+            if (profile.company_code !== companyCode) {
+                // Logout immediately
+                await supabase.auth.signOut();
+                throw { response: { data: { message: 'Hatalı Şirket Kodu! Bu kullanıcı bu şirkete ait değil.' } } };
+            }
+        } else {
+            // Profile missing, this shouldn't happen for valid users
+            console.warn('Profile missing for user', data.user.id);
         }
+
+        let finalProfile = profile || { role: 'user', permissions: {}, company_code: companyCode };
 
         return {
             status: 200,
@@ -71,12 +73,30 @@ export const authAPI = {
     },
 };
 
+// Helper to get current company code
+const getCurrentCompanyCode = () => {
+    try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            return user.company_code;
+        }
+    } catch (e) {
+        console.error("Error reading company code", e);
+    }
+    return null;
+};
+
 // ============ PRODUCTS API ============
 export const productsAPI = {
     getAll: async () => {
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) return { data: { products: [] } };
+
         const { data, error } = await supabase
             .from('products')
             .select('*')
+            .eq('company_code', companyCode)
             .order('name');
 
         if (error) throw error;
@@ -91,6 +111,9 @@ export const productsAPI = {
         return { data: { products: mappedProducts } };
     },
     add: async (product) => {
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) throw new Error("Şirket kodu bulunamadı.");
+
         // DB columns are snake_case
         const dbProduct = {
             stock_code: product.stock_code,
@@ -102,7 +125,8 @@ export const productsAPI = {
             buying_price: product.buying_price || 0,
             stock: product.stock,
             vat_rate: product.vat_rate || 18,
-            image_url: product.image_url
+            image_url: product.image_url,
+            company_code: companyCode
         };
 
         const { data, error } = await supabase
@@ -115,6 +139,7 @@ export const productsAPI = {
         return { data };
     },
     update: async (stockCode, product) => {
+        const companyCode = getCurrentCompanyCode();
         const dbProduct = {
             name: product.name,
             barcode: product.barcode,
@@ -130,17 +155,20 @@ export const productsAPI = {
         const { data, error } = await supabase
             .from('products')
             .update(dbProduct)
-            .eq('stock_code', stockCode) // DB uses stock_code
+            .eq('stock_code', stockCode)
+            .eq('company_code', companyCode) // Security check
             .select();
 
         if (error) throw error;
         return { data };
     },
     delete: async (stockCode) => {
+        const companyCode = getCurrentCompanyCode();
         const { error } = await supabase
             .from('products')
             .delete()
-            .eq('stock_code', stockCode);
+            .eq('stock_code', stockCode)
+            .eq('company_code', companyCode); // Security check
 
         if (error) throw error;
         return { data: { success: true } };
@@ -194,33 +222,42 @@ export const productsAPI = {
 // ============ CUSTOMERS API ============
 export const customersAPI = {
     getAll: async () => {
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) return response({ success: true, customers: [] });
+
         const { data, error } = await supabase
             .from('customers')
             .select('*')
+            .eq('company_code', companyCode)
             .order('name');
         return response({ success: true, customers: data || [] }, error);
     },
     add: async (customer) => {
+        const companyCode = getCurrentCompanyCode();
         const { id, ...cleanCustomer } = customer;
         const { data, error } = await supabase
             .from('customers')
-            .insert([cleanCustomer])
+            .insert([{ ...cleanCustomer, company_code: companyCode }])
             .select()
             .single();
         return response({ success: true, message: 'Müşteri eklendi', id: data?.id }, error);
     },
     update: async (id, customerData) => {
+        const companyCode = getCurrentCompanyCode();
         const { error } = await supabase
             .from('customers')
             .update(customerData)
-            .eq('id', id);
+            .eq('id', id)
+            .eq('company_code', companyCode);
         return response({ success: true, message: 'Müşteri güncellendi' }, error);
     },
     delete: async (id) => {
+        const companyCode = getCurrentCompanyCode();
         const { error } = await supabase
             .from('customers')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('company_code', companyCode);
         return response({ success: true, message: 'Müşteri silindi' }, error);
     },
     getTransactions: async (customerId) => {
@@ -359,7 +396,10 @@ export const customersAPI = {
 // ============ SALES API ============
 export const salesAPI = {
     getAll: async (params) => {
-        let query = supabase.from('sales').select('*, customers(name)');
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) return response({ success: true, sales: [] });
+
+        let query = supabase.from('sales').select('*, customers(name)').eq('company_code', companyCode);
 
         if (params?.start_date) query = query.gte('date', `${params.start_date}T00:00:00`);
         if (params?.end_date) query = query.lte('date', `${params.end_date}T23:59:59`);
@@ -398,6 +438,8 @@ export const salesAPI = {
             }));
         }
 
+        const companyCode = getCurrentCompanyCode();
+
         const cleanSale = {
             sale_code: sale.sale_code || `S-${Date.now()}`,
             items: items, // Supabase handles JSON automatically
@@ -406,7 +448,8 @@ export const salesAPI = {
             is_deleted: false,
             date: new Date().toISOString(),
             customer_id: sale.customer_id || (sale.customer && sale.customer.id) || null, // Handle customer object or ID
-            customer_name: sale.customer_name || (sale.customer && sale.customer.name) || (typeof sale.customer === 'string' ? sale.customer : '') || 'Misafir' // NEW: Store name explicitly
+            customer_name: sale.customer_name || (sale.customer && sale.customer.name) || (typeof sale.customer === 'string' ? sale.customer : '') || 'Misafir', // NEW: Store name explicitly
+            company_code: companyCode
         };
 
         const { data, error } = await supabase
@@ -473,7 +516,13 @@ export const salesAPI = {
 // ============ USERS API ============
 export const usersAPI = {
     getAll: async () => {
-        const { data, error } = await supabase.from('user_profiles').select('*');
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) return response({ success: true, users: [] });
+
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('company_code', companyCode);
         return response({ success: true, users: data || [] }, error);
     },
     add: async (user) => {
@@ -486,7 +535,8 @@ export const usersAPI = {
                     username: user.username,
                     role: user.role || 'user',
                     permissions: user.permissions,
-                    access_schedule: user.access_schedule
+                    access_schedule: user.access_schedule,
+                    company_code: getCurrentCompanyCode() // Assign current admin's company
                 }
             }
         });
@@ -518,6 +568,7 @@ export const usersAPI = {
                 role: user.role || 'user',
                 permissions: user.permissions,
                 access_schedule: user.access_schedule,
+                company_code: getCurrentCompanyCode()
                 // session_token: crypto.randomUUID() // Removed due to missing DB column
             });
 
@@ -581,21 +632,70 @@ export const usersAPI = {
         // Client-side cannot update other users' passwords safely without Admin API.
         // We will just return a message saying it's not supported in this version or needs Admin Panel.
         return { data: { success: false, message: "Parola değiştirme işlemi için Yönetici Paneli gereklidir (Client-Side kısıtlaması)." } };
+    },
+    registerTenant: async (userData) => {
+        // 1. SignUp
+        const { data, error } = await supabase.auth.signUp({
+            email: userData.email,
+            password: userData.password,
+            options: {
+                data: {
+                    username: userData.username,
+                    role: 'kurucu',
+                    company_code: userData.company_code
+                }
+            }
+        });
+
+        if (error) return response(null, error);
+
+        if (data.user) {
+            // 2. Create Profile with Company Code
+            const { error: profileError } = await supabase.from('user_profiles').upsert({
+                id: data.user.id,
+                username: userData.username,
+                role: 'kurucu',
+                company_code: userData.company_code,
+                permissions: {
+                    // Founders get full access by default logic, but we can be explicit
+                    can_view_products: true,
+                    can_view_customers: true,
+                    can_view_sales: true,
+                    can_view_invoices: true,
+                    can_view_pos: true,
+                    can_view_users: true,
+                    can_view_balances: true,
+                    can_view_prices: true
+                }
+            });
+
+            if (profileError) {
+                console.error('Tenant profile error:', profileError);
+                return response({ success: true, message: 'Kayıt oldu ancak profil hatası: ' + profileError.message }, null);
+            }
+        }
+
+        return response({ success: true, message: 'Şirket kaydı başarıyla oluşturuldu.' }, null);
     }
 };
 
 // ============ HELD SALES API ============
 export const heldSalesAPI = {
     getAll: async () => {
-        const { data, error } = await supabase.from('held_sales').select('*').order('created_at', { ascending: false });
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) return response({ success: true, held_sales: [] });
+
+        const { data, error } = await supabase.from('held_sales').select('*').eq('company_code', companyCode).order('created_at', { ascending: false });
         return response({ success: true, held_sales: data || [] }, error);
     },
     add: async (saleData) => {
+        const companyCode = getCurrentCompanyCode();
         // Format the data correctly for the database
         // Note: Using only columns that exist in the database table
         const heldSale = {
             customer_name: saleData.customer || 'Toptan Satış',
-            items: saleData.items // Supabase handles JSON automatically
+            items: saleData.items, // Supabase handles JSON automatically
+            company_code: companyCode
         };
         const { data, error } = await supabase.from('held_sales').insert([heldSale]).select();
         if (error) {

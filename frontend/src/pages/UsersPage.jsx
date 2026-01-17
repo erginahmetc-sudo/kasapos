@@ -23,6 +23,7 @@ export default function UsersPage() {
         start_time: '00:00',
         end_time: '23:59'
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const { isKurucu, user: currentUser } = useAuth();
 
     useEffect(() => {
@@ -84,6 +85,7 @@ export default function UsersPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
         try {
             const userData = {
                 ...formData,
@@ -105,14 +107,27 @@ export default function UsersPage() {
                 // Add
                 const res = await usersAPI.add(userData);
                 if (res.data?.success === false || (res.data?.message && res.data.message.includes('oluşturuldu ancak'))) {
-                    alert(res.data.message || 'Bir uyarı oluştu.');
+                    // Custom error messages from API
+                    throw new Error(res.data.message || 'Kullanıcı oluşturulurken bir hata oluştu.');
                 }
             }
 
             setShowModal(false);
             loadUsers();
         } catch (error) {
-            alert('Hata: ' + (error.response?.data?.message || error.message));
+            let msg = error.response?.data?.message || error.message || 'Bir hata oluştu.';
+
+            // Translate Supabase Rate Limit Error
+            if (msg.includes('security purposes') && msg.includes('seconds')) {
+                const seconds = msg.match(/\d+/)?.[0] || 'birkaç';
+                msg = `Güvenlik nedeniyle işlem kısıtlandı. Lütfen ${seconds} saniye bekleyip tekrar deneyin.`;
+            } else if (msg.includes('Rate limit')) {
+                msg = `Çok fazla deneme yaptınız. Lütfen biraz bekleyin.`;
+            }
+
+            alert('Hata: ' + msg);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -370,13 +385,15 @@ export default function UsersPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">E-posta *</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">E-posta {isEditMode ? '' : '*'}</label>
                                     <input
                                         type="email"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        required
+                                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${isEditMode ? 'bg-gray-50 text-gray-500' : ''}`}
+                                        required={!isEditMode}
+                                        disabled={isEditMode}
+                                        placeholder={isEditMode ? 'E-posta değiştirilemez' : ''}
                                     />
                                 </div>
                             </div>
@@ -427,14 +444,48 @@ export default function UsersPage() {
                                     type="button"
                                     onClick={() => setShowModal(false)}
                                     className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50"
+                                    disabled={isSubmitting}
                                 >
                                     İptal
                                 </button>
-                                <button type="submit" className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700">
-                                    {isEditMode ? 'Güncelle' : 'Kullanıcıyı Ekle'}
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            İşleniyor...
+                                        </>
+                                    ) : (
+                                        isEditMode ? 'Güncelle' : 'Kullanıcıyı Ekle'
+                                    )}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Processing Overlay */}
+            {isSubmitting && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-[60]">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-bounce-slow">
+                        <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                        <h3 className="text-xl font-bold text-gray-800">İşleminiz Yapılıyor</h3>
+                        <p className="text-gray-500 mt-2">Lütfen bekleyiniz...</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Processing Overlay */}
+            {isSubmitting && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-[60]">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center animate-bounce-slow">
+                        <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                        <h3 className="text-xl font-bold text-gray-800">İşleminiz Yapılıyor</h3>
+                        <p className="text-gray-500 mt-2">Lütfen bekleyiniz...</p>
                     </div>
                 </div>
             )}

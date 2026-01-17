@@ -386,8 +386,8 @@ export default function MobilePOSPage() {
                 </div>
             </div>
 
-            {/* Bottom Navigation Menu Bar - Scrollable */}
-            <div className="fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.15)] z-[500]">
+            {/* Bottom Navigation Menu Bar */}
+            <div className="fixed bottom-0 left-0 w-full bg-white z-[500]">
                 {/* Top row: Total and Cart */}
                 <div className="flex justify-between items-center px-4 py-2 border-b border-gray-100">
                     <span className="text-xl font-bold text-green-600">{calculateTotal().toFixed(2)} TL</span>
@@ -399,53 +399,24 @@ export default function MobilePOSPage() {
                     </button>
                 </div>
 
-                {/* Bottom row: Scrollable menu buttons */}
-                <div
-                    className="flex gap-3 overflow-x-auto px-4 py-3"
-                    style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                    <Link
-                        to="/"
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl font-semibold shadow-lg shadow-slate-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
-                    >
-                        🖥️ Masaüstü
+                {/* Bottom row: Navigation buttons like Ürünler page */}
+                <div className="border-t border-gray-200 flex justify-around py-3">
+                    <Link to="/mobile-pos" className="flex flex-col items-center text-blue-600">
+                        <span className="text-xl">🛒</span>
+                        <span className="text-xs font-bold">Satış Ekranı</span>
                     </Link>
-                    <Link
-                        to="/mobile-products"
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-semibold shadow-lg shadow-orange-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
-                    >
-                        📦 Ürünler
+                    <Link to="/mobile-products" className="flex flex-col items-center text-gray-600">
+                        <span className="text-xl">📦</span>
+                        <span className="text-xs">Ürünler</span>
                     </Link>
-                    <Link
-                        to="/mobile-customers"
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
-                    >
-                        👥 Bakiyeler
+                    <Link to="/mobile-customers" className="flex flex-col items-center text-gray-600">
+                        <span className="text-xl">👥</span>
+                        <span className="text-xs">Bakiyeler</span>
                     </Link>
-                    <Link
-                        to="/mobile-sales"
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg shadow-purple-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
-                    >
-                        � Satışlar
+                    <Link to="/mobile-sales" className="flex flex-col items-center text-gray-600">
+                        <span className="text-xl">📋</span>
+                        <span className="text-xs">Satışlar</span>
                     </Link>
-                    <Link
-                        to="/mobile-invoices"
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
-                    >
-                        � Faturalar
-                    </Link>
-                    <button
-                        onClick={startBarcodeScanner}
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-lime-500 to-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap"
-                    >
-                        📷 Barkod
-                    </button>
-                    <button
-                        onClick={() => { logout(); }}
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold shadow-lg shadow-red-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap"
-                    >
-                        🚪 Çıkış
-                    </button>
                 </div>
             </div>
 

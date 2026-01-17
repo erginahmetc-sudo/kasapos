@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { productsAPI, salesAPI, customersAPI, shortcutsAPI, heldSalesAPI } from '../services/api';
 import { birFaturaAPI } from '../services/birFaturaService';
@@ -22,6 +22,73 @@ export default function POSPage() {
     const [showWaitlistModal, setShowWaitlistModal] = useState(false);
     const [heldSales, setHeldSales] = useState([]);
     const [shortcuts, setShortcuts] = useState([]);
+    const searchInputRef = useRef(null);
+    const [keyboardShortcuts, setKeyboardShortcuts] = useState({});
+
+    // Load Keyboard Shortcuts
+    useEffect(() => {
+        const saved = localStorage.getItem('pos_keyboard_shortcuts');
+        if (saved) {
+            try {
+                setKeyboardShortcuts(JSON.parse(saved));
+            } catch (e) {
+                console.error("Shortcuts parse error", e);
+            }
+        }
+    }, []);
+
+    // Handle Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Find action for key
+            const action = Object.keys(keyboardShortcuts).find(key => keyboardShortcuts[key] === e.key);
+
+            if (!action) return;
+
+            // Prevent default for F keys to avoid browser actions
+            if (e.key.startsWith('F')) {
+                e.preventDefault();
+            }
+
+            switch (action) {
+                case 'search_focus':
+                    searchInputRef.current?.focus();
+                    break;
+                case 'nakit_odeme':
+                    if (cart.length > 0) completeSale('Nakit');
+                    break;
+                case 'pos_odeme':
+                    if (cart.length > 0) completeSale('POS');
+                    break;
+                case 'miktar_duzenle':
+                    if (selectedCartIndex !== null && cart[selectedCartIndex]) {
+                        setModalValue(cart[selectedCartIndex].quantity);
+                        setShowQuantityModal(true);
+                    }
+                    break;
+                case 'iskonto_ekle':
+                    if (selectedCartIndex !== null && cart[selectedCartIndex]) {
+                        setModalValue(cart[selectedCartIndex].discount_rate || 0);
+                        setShowDiscountModal(true);
+                    }
+                    break;
+                case 'fiyat_duzenle':
+                    if (selectedCartIndex !== null && cart[selectedCartIndex]) {
+                        setModalValue(cart[selectedCartIndex].price);
+                        setShowPriceModal(true);
+                    }
+                    break;
+                case 'musteri_sec':
+                    setShowCustomerModal(true);
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [keyboardShortcuts, cart, selectedCartIndex]);
 
     // Ask Quantity State
     const [showRetailCustomerModal, setShowRetailCustomerModal] = useState(false);
@@ -793,6 +860,7 @@ export default function POSPage() {
 
                                 {/* Input Field */}
                                 <input
+                                    ref={searchInputRef}
                                     type="text"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}

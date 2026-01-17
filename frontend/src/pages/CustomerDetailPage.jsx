@@ -32,7 +32,7 @@ export default function CustomerDetailPage() {
                 payment_method: tx.payment_method,
                 date: tx.created_at,
                 total: tx.total,
-                items: tx.products || [], // Access jsonb products
+                items: tx.items || tx.products || [], // Access jsonb items (or products legacy)
                 is_deleted: false // Assuming history items are valid
             };
             setSelectedSale(saleObj);
@@ -287,8 +287,10 @@ export default function CustomerDetailPage() {
                                                     }`}>
                                                     {tx.transactionType}
                                                 </td>
-                                                <td className="px-3 py-2 text-left max-w-md truncate border-r border-gray-200" title={tx.description || ''}>
-                                                    {tx.products?.map(p => p.name).join(', ') || tx.description || '-'}
+                                                <td className="px-3 py-2 text-left max-w-md truncate border-r border-gray-200">
+                                                    <span className="truncate" title={tx.description || ''}>
+                                                        {(tx.items || tx.products)?.map(p => p.name).join(', ') || tx.description || '-'}
+                                                    </span>
                                                 </td>
                                                 <td className="px-3 py-2 text-center">
                                                     {tx.transactionType === 'Ödeme' && (

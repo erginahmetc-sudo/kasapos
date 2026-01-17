@@ -350,24 +350,18 @@ export default function MobilePOSPage() {
             {/* Header */}
             <header className="flex justify-between items-center p-3 bg-white shadow-md">
                 <div className="flex gap-3 items-center flex-1">
-                    <button
-                        onClick={() => setShowSideMenu(true)}
-                        className="bg-blue-50 text-blue-600 border-none rounded-lg p-3 text-xl cursor-pointer hover:bg-blue-600 hover:text-white transition-colors"
-                    >
-                        ☰
-                    </button>
                     <input
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Ürün ara..."
+                        placeholder="Ürün Adı, Stok Kodu, Barkod"
                         className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-blue-500"
                     />
                 </div>
                 <div className="flex gap-3 ml-3">
                     <button
                         onClick={startBarcodeScanner}
-                        className="bg-blue-50 text-blue-600 border-none rounded-lg p-3 text-xl cursor-pointer hover:bg-blue-600 hover:text-white transition-colors"
+                        className="bg-blue-50 text-blue-600 border-none rounded-xl p-4 text-3xl cursor-pointer hover:bg-blue-600 hover:text-white transition-colors"
                     >
                         📷
                     </button>
@@ -435,31 +429,37 @@ export default function MobilePOSPage() {
                         to="/"
                         className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl font-semibold shadow-lg shadow-slate-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
                     >
-                        🏠 Ana Sayfa
+                        🖥️ Masaüstü
                     </Link>
                     <Link
-                        to="/customers"
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
-                    >
-                        👥 Müşteriler
-                    </Link>
-                    <Link
-                        to="/sales"
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg shadow-purple-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
-                    >
-                        📊 Satışlar
-                    </Link>
-                    <Link
-                        to="/products"
+                        to="/mobile-products"
                         className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-semibold shadow-lg shadow-orange-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
                     >
                         📦 Ürünler
                     </Link>
+                    <Link
+                        to="/mobile-customers"
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
+                    >
+                        👥 Bakiyeler
+                    </Link>
+                    <Link
+                        to="/mobile-sales"
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg shadow-purple-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
+                    >
+                        � Satışlar
+                    </Link>
+                    <Link
+                        to="/mobile-invoices"
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
+                    >
+                        � Faturalar
+                    </Link>
                     <button
                         onClick={startBarcodeScanner}
-                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap"
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-lime-500 to-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap"
                     >
-                        📷 Barkod Tara
+                        📷 Barkod
                     </button>
                     <button
                         onClick={() => { logout(); }}

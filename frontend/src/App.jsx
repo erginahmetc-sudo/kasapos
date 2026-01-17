@@ -9,6 +9,10 @@ import EmailSuccessPage from './pages/EmailSuccessPage';
 
 import POSPage from './pages/POSPage';
 import MobilePOSPage from './pages/MobilePOSPage';
+import MobileProductsPage from './pages/MobileProductsPage';
+import MobileCustomersPage from './pages/MobileCustomersPage';
+import MobileSalesPage from './pages/MobileSalesPage';
+import MobileInvoicesPage from './pages/MobileInvoicesPage';
 import ProductsPage from './pages/ProductsPage';
 import CustomersPage from './pages/CustomersPage';
 import CustomerDetailPage from './pages/CustomerDetailPage';
@@ -114,6 +118,38 @@ function App() {
             element={
               <ProtectedRoute permission="can_view_pos">
                 <MobilePOSPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mobile-products"
+            element={
+              <ProtectedRoute permission="can_view_products">
+                <MobileProductsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mobile-customers"
+            element={
+              <ProtectedRoute permission="can_view_customers">
+                <MobileCustomersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mobile-sales"
+            element={
+              <ProtectedRoute permission="can_view_sales">
+                <MobileSalesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mobile-invoices"
+            element={
+              <ProtectedRoute permission="can_view_invoices">
+                <MobileInvoicesPage />
               </ProtectedRoute>
             }
           />

@@ -39,18 +39,16 @@ export default function Layout({ children }) {
                         {/* Center: Desktop Navigation */}
                         <nav className="hidden md:flex items-center justify-center flex-1 gap-6">
                             {visibleMenuItems.map((item) => (
-                                <div key={item.path} className="flex items-center">
+                                <div key={item.path} className="flex items-center gap-6">
                                     {item.path === '/settings' && (
-                                        <>
-                                            <button
-                                                onClick={() => setShowShortcutsModal(true)}
-                                                className="flex items-center gap-2 px-3 py-2 mr-8 rounded-xl transition-all duration-200 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                                                title="Klavye Kısayolları"
-                                            >
-                                                <span className="text-lg">⌨️</span>
-                                                <span>Kısayollar</span>
-                                            </button>
-                                        </>
+                                        <button
+                                            onClick={() => setShowShortcutsModal(true)}
+                                            className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                            title="Klavye Kısayolları"
+                                        >
+                                            <span className="text-lg">⌨️</span>
+                                            <span>Kısayollar</span>
+                                        </button>
                                     )}
                                     <Link
                                         to={item.path}

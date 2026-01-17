@@ -25,6 +25,11 @@ export default function MobilePOSPage() {
     const [showDiscountModal, setShowDiscountModal] = useState(false);
     const [showPriceModal, setShowPriceModal] = useState(false);
     const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+    const [showPriceCheckModal, setShowPriceCheckModal] = useState(false);
+    const [priceCheckProduct, setPriceCheckProduct] = useState(null);
+    const [priceCheckSearch, setPriceCheckSearch] = useState('');
+    const [showPriceCheckScanner, setShowPriceCheckScanner] = useState(false);
+    const priceCheckScannerRef = useRef(null);
 
     const [modalValue, setModalValue] = useState('');
     const [productToAdd, setProductToAdd] = useState(null);
@@ -399,23 +404,27 @@ export default function MobilePOSPage() {
                     </button>
                 </div>
 
-                {/* Bottom row: Navigation buttons like Ürünler page */}
-                <div className="border-t border-gray-200 flex justify-around py-3">
-                    <Link to="/mobile-pos" className="flex flex-col items-center text-blue-600">
-                        <span className="text-xl">🛒</span>
-                        <span className="text-xs font-bold">Satış Ekranı</span>
+                {/* Bottom row: Navigation buttons */}
+                <div className="border-t border-gray-200 flex justify-around py-2 px-1">
+                    <Link to="/mobile-pos" className="flex flex-col items-center text-blue-600 min-w-[50px]">
+                        <span className="text-lg">🛒</span>
+                        <span className="text-[10px] font-bold">Satış</span>
                     </Link>
-                    <Link to="/mobile-products" className="flex flex-col items-center text-gray-600">
-                        <span className="text-xl">📦</span>
-                        <span className="text-xs">Ürünler</span>
+                    <button onClick={() => { setShowPriceCheckModal(true); setPriceCheckProduct(null); setPriceCheckSearch(''); }} className="flex flex-col items-center text-gray-600 min-w-[50px]">
+                        <span className="text-lg">💰</span>
+                        <span className="text-[10px]">Fiyat Gör</span>
+                    </button>
+                    <Link to="/mobile-products" className="flex flex-col items-center text-gray-600 min-w-[50px]">
+                        <span className="text-lg">📦</span>
+                        <span className="text-[10px]">Ürünler</span>
                     </Link>
-                    <Link to="/mobile-customers" className="flex flex-col items-center text-gray-600">
-                        <span className="text-xl">👥</span>
-                        <span className="text-xs">Bakiyeler</span>
+                    <Link to="/mobile-customers" className="flex flex-col items-center text-gray-600 min-w-[50px]">
+                        <span className="text-lg">👥</span>
+                        <span className="text-[10px]">Bakiyeler</span>
                     </Link>
-                    <Link to="/mobile-sales" className="flex flex-col items-center text-gray-600">
-                        <span className="text-xl">📋</span>
-                        <span className="text-xs">Satışlar</span>
+                    <Link to="/mobile-sales" className="flex flex-col items-center text-gray-600 min-w-[50px]">
+                        <span className="text-lg">📋</span>
+                        <span className="text-[10px]">Satışlar</span>
                     </Link>
                 </div>
             </div>
@@ -783,6 +792,186 @@ export default function MobilePOSPage() {
                         >
                             Ekle
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Price Check Modal */}
+            {showPriceCheckModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slide-up">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-violet-600 to-purple-600 p-5 flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                💰 Fiyat Sorgula
+                            </h2>
+                            <button
+                                onClick={() => {
+                                    setShowPriceCheckModal(false);
+                                    setPriceCheckProduct(null);
+                                    if (priceCheckScannerRef.current) {
+                                        priceCheckScannerRef.current.stop().catch(() => { });
+                                        priceCheckScannerRef.current = null;
+                                    }
+                                    setShowPriceCheckScanner(false);
+                                }}
+                                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-2xl hover:bg-white/30 transition-colors"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-5 space-y-4">
+                            {/* Barcode Scanner Button */}
+                            {!showPriceCheckScanner ? (
+                                <button
+                                    onClick={async () => {
+                                        setShowPriceCheckScanner(true);
+                                        setPriceCheckProduct(null);
+                                        setTimeout(async () => {
+                                            try {
+                                                const scanner = new Html5Qrcode('price-check-scanner');
+                                                priceCheckScannerRef.current = scanner;
+                                                await scanner.start(
+                                                    { facingMode: 'environment' },
+                                                    { fps: 10, qrbox: { width: 250, height: 150 } },
+                                                    (decodedText) => {
+                                                        const found = products.find(p =>
+                                                            p.barcode === decodedText ||
+                                                            p.stock_code === decodedText ||
+                                                            p.stock_code?.toLowerCase() === decodedText.toLowerCase()
+                                                        );
+                                                        if (found) {
+                                                            setPriceCheckProduct(found);
+                                                        } else {
+                                                            setPriceCheckProduct({ notFound: true, searchTerm: decodedText });
+                                                        }
+                                                        scanner.stop().catch(() => { });
+                                                        priceCheckScannerRef.current = null;
+                                                        setShowPriceCheckScanner(false);
+                                                    },
+                                                    () => { }
+                                                );
+                                            } catch (err) {
+                                                console.error('Kamera hatası:', err);
+                                                setShowPriceCheckScanner(false);
+                                            }
+                                        }, 100);
+                                    }}
+                                    className="w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:scale-[1.02] transition-all"
+                                >
+                                    📷 Barkod Okut
+                                </button>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div id="price-check-scanner" className="w-full rounded-2xl overflow-hidden"></div>
+                                    <button
+                                        onClick={() => {
+                                            if (priceCheckScannerRef.current) {
+                                                priceCheckScannerRef.current.stop().catch(() => { });
+                                                priceCheckScannerRef.current = null;
+                                            }
+                                            setShowPriceCheckScanner(false);
+                                        }}
+                                        className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold"
+                                    >
+                                        İptal
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Manual Search */}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={priceCheckSearch}
+                                    onChange={(e) => setPriceCheckSearch(e.target.value)}
+                                    placeholder="Stok Kodu veya Barkod girin..."
+                                    className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-violet-500 text-lg"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && priceCheckSearch.trim()) {
+                                            const found = products.find(p =>
+                                                p.barcode === priceCheckSearch.trim() ||
+                                                p.stock_code === priceCheckSearch.trim() ||
+                                                p.stock_code?.toLowerCase() === priceCheckSearch.trim().toLowerCase()
+                                            );
+                                            if (found) {
+                                                setPriceCheckProduct(found);
+                                            } else {
+                                                setPriceCheckProduct({ notFound: true, searchTerm: priceCheckSearch.trim() });
+                                            }
+                                        }
+                                    }}
+                                />
+                                <button
+                                    onClick={() => {
+                                        if (priceCheckSearch.trim()) {
+                                            const found = products.find(p =>
+                                                p.barcode === priceCheckSearch.trim() ||
+                                                p.stock_code === priceCheckSearch.trim() ||
+                                                p.stock_code?.toLowerCase() === priceCheckSearch.trim().toLowerCase()
+                                            );
+                                            if (found) {
+                                                setPriceCheckProduct(found);
+                                            } else {
+                                                setPriceCheckProduct({ notFound: true, searchTerm: priceCheckSearch.trim() });
+                                            }
+                                        }
+                                    }}
+                                    className="px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                                >
+                                    Ara
+                                </button>
+                            </div>
+
+                            {/* Product Result */}
+                            {priceCheckProduct && (
+                                <div className="mt-4 animate-slide-up">
+                                    {priceCheckProduct.notFound ? (
+                                        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 text-center">
+                                            <span className="text-4xl">❌</span>
+                                            <p className="text-lg font-semibold text-red-600 mt-2">Ürün Bulunamadı</p>
+                                            <p className="text-gray-500 text-sm mt-1">"{priceCheckProduct.searchTerm}"</p>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-2xl p-5 space-y-3">
+                                            {/* Product Image */}
+                                            {priceCheckProduct.image_url && (
+                                                <div className="flex justify-center">
+                                                    <img src={priceCheckProduct.image_url} alt={priceCheckProduct.name} className="w-24 h-24 object-cover rounded-xl shadow-md" />
+                                                </div>
+                                            )}
+
+                                            {/* Product Info */}
+                                            <div className="space-y-2 text-center">
+                                                <p className="text-xs text-gray-500 uppercase tracking-wider">Ürün Adı</p>
+                                                <p className="text-lg font-bold text-gray-800">{priceCheckProduct.name}</p>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-3 text-center">
+                                                <div className="bg-white rounded-xl p-3 shadow-sm">
+                                                    <p className="text-xs text-gray-500">Stok Kodu</p>
+                                                    <p className="font-semibold text-gray-700">{priceCheckProduct.stock_code}</p>
+                                                </div>
+                                                <div className="bg-white rounded-xl p-3 shadow-sm">
+                                                    <p className="text-xs text-gray-500">Barkod</p>
+                                                    <p className="font-semibold text-gray-700 font-mono text-sm">{priceCheckProduct.barcode || '-'}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Price - Large */}
+                                            <div className="bg-gradient-to-r from-emerald-500 to-green-500 rounded-2xl p-5 text-center shadow-lg shadow-emerald-500/30">
+                                                <p className="text-emerald-100 text-sm mb-1">Satış Fiyatı</p>
+                                                <p className="text-4xl font-black text-white">
+                                                    {priceCheckProduct.price?.toFixed(2)} TL
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

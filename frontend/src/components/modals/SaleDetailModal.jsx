@@ -140,25 +140,25 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
     if (!sale) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="bg-white  w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 px-6 py-5">
+                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-10 py-8">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm  flex items-center justify-center">
+                            <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
                                 <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-2xl font-bold text-white">Satış Detayı</h3>
-                                <p className="text-white/80 text-sm font-mono">{sale.sale_code}</p>
+                                <h3 className="text-3xl font-bold text-white tracking-tight">Satış Detayı</h3>
+                                <p className="text-slate-400 text-base font-mono mt-1">{sale.sale_code}</p>
                             </div>
                         </div>
                         <button
                             onClick={onClose}
-                            className="w-10 h-10 bg-white/20 hover:bg-white/30  flex items-center justify-center transition-all"
+                            className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all"
                         >
                             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -168,33 +168,33 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white">
+                <div className="flex-1 overflow-y-auto p-10 bg-gradient-to-b from-slate-50 to-white">
                     {/* Sale Info */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white  border border-gray-100 p-4 shadow-sm">
-                            <p className="text-gray-500 text-sm">Müşteri</p>
-                            <p className="font-bold text-gray-800">{sale.customer}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                        <div className="bg-white rounded-2xl border-2 border-slate-100 p-5 shadow-sm">
+                            <p className="text-slate-500 text-sm font-medium mb-1">Müşteri</p>
+                            <p className="font-bold text-slate-800 text-lg">{sale.customer}</p>
                         </div>
-                        <div className="bg-white  border border-gray-100 p-4 shadow-sm">
-                            <p className="text-gray-500 text-sm">Ödeme</p>
-                            <p className="font-bold text-gray-800">{sale.payment_method}</p>
+                        <div className="bg-white rounded-2xl border-2 border-slate-100 p-5 shadow-sm">
+                            <p className="text-slate-500 text-sm font-medium mb-1">Ödeme</p>
+                            <p className="font-bold text-slate-800 text-lg">{sale.payment_method}</p>
                         </div>
-                        <div className="bg-white  border border-gray-100 p-4 shadow-sm">
-                            <p className="text-gray-500 text-sm">Tarih</p>
-                            <p className="font-bold text-gray-800">{formatDate(sale.date)}</p>
+                        <div className="bg-white rounded-2xl border-2 border-slate-100 p-5 shadow-sm">
+                            <p className="text-slate-500 text-sm font-medium mb-1">Tarih</p>
+                            <p className="font-bold text-slate-800 text-lg">{formatDate(sale.date)}</p>
                         </div>
-                        <div className="bg-gradient-to-r from-emerald-500 to-green-500  p-4 text-white shadow-lg">
-                            <p className="text-emerald-100 text-sm">Toplam</p>
-                            <p className="text-2xl font-bold">₺{calculateTotal().toFixed(2)}</p>
+                        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-xl shadow-emerald-500/30">
+                            <p className="text-emerald-100 text-sm font-medium mb-1">Toplam</p>
+                            <p className="text-3xl font-bold">₺{calculateTotal().toFixed(2)}</p>
                         </div>
                     </div>
 
                     {/* Products Table */}
-                    <div className="mb-4 flex justify-between items-center">
-                        <h3 className="font-bold text-gray-800 text-lg">Ürünler</h3>
+                    <div className="mb-6 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-800 text-xl">Ürünler</h3>
                         <button
                             onClick={openAddProductModal}
-                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white  font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md flex items-center gap-2"
+                            className="px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -203,7 +203,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                         </button>
                     </div>
 
-                    <div className="bg-white  border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm overflow-hidden">
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>

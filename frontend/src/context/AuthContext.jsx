@@ -19,25 +19,66 @@ export const AuthProvider = ({ children }) => {
     // Initial Load & Session Validation
     // Initial Load & Session Validation
     useEffect(() => {
-        const initAuth = () => {
-            const storedUser = localStorage.getItem('user');
-            if (storedUser) {
+        const initAuth = async () => {
+            const storedUserStr = localStorage.getItem('user');
+            let currentUser = null;
+
+            // 1. Load from LocalStorage (Fast/Optimistic)
+            if (storedUserStr) {
                 try {
-                    const parsed = JSON.parse(storedUser);
-                    // FORCE LOGOUT IF MOCK DETECTED (Security Cleanup)
-                    if (parsed.id === 'mock-admin-id') {
-                        console.warn("Cleared legacy mock admin session");
+                    currentUser = JSON.parse(storedUserStr);
+                    // Legacy/Mock cleanup
+                    if (currentUser.id === 'mock-admin-id') {
+                        currentUser = null;
                         localStorage.removeItem('user');
-                        localStorage.removeItem('auth_token');
-                        setUser(null);
                     } else {
-                        setUser(parsed);
+                        setUser(currentUser);
                     }
                 } catch (e) {
-                    console.error("Failed to parse user from local storage", e);
+                    console.error("Parse error", e);
                     localStorage.removeItem('user');
                 }
             }
+
+            // 2. Revalidate with Database (Fresh Permissions)
+            if (currentUser && currentUser.id) {
+                try {
+                    // Check if session is valid via Supabase
+                    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                    if (sessionError || !session) {
+                        // Session expired
+                        // setUser(null); 
+                        // localStorage.removeItem('user');
+                        // We could logout, but let's let specific API calls fail 401 if needed, 
+                        // or strict logout here. Strict is better for security.
+                        /* Optional: verify if token matches? For now, we trust if Supabase has a session. */
+                    } else {
+                        // Fetch fresh profile
+                        const { data: profile, error: profileError } = await supabase
+                            .from('user_profiles')
+                            .select('*')
+                            .eq('id', currentUser.id)
+                            .single();
+
+                        if (profile) {
+                            // Merge fresh profile data (permissions, role, etc) into current user
+                            const updatedUser = { ...currentUser, ...profile };
+
+                            // Check deep equality to avoid re-render loop if identical? 
+                            // JSON stringify comparison is cheap enough for this size
+                            if (JSON.stringify(updatedUser) !== JSON.stringify(currentUser)) {
+                                console.log("Profile refreshed from DB", updatedUser);
+                                setUser(updatedUser);
+                                localStorage.setItem('user', JSON.stringify(updatedUser));
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error("Profile revalidation failed", err);
+                }
+            }
+
             setLoading(false);
         };
 

@@ -406,26 +406,34 @@ export default function MobilePOSPage() {
 
                 {/* Bottom row: Navigation buttons */}
                 <div className="border-t border-gray-200 flex justify-around py-2 px-1">
-                    <Link to="/mobile-pos" className="flex flex-col items-center text-blue-600 min-w-[50px]">
+                    <Link to="/mobile-pos" className="flex flex-col items-center text-blue-600 min-w-[40px]">
                         <span className="text-lg">🛒</span>
                         <span className="text-[10px] font-bold">Satış</span>
                     </Link>
-                    <button onClick={() => { setShowPriceCheckModal(true); setPriceCheckProduct(null); setPriceCheckSearch(''); }} className="flex flex-col items-center text-gray-600 min-w-[50px]">
+                    <button onClick={() => { setShowPriceCheckModal(true); setPriceCheckProduct(null); setPriceCheckSearch(''); }} className="flex flex-col items-center text-gray-600 min-w-[40px]">
                         <span className="text-lg">💰</span>
                         <span className="text-[10px]">Fiyat Gör</span>
                     </button>
-                    <Link to="/mobile-products" className="flex flex-col items-center text-gray-600 min-w-[50px]">
+                    <Link to="/mobile-products" className="flex flex-col items-center text-gray-600 min-w-[40px]">
                         <span className="text-lg">📦</span>
                         <span className="text-[10px]">Ürünler</span>
                     </Link>
-                    <Link to="/mobile-customers" className="flex flex-col items-center text-gray-600 min-w-[50px]">
+                    <Link to="/mobile-customers" className="flex flex-col items-center text-gray-600 min-w-[40px]">
                         <span className="text-lg">👥</span>
                         <span className="text-[10px]">Bakiyeler</span>
                     </Link>
-                    <Link to="/mobile-sales" className="flex flex-col items-center text-gray-600 min-w-[50px]">
+                    <Link to="/mobile-sales" className="flex flex-col items-center text-gray-600 min-w-[40px]">
                         <span className="text-lg">📋</span>
                         <span className="text-[10px]">Satışlar</span>
                     </Link>
+                    <Link to="/mobile-invoices" className="flex flex-col items-center text-gray-600 min-w-[40px]">
+                        <span className="text-lg">📄</span>
+                        <span className="text-[10px]">Faturalar</span>
+                    </Link>
+                    <button onClick={() => logout()} className="flex flex-col items-center text-red-500 min-w-[40px]">
+                        <span className="text-lg">🚪</span>
+                        <span className="text-[10px]">Çıkış</span>
+                    </button>
                 </div>
             </div>
 
@@ -967,6 +975,17 @@ export default function MobilePOSPage() {
                                                     {priceCheckProduct.price?.toFixed(2)} TL
                                                 </p>
                                             </div>
+
+                                            {/* New Search Button */}
+                                            <button
+                                                onClick={() => {
+                                                    setPriceCheckProduct(null);
+                                                    setPriceCheckSearch('');
+                                                }}
+                                                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                🔄 Yeni Arama
+                                            </button>
                                         </div>
                                     )}
                                 </div>

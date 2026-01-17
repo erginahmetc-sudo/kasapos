@@ -50,7 +50,7 @@ export default function Layout({ children }) {
                                                 <span className="text-lg">⌨️</span>
                                                 <span>Kısayollar</span>
                                             </button>
-                                            <div className="h-6 w-px bg-gray-300 mx-6"></div>
+                                            <div className="h-6 w-px bg-gray-300 mx-6 shrink-0"></div>
                                         </>
                                     )}
                                     <Link

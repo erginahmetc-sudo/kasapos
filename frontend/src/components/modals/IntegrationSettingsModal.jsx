@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { settingsAPI } from '../../services/api';
 
 export default function IntegrationSettingsModal({ isOpen, onClose }) {
     const [apiKey, setApiKey] = useState('');
     const [secretKey, setSecretKey] = useState('');
     const [integrationKey, setIntegrationKey] = useState('');
     const [saving, setSaving] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -13,36 +15,43 @@ export default function IntegrationSettingsModal({ isOpen, onClose }) {
     }, [isOpen]);
 
     const loadSettings = async () => {
-        // 1. BirFatura Settings (LocalStorage)
+        setLoading(true);
         try {
-            const savedConfig = localStorage.getItem('birfatura_config');
-            if (savedConfig) {
-                const parsed = JSON.parse(savedConfig);
-                setApiKey(parsed.api_key || '');
-                setSecretKey(parsed.secret_key || '');
-                setIntegrationKey(parsed.integration_key || '');
-            }
+            // Load from database (per-company)
+            const apiKeyRes = await settingsAPI.get('birfatura_api_key');
+            const secretKeyRes = await settingsAPI.get('birfatura_secret_key');
+            const integrationKeyRes = await settingsAPI.get('birfatura_integration_key');
+
+            setApiKey(apiKeyRes.data || '');
+            setSecretKey(secretKeyRes.data || '');
+            setIntegrationKey(integrationKeyRes.data || '');
         } catch (e) {
-            console.error("Error parsing birfatura settings", e);
+            console.error("Error loading birfatura settings", e);
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleSave = async () => {
         setSaving(true);
-        const config = {
-            api_key: apiKey.trim(),
-            secret_key: secretKey.trim(),
-            integration_key: integrationKey.trim()
-        };
-
         try {
-            // 1. Save LocalStorage (BirFatura)
-            localStorage.setItem('birfatura_config', JSON.stringify(config));
+            // Save to database (per-company)
+            await settingsAPI.set('birfatura_api_key', apiKey.trim());
+            await settingsAPI.set('birfatura_secret_key', secretKey.trim());
+            await settingsAPI.set('birfatura_integration_key', integrationKey.trim());
+
+            // Also update localStorage for backward compatibility with existing invoice pages
+            localStorage.setItem('birfatura_config', JSON.stringify({
+                api_key: apiKey.trim(),
+                secret_key: secretKey.trim(),
+                integration_key: integrationKey.trim()
+            }));
+
             alert("Ayarlar başarıyla kaydedildi.");
             onClose();
         } catch (e) {
             console.error("Error saving settings", e);
-            alert("Ayarlar kaydedilemedi.");
+            alert("Ayarlar kaydedilemedi: " + e.message);
         } finally {
             setSaving(false);
         }

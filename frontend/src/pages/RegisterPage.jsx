@@ -36,7 +36,7 @@ export default function RegisterPage() {
             });
 
             if (res.data?.success) {
-                alert(`Kayıt Başarılı!\n\nŞirket Kodunuz: ${companyCode}\n\nLütfen bu kodu saklayın, giriş yaparken kullanacaksınız.`);
+                // alert removed as per user request
                 navigate('/login');
             }
         } catch (err) {

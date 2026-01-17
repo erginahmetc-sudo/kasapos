@@ -637,6 +637,11 @@ export const usersAPI = {
 
         if (error) return response(null, error);
 
+        // Supabase security: If email exists, it might return a user with empty identities
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+            return response(null, { message: 'Bu e-posta adresi ile zaten kayıtlı bir kullanıcı var.' });
+        }
+
         if (data.user) {
             // 2. Create Profile with Company Code
             const { error: profileError } = await supabase.from('user_profiles').upsert({

@@ -56,32 +56,31 @@ export default function Layout({ children }) {
                             <span className="text-sm text-gray-600 hidden sm:block">
                                 <span className="font-semibold text-gray-800">{user?.username}</span>
                                 <span className="ml-2 px-2.5 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">
-                                    <span className="px-2.5 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">
-                                        {user?.role === 'kurucu' ? 'Kurucu' : 'Çalışan'}
-                                    </span>
+                                    {user?.role === 'kurucu' ? 'Kurucu' : 'Çalışan'}
                                 </span>
+                            </span>
 
-                                {/* Company Code Badge */}
-                                {user?.company_code && (
-                                    <div className="hidden md:flex flex-col items-end mr-2">
-                                        <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Şirket Kodu</span>
-                                        <span className="font-mono font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
-                                            {user.company_code}
-                                        </span>
-                                    </div>
-                                )}
+                            {/* Company Code Badge */}
+                            {user?.company_code && (
+                                <div className="hidden md:flex flex-col items-end mr-2">
+                                    <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Şirket Kodu</span>
+                                    <span className="font-mono font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                        {user.company_code}
+                                    </span>
+                                </div>
+                            )}
 
-                                <div className="h-8 w-px bg-gray-200 hidden sm:block mx-1"></div>
-                                <button
-                                    onClick={logout}
-                                    className="flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all group"
-                                    title="Çıkış Yap"
-                                >
-                                    <svg className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                    </svg>
-                                    <span className="hidden lg:inline text-sm font-medium">Çıkış</span>
-                                </button>
+                            <div className="h-8 w-px bg-gray-200 hidden sm:block mx-1"></div>
+                            <button
+                                onClick={logout}
+                                className="flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all group"
+                                title="Çıkış Yap"
+                            >
+                                <svg className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                <span className="hidden lg:inline text-sm font-medium">Çıkış</span>
+                            </button>
                         </div>
                     </div>
                 </div>

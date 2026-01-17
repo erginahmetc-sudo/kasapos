@@ -31,7 +31,7 @@ try {
 app.use(cors());
 app.use(express.json());
 
-// --- HELPER: Date Parsing ---
+// --- HELPER: Date Parsing (BirFatura format: DD.MM.YYYY HH:mm:ss) ---
 function parseDate(dateStr) {
     if (!dateStr) return null;
     // Format: DD.MM.YYYY HH:mm:ss
@@ -44,10 +44,49 @@ function parseDate(dateStr) {
     );
 }
 
-// --- ENDPOINT: BirFatura Polls This ---
-app.post('/api/orders', async (req, res) => {
-    // 1. Auth Check (API Şifresi)
-    const receivedToken = req.headers['token']; // BirFatura sends 'token' header
+// --- HELPER: Format Date to BirFatura format ---
+function formatDateForBirFatura(date) {
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
+}
+
+// --- ENDPOINT: BirFatura Order Statuses ---
+app.post('/api/orderStatus/', async (req, res) => {
+    const receivedToken = req.headers['token'];
+    if (!receivedToken) {
+        return res.status(401).json({ error: "Yetkisiz Erişim" });
+    }
+    // Return order statuses
+    res.json({
+        OrderStatus: [{ Id: 1, Value: "Onaylandı" }]
+    });
+});
+
+// --- ENDPOINT: BirFatura Payment Methods ---
+app.post('/api/paymentMethods/', async (req, res) => {
+    const receivedToken = req.headers['token'];
+    if (!receivedToken) {
+        return res.status(401).json({ error: "Yetkisiz Erişim" });
+    }
+    // Return payment methods
+    res.json({
+        PaymentMethods: [{ Id: 1, Value: "Kredi Kartı" }]
+    });
+});
+
+// --- ENDPOINT: BirFatura Polls This for Orders ---
+// Flask'ta çalışan /api/orders/ endpoint'i ile aynı mantık
+app.post('/api/orders/', async (req, res) => {
+    // 1. Auth Check (API Şifresi) - BirFatura 'token' header'ı gönderir
+    const receivedToken = req.headers['token'];
+    console.log("BirFatura İsteği Geldi:", req.body);
+    console.log("Alınan Token:", receivedToken);
 
     if (!receivedToken) {
         return res.status(401).json({ "Orders": [], "error": "Token eksik" });
@@ -59,16 +98,33 @@ app.post('/api/orders', async (req, res) => {
     }
 
     // 2. Validate Token & Get Company Code
-    // We expect the token to be stored as a simple string value in 'value' column (JSONB)
-    // JSONB equality for string: value = "token"
-    const { data: setting, error: tokenError } = await supabase
+    // Token değerini doğrudan karşılaştır (JSON.stringify olmadan da dene)
+    let setting = null;
+
+    // Önce doğrudan string olarak dene
+    const { data: setting1, error: error1 } = await supabase
         .from('app_settings')
-        .select('company_code')
+        .select('company_code, value')
         .eq('key', 'secret_token')
-        .eq('value', JSON.stringify(receivedToken)) // Match JSON string "token"
         .single();
 
-    if (tokenError || !setting || !setting.company_code) {
+    if (setting1) {
+        // value JSONB olduğu için içinden değeri çıkar
+        let storedToken = setting1.value;
+        // Eğer tırnak içinde geldiyse temizle
+        if (typeof storedToken === 'string') {
+            storedToken = storedToken.replace(/^"|"$/g, '');
+        }
+
+        console.log("DB'deki Token:", storedToken);
+        console.log("Gelen Token:", receivedToken);
+
+        if (storedToken === receivedToken) {
+            setting = setting1;
+        }
+    }
+
+    if (!setting || !setting.company_code) {
         console.warn("Invalid token received or no company found:", receivedToken);
         return res.status(401).json({ "Orders": [], "error": "Yetkisiz Erişim / Geçersiz Token" });
     }
@@ -77,8 +133,6 @@ app.post('/api/orders', async (req, res) => {
     console.log(`BirFatura request authorized for Company: ${companyCode}`);
 
     // 3. Fetch Sales for this Company
-    console.log("BirFatura polling request received:", req.body);
-
     const filterData = req.body;
     const startDateTimeStr = filterData.startDateTime; // DD.MM.YYYY HH:mm:ss
     const endDateTimeStr = filterData.endDateTime;
@@ -87,9 +141,8 @@ app.post('/api/orders', async (req, res) => {
     let query = supabase
         .from('sales')
         .select('*')
-        .eq('company_code', companyCode) // Enforce Isolation
+        .eq('company_code', companyCode)
         .eq('is_deleted', false);
-    // .eq('faturasi_kesilecek_mi', true) // Optional
 
     if (orderCodeFilter) {
         query = query.eq('sale_code', orderCodeFilter);
@@ -102,38 +155,49 @@ app.post('/api/orders', async (req, res) => {
         return res.status(500).json({ "Orders": [], "error": "Veritabanı Hatası" });
     }
 
+    console.log(`Toplam ${sales?.length || 0} satış bulundu.`);
+
     // 4. Process and Filter (Date logic etc.)
     const ordersToSend = [];
 
-    let startDate, endDate;
+    let startDate = null, endDate = null;
     try {
         if (startDateTimeStr && endDateTimeStr) {
             startDate = parseDate(startDateTimeStr);
             endDate = parseDate(endDateTimeStr);
         }
     } catch (e) {
-        return res.status(400).json({ "Orders": [], "error": "Geçersiz Tarih Formatı" });
+        console.error("Tarih parse hatası:", e);
+        // Tarih hatası olsa bile devam et, tarih filtresi uygulama
     }
 
-    for (const sale of sales) {
+    for (const sale of (sales || [])) {
         // Date Filter
-        const saleDate = new Date(sale.date);
+        let saleDate;
+        try {
+            saleDate = new Date(sale.date || sale.created_at);
+        } catch (e) {
+            continue;
+        }
 
         if (startDate && endDate) {
             if (saleDate < startDate || saleDate > endDate) continue;
         }
 
-        // --- Customer & Tax Logic ---
-        const customerName = sale.customer_name || 'Misafir Müşteri';
+        // --- Customer & Tax Logic (Flask'tan kopyalandı) ---
+        const customerName = sale.customer_name || sale.customer || 'Misafir Müşteri';
 
-        // ... (Tax Logic remains same)
         let ssnTcNo = "";
         let taxNo = "";
         let rawTax = sale.tax_number || "";
 
-        if (rawTax.length === 11) ssnTcNo = rawTax;
-        else if (rawTax.length > 0) taxNo = rawTax;
+        if (rawTax.length === 11) {
+            ssnTcNo = rawTax;
+        } else if (rawTax.length > 0) {
+            taxNo = rawTax;
+        }
 
+        // Toptan Satış veya Misafir için varsayılan TC
         if (!ssnTcNo && !taxNo && (customerName === 'Misafir Müşteri' || customerName === 'Toptan Satış')) {
             ssnTcNo = '11111111111';
         }
@@ -150,12 +214,13 @@ app.post('/api/orders', async (req, res) => {
 
         let items = sale.items;
         if (typeof items === 'string') {
-            try { items = JSON.parse(items); } catch (e) { }
+            try { items = JSON.parse(items); } catch (e) { items = []; }
         }
 
         if (Array.isArray(items)) {
             items.forEach(item => {
-                const unitPriceInclTax = parseFloat(item.price || 0);
+                // final_price varsa kullan, yoksa price (Flask'taki gibi)
+                const unitPriceInclTax = parseFloat(item.final_price || item.price || 0);
                 const quantity = parseFloat(item.quantity || 1);
                 const unitPriceExclTax = unitPriceInclTax / 1.20;
 
@@ -176,10 +241,22 @@ app.post('/api/orders', async (req, res) => {
         }
 
         const calculatedTotalExclTax = calculatedTotal / 1.20;
-        const formattedDate = saleDate.toLocaleDateString('tr-TR') + ' ' + saleDate.toLocaleTimeString('tr-TR');
+
+        // Flask'taki formatla aynı: DD.MM.YYYY HH:MM:SS
+        const formattedDate = formatDateForBirFatura(saleDate);
+
+        // OrderId: Flask'taki gibi sale_code'dan sayısal değer çıkar
+        let orderId = 0;
+        try {
+            // sale_code formatı: SERVER-20260118001234567890 veya S-1234567890
+            const codeWithoutPrefix = sale.sale_code.split('-')[1] || sale.sale_code;
+            orderId = parseInt(codeWithoutPrefix.substring(0, 18)) || sale.id || 0;
+        } catch (e) {
+            orderId = sale.id || 0;
+        }
 
         ordersToSend.push({
-            "OrderId": (sale.id || 0),
+            "OrderId": orderId,
             "OrderCode": sale.sale_code,
             "OrderDate": formattedDate,
             "CustomerId": 0,
@@ -207,7 +284,15 @@ app.post('/api/orders', async (req, res) => {
         });
     }
 
+    console.log(`BirFatura'ya ${ordersToSend.length} sipariş gönderiliyor.`);
     res.json({ "Orders": ordersToSend });
+});
+
+// Trailing slash olmadan da çalışsın
+app.post('/api/orders', async (req, res) => {
+    // Aynı handler'ı çağır
+    req.url = '/api/orders/';
+    app._router.handle(req, res, () => { });
 });
 
 // --- SERVE STATIC FRONTEND (Production) ---

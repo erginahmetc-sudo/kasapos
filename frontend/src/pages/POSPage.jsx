@@ -391,8 +391,8 @@ export default function POSPage() {
             alert('İsim Soyisim zorunludur!');
             return;
         }
-        // Müşteri adını olduğu gibi kaydet (Perakende eki ekleme)
-        setCustomer(retailCustomerForm.name.trim());
+        // Müşteri adına (Perakende) eki ekle - /sales sayfasında görünmesi için
+        setCustomer(`${retailCustomerForm.name.trim()} (Perakende)`);
         setShowRetailCustomerModal(false);
         setShowCustomerModal(false);
     };
@@ -489,10 +489,13 @@ export default function POSPage() {
             // Find customer object if selected
             const selectedCustomer = customers.find(c => c.name === customer);
 
+            // BirFatura için müşteri adından (Perakende) ekini temizle
+            const cleanCustomerName = customer.replace(/ \(Perakende\)$/i, '').trim();
+
             await salesAPI.complete({
                 sale_code: saleCode,
                 customer: selectedCustomer || null,
-                customer_name: !selectedCustomer ? customer : undefined,
+                customer_name: !selectedCustomer ? cleanCustomerName : undefined,
                 payment_method: paymentMethod,
                 items: cart.map(item => ({
                     id: item.id,
@@ -512,7 +515,7 @@ export default function POSPage() {
                 const salePayload = {
                     sale_code: saleCode,
                     customer: selectedCustomer || null,
-                    customer_name: !selectedCustomer ? customer : undefined,
+                    customer_name: !selectedCustomer ? cleanCustomerName : undefined, // Temizlenmiş isim
                     items: cart.map(item => ({
                         stock_code: item.stock_code,
                         name: item.name,

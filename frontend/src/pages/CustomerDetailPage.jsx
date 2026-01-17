@@ -232,13 +232,14 @@ export default function CustomerDetailPage() {
                                     <th className="px-3 py-2 text-right font-semibold border-r border-blue-500">KPB Bakiyesi</th>
                                     <th className="px-3 py-2 text-center font-semibold border-r border-blue-500">KPB B/A/S</th>
                                     <th className="px-3 py-2 text-center font-semibold border-r border-blue-500">İşlem Türü</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Açıklama</th>
+                                    <th className="px-3 py-2 text-left font-semibold border-r border-blue-500">Açıklama</th>
+                                    <th className="px-3 py-2 text-center font-semibold w-16">Sil</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {processedTransactions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                                        <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
                                             Bu müşteriye ait hareket bulunmamaktadır.
                                         </td>
                                     </tr>
@@ -286,14 +287,14 @@ export default function CustomerDetailPage() {
                                                     }`}>
                                                     {tx.transactionType}
                                                 </td>
-                                                <td className="px-3 py-2 text-left max-w-md flex justify-between items-center group">
-                                                    <span className="truncate" title={tx.description || ''}>
-                                                        {tx.products?.map(p => p.name).join(', ') || tx.description || '-'}
-                                                    </span>
+                                                <td className="px-3 py-2 text-left max-w-md truncate border-r border-gray-200" title={tx.description || ''}>
+                                                    {tx.products?.map(p => p.name).join(', ') || tx.description || '-'}
+                                                </td>
+                                                <td className="px-3 py-2 text-center">
                                                     {tx.transactionType === 'Ödeme' && (
                                                         <button
                                                             onClick={(e) => handleDeletePayment(e, tx)}
-                                                            className="ml-2 px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold hover:bg-red-200 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            className="px-2 py-1 bg-red-100 text-red-600 rounded text-xs font-bold hover:bg-red-200 transition-colors"
                                                             title="Ödemeyi Sil"
                                                         >
                                                             Sil
@@ -324,7 +325,7 @@ export default function CustomerDetailPage() {
                                             }`}>
                                             {netBalance > 0 ? 'YÜKSEL' : netBalance < 0 ? 'ALACAK' : 'SIFIR'}
                                         </td>
-                                        <td colSpan={2} className="px-3 py-3"></td>
+                                        <td colSpan={3} className="px-3 py-3"></td>
                                     </tr>
                                 )}
                             </tbody>

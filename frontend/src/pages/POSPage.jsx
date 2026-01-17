@@ -561,7 +561,7 @@ export default function POSPage() {
             {/* Success Message */}
             {successMessage && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
-                    <div className="bg-green-500 text-white px-16 py-8 rounded-xl shadow-2xl text-3xl font-bold animate-pulse">
+                    <div className="bg-green-500 text-white px-16 py-8  shadow-2xl text-3xl font-bold animate-pulse">
                         {successMessage}
                     </div>
                 </div>
@@ -573,28 +573,28 @@ export default function POSPage() {
             {/* Main Content */}
             <div className="flex-1 flex gap-3 p-3 overflow-hidden">
                 {/* Left Side - Cart */}
-                <div className="w-[35%] bg-white rounded-xl shadow-md p-4 flex flex-col h-full overflow-hidden">
+                <div className="w-[35%] bg-white  shadow-md p-4 flex flex-col h-full overflow-hidden">
                     {/* Top Bar - Actions & Customer */}
                     <div className="flex gap-1 mb-2">
                         <button
                             onClick={holdSale}
-                            className="flex-1 h-14 bg-orange-500 text-white rounded font-semibold text-sm hover:bg-orange-600 transition-colors flex items-center justify-center"
+                            className="flex-1 h-14 bg-orange-500 text-white  font-semibold text-sm hover:bg-orange-600 transition-colors flex items-center justify-center"
                         >
                             Beklemeye Al
                         </button>
                         <button
                             onClick={() => setShowWaitlistModal(true)}
-                            className="flex-1 h-14 bg-gray-500 text-white rounded font-semibold text-sm hover:bg-gray-600 transition-colors flex items-center justify-center"
+                            className="flex-1 h-14 bg-gray-500 text-white  font-semibold text-sm hover:bg-gray-600 transition-colors flex items-center justify-center"
                         >
                             Bekleme Listesi
                         </button>
                         <button
                             onClick={() => setShowCustomerModal(true)}
-                            className="flex-1 h-14 bg-blue-400 text-white rounded font-semibold text-sm hover:bg-blue-500 transition-colors flex items-center justify-center"
+                            className="flex-1 h-14 bg-blue-400 text-white  font-semibold text-sm hover:bg-blue-500 transition-colors flex items-center justify-center"
                         >
                             Müşteri Seç
                         </button>
-                        <div className="flex-[1.5] h-14 bg-gray-100 border border-gray-200 rounded font-semibold text-gray-700 text-sm flex items-center justify-center px-2 truncate">
+                        <div className="flex-[1.5] h-14 bg-gray-100 border border-gray-200  font-semibold text-gray-700 text-sm flex items-center justify-center px-2 truncate">
                             {customer}
                         </div>
                     </div>
@@ -607,14 +607,14 @@ export default function POSPage() {
                             onChange={(e) => setBarcodeInput(e.target.value)}
                             onKeyDown={handleBarcodeInput}
                             placeholder="Barkod veya Stok Kodu..."
-                            className="w-full px-4 py-3 text-xl font-bold text-gray-800 bg-yellow-100 border-2 border-yellow-200 rounded focus:outline-none focus:border-yellow-400 placeholder-gray-400/70"
+                            className="w-full px-4 py-3 text-xl font-bold text-gray-800 bg-yellow-100 border-2 border-yellow-200  focus:outline-none focus:border-yellow-400 placeholder-gray-400/70"
                             autoFocus
                         />
                     </div>
 
                     {/* Cart Table with Context Menu */}
                     <div
-                        className="flex-1 border border-gray-300 bg-white flex flex-col min-h-0 rounded-lg overflow-hidden shadow-sm"
+                        className="flex-1 border border-gray-300 bg-white flex flex-col min-h-0  overflow-hidden shadow-sm"
                         onContextMenu={handleCartContextMenu}
                     >
                         {/* Header with Resize Handles */}
@@ -738,7 +738,7 @@ export default function POSPage() {
                     {/* Context Menu */}
                     {contextMenu.show && (
                         <div
-                            className="fixed bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50 min-w-52 overflow-hidden"
+                            className="fixed bg-white  shadow-2xl border border-gray-200 py-2 z-50 min-w-52 overflow-hidden"
                             style={{ left: contextMenu.x, top: contextMenu.y }}
                         >
                             <button
@@ -769,7 +769,7 @@ export default function POSPage() {
                     {/* Footer */}
                     <div className="mt-2 space-y-2">
                         {/* Total Bar */}
-                        <div className="bg-yellow-400 p-2 rounded flex justify-between items-center px-4">
+                        <div className="bg-yellow-400 p-2  flex justify-between items-center px-4">
                             <span className="font-bold text-gray-900 text-lg">TOPLAM:</span>
                             <span className="font-bold text-gray-900 text-2xl">{calculateTotal().toFixed(2)} TL</span>
                         </div>
@@ -779,28 +779,28 @@ export default function POSPage() {
                             <button
                                 onClick={() => { if (selectedCartIndex !== null) { setModalValue(cart[selectedCartIndex].quantity); setShowQuantityModal(true); } }}
                                 disabled={selectedCartIndex === null}
-                                className="h-14 bg-gray-200 text-gray-800 rounded-lg font-bold text-base hover:bg-gray-300 disabled:opacity-50 flex flex-col items-center justify-center leading-tight transition-all"
+                                className="h-14 bg-gray-200 text-gray-800  font-bold text-base hover:bg-gray-300 disabled:opacity-50 flex flex-col items-center justify-center leading-tight transition-all"
                             >
                                 Adet<br />Değiştir
                             </button>
                             <button
                                 onClick={() => { if (selectedCartIndex !== null) { setModalValue(cart[selectedCartIndex].discount_rate || 0); setShowDiscountModal(true); } }}
                                 disabled={selectedCartIndex === null}
-                                className="h-14 bg-gray-200 text-gray-800 rounded-lg font-bold text-base hover:bg-gray-300 disabled:opacity-50 flex flex-col items-center justify-center leading-tight transition-all"
+                                className="h-14 bg-gray-200 text-gray-800  font-bold text-base hover:bg-gray-300 disabled:opacity-50 flex flex-col items-center justify-center leading-tight transition-all"
                             >
                                 İskonto<br />Uygula
                             </button>
                             <button
                                 onClick={() => { if (selectedCartIndex !== null) { setModalValue(cart[selectedCartIndex].price); setShowPriceModal(true); } }}
                                 disabled={selectedCartIndex === null}
-                                className="h-14 bg-gray-200 text-gray-800 rounded-lg font-bold text-base hover:bg-gray-300 disabled:opacity-50 flex flex-col items-center justify-center leading-tight transition-all"
+                                className="h-14 bg-gray-200 text-gray-800  font-bold text-base hover:bg-gray-300 disabled:opacity-50 flex flex-col items-center justify-center leading-tight transition-all"
                             >
                                 Fiyat<br />Düzenle
                             </button>
                             <button
                                 onClick={() => { if (selectedCartIndex !== null) removeFromCart(selectedCartIndex); }}
                                 disabled={selectedCartIndex === null}
-                                className="h-14 bg-gray-200 text-gray-800 rounded-lg font-bold text-base hover:bg-gray-300 disabled:opacity-50 flex flex-col items-center justify-center leading-tight transition-all"
+                                className="h-14 bg-gray-200 text-gray-800  font-bold text-base hover:bg-gray-300 disabled:opacity-50 flex flex-col items-center justify-center leading-tight transition-all"
                             >
                                 Satırı<br />Sil
                             </button>
@@ -810,19 +810,19 @@ export default function POSPage() {
                         <div className="grid grid-cols-4 gap-2">
                             <button
                                 onClick={() => completeSale('Nakit')}
-                                className="h-14 bg-green-500 text-white rounded-xl font-bold text-2xl hover:bg-green-600 shadow-lg hover:shadow-xl transition-all active:scale-95 flex flex-col items-center justify-center"
+                                className="h-14 bg-green-500 text-white  font-bold text-2xl hover:bg-green-600 shadow-lg hover:shadow-xl transition-all active:scale-95 flex flex-col items-center justify-center"
                             >
                                 Nakit
                             </button>
                             <button
                                 onClick={() => completeSale('POS')}
-                                className="h-14 bg-blue-600 text-white rounded-xl font-bold text-2xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all active:scale-95 flex flex-col items-center justify-center"
+                                className="h-14 bg-blue-600 text-white  font-bold text-2xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all active:scale-95 flex flex-col items-center justify-center"
                             >
                                 Kredi Kartı
                             </button>
                             <button
                                 onClick={() => completeSale('Açık Hesap')}
-                                className="h-14 bg-orange-500 text-white rounded-xl font-bold text-2xl hover:bg-orange-600 shadow-lg hover:shadow-xl transition-all active:scale-95 flex flex-col items-center justify-center"
+                                className="h-14 bg-orange-500 text-white  font-bold text-2xl hover:bg-orange-600 shadow-lg hover:shadow-xl transition-all active:scale-95 flex flex-col items-center justify-center"
                             >
                                 Veresiye
                             </button>
@@ -833,7 +833,7 @@ export default function POSPage() {
                                         setCustomer('Toptan Satış');
                                     }
                                 }}
-                                className="h-14 bg-red-600 text-white rounded-xl font-bold text-2xl hover:bg-red-700 shadow-lg hover:shadow-xl transition-all active:scale-95 flex flex-col items-center justify-center"
+                                className="h-14 bg-red-600 text-white  font-bold text-2xl hover:bg-red-700 shadow-lg hover:shadow-xl transition-all active:scale-95 flex flex-col items-center justify-center"
                             >
                                 İptal Et
                             </button>
@@ -842,15 +842,15 @@ export default function POSPage() {
                 </div>
 
                 {/* Right Side - Products */}
-                <div className="w-[65%] bg-white rounded-xl shadow-md p-4 flex flex-col h-full overflow-hidden">
+                <div className="w-[65%] bg-white  shadow-md p-4 flex flex-col h-full overflow-hidden">
                     {/* Search - Modern 2026 Design */}
                     <div className="flex gap-3 mb-4">
                         <div className="flex-1 relative group">
                             {/* Gradient Border Effect */}
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 rounded-2xl blur opacity-30 group-hover:opacity-60 group-focus-within:opacity-100 transition-all duration-500"></div>
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500  blur opacity-30 group-hover:opacity-60 group-focus-within:opacity-100 transition-all duration-500"></div>
 
                             {/* Main Input Container */}
-                            <div className="relative flex items-center bg-white/90 backdrop-blur-xl rounded-2xl border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.08)] overflow-hidden">
+                            <div className="relative flex items-center bg-white/90 backdrop-blur-xl  border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.08)] overflow-hidden">
                                 {/* Search Icon */}
                                 <div className="pl-5 pr-2">
                                     <svg className="w-6 h-6 text-gray-400 group-focus-within:text-violet-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -883,7 +883,7 @@ export default function POSPage() {
                         </div>
 
                         {/* Barkod Button - Modern Style */}
-                        <button className="px-6 py-4 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center gap-2">
+                        <button className="px-6 py-4 bg-gradient-to-r from-violet-500 to-purple-600 text-white  font-bold shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center gap-2">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                             </svg>
@@ -897,7 +897,7 @@ export default function POSPage() {
                             <button
                                 key={cat}
                                 onClick={() => setSelectedCategory(cat)}
-                                className={`p-3 h-20 border-2 rounded-xl font-bold text-sm text-center transition-all ${selectedCategory === cat
+                                className={`p-3 h-20 border-2  font-bold text-sm text-center transition-all ${selectedCategory === cat
                                     ? 'bg-blue-50 border-blue-500 text-blue-600'
                                     : 'bg-white border-gray-200 hover:border-blue-500 hover:text-blue-500'
                                     }`}
@@ -913,7 +913,7 @@ export default function POSPage() {
                             <div
                                 key={product.id || product.stock_code}
                                 onClick={() => addToCart(product)}
-                                className="h-28 border border-gray-200 rounded-lg cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden bg-white"
+                                className="h-28 border border-gray-200  cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden bg-white"
                             >
                                 {product.image_url ? (
                                     <img src={product.image_url} alt="" className="absolute inset-0 w-full h-full object-contain p-1" />
@@ -933,12 +933,12 @@ export default function POSPage() {
             {/* Customer Modal - Modern Design */}
             {showCustomerModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+                    <div className="bg-white  w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
                         {/* Header with Gradient */}
                         <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 px-6 py-5">
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm  flex items-center justify-center">
                                         <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                         </svg>
@@ -950,13 +950,13 @@ export default function POSPage() {
                                 </div>
                                 <button
                                     onClick={() => setShowRetailCustomerModal(true)}
-                                    className="ml-auto mr-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition-colors text-sm shadow-lg shadow-orange-500/30 whitespace-nowrap"
+                                    className="ml-auto mr-4 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold  transition-colors text-sm shadow-lg shadow-orange-500/30 whitespace-nowrap"
                                 >
                                     Perakende Müşteri İsmi Gir
                                 </button>
                                 <button
                                     onClick={() => setShowCustomerModal(false)}
-                                    className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-all"
+                                    className="w-10 h-10 bg-white/20 hover:bg-white/30  flex items-center justify-center transition-all"
                                 >
                                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -974,7 +974,7 @@ export default function POSPage() {
                                 <input
                                     type="text"
                                     placeholder="Musteri ara..."
-                                    className="w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-sm text-white placeholder-blue-200 rounded-xl border border-white/30 focus:outline-none focus:bg-white/30 focus:border-white/50 transition-all"
+                                    className="w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-sm text-white placeholder-blue-200  border border-white/30 focus:outline-none focus:bg-white/30 focus:border-white/50 transition-all"
                                 />
                             </div>
                         </div>
@@ -984,10 +984,10 @@ export default function POSPage() {
                             {/* Quick Select - Toptan Satış */}
                             <div
                                 onClick={() => { setCustomer('Toptan Satis'); setShowCustomerModal(false); }}
-                                className="mb-3 p-4 bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg cursor-pointer hover:shadow-lg transition-all group overflow-hidden"
+                                className="mb-3 p-4 bg-gradient-to-r from-emerald-500 to-green-500  cursor-pointer hover:shadow-lg transition-all group overflow-hidden"
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <div className="w-12 h-12 bg-white/20  flex items-center justify-center flex-shrink-0">
                                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                         </svg>
@@ -1004,7 +1004,7 @@ export default function POSPage() {
 
                             {customers.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mb-4">
+                                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 -full flex items-center justify-center mb-4">
                                         <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                         </svg>
@@ -1018,11 +1018,11 @@ export default function POSPage() {
                                         <div
                                             key={c.id}
                                             onClick={() => { setCustomer(c.name); setShowCustomerModal(false); }}
-                                            className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300 cursor-pointer overflow-hidden group"
+                                            className="bg-white  border border-gray-100 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300 cursor-pointer overflow-hidden group"
                                         >
                                             <div className="p-4 flex items-center gap-4">
                                                 {/* Avatar */}
-                                                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
+                                                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500  flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
                                                     <span className="text-white font-bold text-lg">
                                                         {c.name?.charAt(0)?.toUpperCase() || '?'}
                                                     </span>
@@ -1083,7 +1083,7 @@ export default function POSPage() {
                                 </p>
                                 <button
                                     onClick={() => setShowCustomerModal(false)}
-                                    className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30 flex items-center gap-2"
+                                    className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold  hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30 flex items-center gap-2"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1099,19 +1099,19 @@ export default function POSPage() {
             {/* Quantity Modal */}
             {showQuantityModal && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-8 w-96 text-center">
+                    <div className="bg-white  p-8 w-96 text-center">
                         <h3 className="text-2xl font-bold text-gray-800 mb-2">Miktar Düzenle</h3>
                         <p className="text-gray-500 mb-4">{cart[selectedCartIndex]?.name}</p>
                         <input
                             type="number"
                             value={modalValue}
                             onChange={(e) => setModalValue(e.target.value)}
-                            className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-lg mb-4 focus:outline-none"
+                            className="w-full p-4 text-3xl text-center border-2 border-blue-500  mb-4 focus:outline-none"
                             min="1"
                         />
                         <button
                             onClick={() => updateCartItem(selectedCartIndex, 'quantity', parseInt(modalValue) || 1)}
-                            className="w-full p-4 bg-blue-500 text-white text-xl font-semibold rounded-lg hover:bg-blue-600"
+                            className="w-full p-4 bg-blue-500 text-white text-xl font-semibold  hover:bg-blue-600"
                         >
                             Kaydet
                         </button>
@@ -1122,20 +1122,20 @@ export default function POSPage() {
             {/* Discount Modal */}
             {showDiscountModal && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-8 w-96 text-center">
+                    <div className="bg-white  p-8 w-96 text-center">
                         <h3 className="text-2xl font-bold text-gray-800 mb-2">İskonto Ekle (%)</h3>
                         <p className="text-gray-500 mb-4">{cart[selectedCartIndex]?.name}</p>
                         <input
                             type="number"
                             value={modalValue}
                             onChange={(e) => setModalValue(e.target.value)}
-                            className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-lg mb-4 focus:outline-none"
+                            className="w-full p-4 text-3xl text-center border-2 border-blue-500  mb-4 focus:outline-none"
                             min="0"
                             max="100"
                         />
                         <button
                             onClick={() => updateCartItem(selectedCartIndex, 'discount_rate', parseFloat(modalValue) || 0)}
-                            className="w-full p-4 bg-blue-500 text-white text-xl font-semibold rounded-lg hover:bg-blue-600"
+                            className="w-full p-4 bg-blue-500 text-white text-xl font-semibold  hover:bg-blue-600"
                         >
                             Kaydet
                         </button>
@@ -1146,7 +1146,7 @@ export default function POSPage() {
             {/* Price Modal */}
             {showPriceModal && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-8 w-96 text-center">
+                    <div className="bg-white  p-8 w-96 text-center">
                         <h3 className="text-2xl font-bold text-gray-800 mb-2">Fiyat Düzenle</h3>
                         <p className="text-gray-500 mb-4">{cart[selectedCartIndex]?.name}</p>
                         <input
@@ -1154,12 +1154,12 @@ export default function POSPage() {
                             step="0.01"
                             value={modalValue}
                             onChange={(e) => setModalValue(e.target.value)}
-                            className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-lg mb-4 focus:outline-none"
+                            className="w-full p-4 text-3xl text-center border-2 border-blue-500  mb-4 focus:outline-none"
                             min="0"
                         />
                         <button
                             onClick={() => updateCartItem(selectedCartIndex, 'price', parseFloat(modalValue) || 0)}
-                            className="w-full p-4 bg-blue-500 text-white text-xl font-semibold rounded-lg hover:bg-blue-600"
+                            className="w-full p-4 bg-blue-500 text-white text-xl font-semibold  hover:bg-blue-600"
                         >
                             Kaydet
                         </button>
@@ -1170,12 +1170,12 @@ export default function POSPage() {
             {/* Waitlist Modal - Modern Design */}
             {showWaitlistModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+                    <div className="bg-white  w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
                         {/* Header with Gradient */}
                         <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 px-6 py-5">
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm  flex items-center justify-center">
                                         <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
@@ -1187,7 +1187,7 @@ export default function POSPage() {
                                 </div>
                                 <button
                                     onClick={() => setShowWaitlistModal(false)}
-                                    className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-all"
+                                    className="w-10 h-10 bg-white/20 hover:bg-white/30  flex items-center justify-center transition-all"
                                 >
                                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1200,7 +1200,7 @@ export default function POSPage() {
                         <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
                             {heldSales.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                                    <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center mb-6">
+                                    <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-amber-100 -full flex items-center justify-center mb-6">
                                         <svg className="w-12 h-12 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                         </svg>
@@ -1222,12 +1222,12 @@ export default function POSPage() {
                                         return (
                                             <div
                                                 key={sale.id}
-                                                className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group"
+                                                className="bg-white  border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group"
                                             >
                                                 {/* Card Header */}
                                                 <div className="p-4 flex items-center gap-4">
                                                     {/* Order Number Badge */}
-                                                    <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-orange-500/20">
+                                                    <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500  flex items-center justify-center flex-shrink-0 shadow-lg shadow-orange-500/20">
                                                         <span className="text-white font-bold text-lg">#{index + 1}</span>
                                                     </div>
 
@@ -1238,7 +1238,7 @@ export default function POSPage() {
                                                                 {sale.customer_name || 'Genel Musteri'}
                                                             </h4>
                                                             {timeAgo !== null && timeAgo < 60 && (
-                                                                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                                                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium -full">
                                                                     Yeni
                                                                 </span>
                                                             )}
@@ -1274,12 +1274,12 @@ export default function POSPage() {
                                                 <div className="px-4 pb-2">
                                                     <div className="flex flex-wrap gap-1">
                                                         {sale.items?.slice(0, 3).map((item, idx) => (
-                                                            <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg truncate max-w-[140px]">
+                                                            <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs  truncate max-w-[140px]">
                                                                 {item.quantity}x {item.name}
                                                             </span>
                                                         ))}
                                                         {sale.items?.length > 3 && (
-                                                            <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-lg font-medium">
+                                                            <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs  font-medium">
                                                                 +{sale.items.length - 3} daha
                                                             </span>
                                                         )}
@@ -1336,7 +1336,7 @@ export default function POSPage() {
                                     </p>
                                     <button
                                         onClick={() => setShowWaitlistModal(false)}
-                                        className="px-6 py-2.5 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition-colors"
+                                        className="px-6 py-2.5 bg-gray-200 text-gray-700 font-semibold  hover:bg-gray-300 transition-colors"
                                     >
                                         Kapat
                                     </button>
@@ -1350,7 +1350,7 @@ export default function POSPage() {
             {/* Ask Quantity Modal */}
             {showAskQuantityModal && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 w-96 shadow-2xl">
+                    <div className="bg-white  p-6 w-96 shadow-2xl">
                         <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Miktar Giriniz</h3>
                         <div className="mb-2 text-center font-medium text-gray-600">{productToAdd?.name}</div>
                         <form onSubmit={confirmAddQuantity}>
@@ -1358,7 +1358,7 @@ export default function POSPage() {
                                 type="number"
                                 value={askQuantityValue}
                                 onChange={(e) => setAskQuantityValue(e.target.value)}
-                                className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-lg mb-4 focus:outline-none font-bold"
+                                className="w-full p-4 text-3xl text-center border-2 border-blue-500  mb-4 focus:outline-none font-bold"
                                 min="0.01"
                                 step="any"
                                 autoFocus
@@ -1366,7 +1366,7 @@ export default function POSPage() {
                             />
                             <button
                                 type="submit"
-                                className="w-full p-4 bg-green-500 text-white text-xl font-bold rounded-lg hover:bg-green-600 transition-colors"
+                                className="w-full p-4 bg-green-500 text-white text-xl font-bold  hover:bg-green-600 transition-colors"
                             >
                                 Ekle (Enter)
                             </button>
@@ -1378,7 +1378,7 @@ export default function POSPage() {
             {/* Retail Customer Modal */}
             {showRetailCustomerModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="bg-white  w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-6">
                             <h3 className="text-2xl font-bold text-white">Perakende Müşteri Bilgileri</h3>
                             <p className="text-orange-100 text-sm mt-1">Hızlı satış için müşteri detaylarını giriniz</p>
@@ -1393,7 +1393,7 @@ export default function POSPage() {
                                     name="name"
                                     value={retailCustomerForm.name}
                                     onChange={handleRetailCustomerChange}
-                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                    className="w-full px-4 py-3  border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                                     placeholder="Müşteri Adı"
                                     required
                                 />
@@ -1406,7 +1406,7 @@ export default function POSPage() {
                                         name="phone"
                                         value={retailCustomerForm.phone}
                                         onChange={handleRetailCustomerChange}
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                        className="w-full px-4 py-3  border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                                         placeholder="05..."
                                     />
                                 </div>
@@ -1417,7 +1417,7 @@ export default function POSPage() {
                                         name="email"
                                         value={retailCustomerForm.email}
                                         onChange={handleRetailCustomerChange}
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                        className="w-full px-4 py-3  border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                                         placeholder="ornek@mail.com"
                                     />
                                 </div>
@@ -1429,7 +1429,7 @@ export default function POSPage() {
                                     value={retailCustomerForm.address}
                                     onChange={handleRetailCustomerChange}
                                     rows="2"
-                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none"
+                                    className="w-full px-4 py-3  border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none"
                                     placeholder="Adres detayları..."
                                 ></textarea>
                             </div>
@@ -1441,7 +1441,7 @@ export default function POSPage() {
                                         name="tax_office"
                                         value={retailCustomerForm.tax_office}
                                         onChange={handleRetailCustomerChange}
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                        className="w-full px-4 py-3  border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                                         placeholder="Vergi Dairesi"
                                     />
                                 </div>
@@ -1452,7 +1452,7 @@ export default function POSPage() {
                                         name="tax_number"
                                         value={retailCustomerForm.tax_number}
                                         onChange={handleRetailCustomerChange}
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                        className="w-full px-4 py-3  border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                                         placeholder="Vergi No"
                                     />
                                 </div>
@@ -1461,13 +1461,13 @@ export default function POSPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowRetailCustomerModal(false)}
-                                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold  hover:bg-gray-200 transition-colors"
                                 >
                                     İptal
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-[2] py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white font-bold rounded-xl hover:from-orange-600 hover:to-amber-700 shadow-lg shadow-orange-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    className="flex-[2] py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white font-bold  hover:from-orange-600 hover:to-amber-700 shadow-lg shadow-orange-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
                                 >
                                     Tamamla
                                 </button>
@@ -1480,7 +1480,7 @@ export default function POSPage() {
             {/* Cart Settings Modal */}
             {showCartSettingsModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+                    <div className="bg-white  shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
                         {/* Header */}
                         <div className="bg-gradient-to-r from-violet-500 to-purple-600 p-6 flex-shrink-0">
                             <div className="flex justify-between items-center">
@@ -1500,7 +1500,7 @@ export default function POSPage() {
                         {/* Content - Scrollable */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-2">
                             {Object.entries(cartColumns).map(([key, col]) => (
-                                <div key={key} className="border border-gray-200 rounded-xl overflow-hidden">
+                                <div key={key} className="border border-gray-200  overflow-hidden">
                                     {/* Column Header Row */}
                                     <div
                                         className={`flex items-center gap-3 p-4 cursor-pointer transition-all duration-200 ${col.visible ? 'bg-violet-50' : 'bg-gray-50'}`}
@@ -1510,7 +1510,7 @@ export default function POSPage() {
                                             type="checkbox"
                                             checked={col.visible}
                                             onChange={() => toggleColumn(key)}
-                                            className="w-5 h-5 text-violet-600 rounded focus:ring-violet-500 focus:ring-2"
+                                            className="w-5 h-5 text-violet-600  focus:ring-violet-500 focus:ring-2"
                                         />
 
                                         {/* Label */}
@@ -1520,7 +1520,7 @@ export default function POSPage() {
 
                                         {/* Font Preview */}
                                         <div
-                                            className={`px-3 py-1 rounded-lg bg-white border shadow-sm ${getColumnFontClass(col)}`}
+                                            className={`px-3 py-1  bg-white border shadow-sm ${getColumnFontClass(col)}`}
                                         >
                                             Örnek
                                         </div>
@@ -1531,7 +1531,7 @@ export default function POSPage() {
                                                 e.stopPropagation();
                                                 setExpandedColumn(expandedColumn === key ? null : key);
                                             }}
-                                            className={`p-2 rounded-lg transition-all duration-200 ${expandedColumn === key ? 'bg-violet-200 text-violet-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                            className={`p-2  transition-all duration-200 ${expandedColumn === key ? 'bg-violet-200 text-violet-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                                             title="Font Ayarları"
                                         >
                                             <svg className={`w-5 h-5 transition-transform duration-200 ${expandedColumn === key ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1553,7 +1553,7 @@ export default function POSPage() {
                                                         <button
                                                             key={size.value}
                                                             onClick={() => updateColumnSetting(key, 'fontSize', size.value)}
-                                                            className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${col.fontSize === size.value
+                                                            className={`py-2 px-3  text-sm font-medium transition-all ${col.fontSize === size.value
                                                                 ? 'bg-violet-500 text-white shadow-md'
                                                                 : 'bg-white border border-gray-200 text-gray-700 hover:border-violet-300'}`}
                                                         >
@@ -1573,7 +1573,7 @@ export default function POSPage() {
                                                         <button
                                                             key={weight.value}
                                                             onClick={() => updateColumnSetting(key, 'fontWeight', weight.value)}
-                                                            className={`py-2 px-3 rounded-lg text-sm transition-all ${col.fontWeight === weight.value
+                                                            className={`py-2 px-3  text-sm transition-all ${col.fontWeight === weight.value
                                                                 ? 'bg-violet-500 text-white shadow-md'
                                                                 : 'bg-white border border-gray-200 text-gray-700 hover:border-violet-300'}`}
                                                             style={{ fontWeight: weight.value.replace('font-', '') }}
@@ -1594,7 +1594,7 @@ export default function POSPage() {
                                                         <button
                                                             key={color.value}
                                                             onClick={() => updateColumnSetting(key, 'textColor', color.value)}
-                                                            className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${col.textColor === color.value
+                                                            className={`w-8 h-8 -full border-2 transition-all hover:scale-110 ${col.textColor === color.value
                                                                 ? 'border-gray-800 ring-2 ring-violet-400 ring-offset-2'
                                                                 : 'border-gray-300'}`}
                                                             style={{ backgroundColor: color.hex }}
@@ -1613,13 +1613,13 @@ export default function POSPage() {
                         <div className="p-4 border-t border-gray-200 flex gap-3 flex-shrink-0 bg-white">
                             <button
                                 onClick={() => { saveCartColumns(defaultColumns); setExpandedColumn(null); }}
-                                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                                className="flex-1 py-3 bg-gray-100 text-gray-700  font-semibold hover:bg-gray-200 transition-colors"
                             >
                                 Varsayılana Dön
                             </button>
                             <button
                                 onClick={() => { setShowCartSettingsModal(false); setExpandedColumn(null); }}
-                                className="flex-1 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-semibold hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg"
+                                className="flex-1 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white  font-semibold hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg"
                             >
                                 Tamam
                             </button>
@@ -1652,3 +1652,4 @@ export default function POSPage() {
         </div>
     );
 }
+

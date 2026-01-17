@@ -141,12 +141,12 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="bg-white  w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 px-6 py-5">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm  flex items-center justify-center">
                                 <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                 </svg>
@@ -158,7 +158,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                         </div>
                         <button
                             onClick={onClose}
-                            className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-all"
+                            className="w-10 h-10 bg-white/20 hover:bg-white/30  flex items-center justify-center transition-all"
                         >
                             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -171,19 +171,19 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                 <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white">
                     {/* Sale Info */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
+                        <div className="bg-white  border border-gray-100 p-4 shadow-sm">
                             <p className="text-gray-500 text-sm">Müşteri</p>
                             <p className="font-bold text-gray-800">{sale.customer}</p>
                         </div>
-                        <div className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
+                        <div className="bg-white  border border-gray-100 p-4 shadow-sm">
                             <p className="text-gray-500 text-sm">Ödeme</p>
                             <p className="font-bold text-gray-800">{sale.payment_method}</p>
                         </div>
-                        <div className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm">
+                        <div className="bg-white  border border-gray-100 p-4 shadow-sm">
                             <p className="text-gray-500 text-sm">Tarih</p>
                             <p className="font-bold text-gray-800">{formatDate(sale.date)}</p>
                         </div>
-                        <div className="bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg p-4 text-white shadow-lg">
+                        <div className="bg-gradient-to-r from-emerald-500 to-green-500  p-4 text-white shadow-lg">
                             <p className="text-emerald-100 text-sm">Toplam</p>
                             <p className="text-2xl font-bold">₺{calculateTotal().toFixed(2)}</p>
                         </div>
@@ -194,7 +194,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                         <h3 className="font-bold text-gray-800 text-lg">Ürünler</h3>
                         <button
                             onClick={openAddProductModal}
-                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md flex items-center gap-2"
+                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white  font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md flex items-center gap-2"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -203,7 +203,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                         </button>
                     </div>
 
-                    <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="bg-white  border border-gray-100 shadow-sm overflow-hidden">
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
@@ -228,7 +228,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                                     type="number"
                                                     value={p.quantity}
                                                     onChange={(e) => handleUpdateProduct(i, 'quantity', parseFloat(e.target.value) || 0)}
-                                                    className="w-full px-2 py-1.5 text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full px-2 py-1.5 text-center border border-gray-200  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                     min="0"
                                                     step="0.01"
                                                 />
@@ -238,7 +238,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                                     type="number"
                                                     value={p.price}
                                                     onChange={(e) => handleUpdateProduct(i, 'price', parseFloat(e.target.value) || 0)}
-                                                    className="w-full px-2 py-1.5 text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full px-2 py-1.5 text-center border border-gray-200  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                     min="0"
                                                     step="0.01"
                                                 />
@@ -248,7 +248,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                                     type="number"
                                                     value={p.discount_rate || 0}
                                                     onChange={(e) => handleUpdateProduct(i, 'discount_rate', parseFloat(e.target.value) || 0)}
-                                                    className="w-full px-2 py-1.5 text-center border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full px-2 py-1.5 text-center border border-gray-200  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                     min="0"
                                                     max="100"
                                                 />
@@ -257,7 +257,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                             <td className="px-4 py-3 text-center">
                                                 <button
                                                     onClick={() => handleDeleteProduct(i)}
-                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                    className="p-2 text-red-500 hover:bg-red-50  transition-colors"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -283,7 +283,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                         {!sale.is_deleted && (
                             <button
                                 onClick={handleDeleteSale}
-                                className="px-6 py-3 bg-red-50 text-red-600 rounded-lg font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
+                                className="px-6 py-3 bg-red-50 text-red-600  font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -294,18 +294,18 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                         <div className="flex-1"></div>
                         <button
                             onClick={onClose}
-                            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition-colors"
+                            className="px-6 py-3 bg-gray-200 text-gray-700  font-bold hover:bg-gray-300 transition-colors"
                         >
                             İptal
                         </button>
                         <button
                             onClick={handleSaveChanges}
                             disabled={saving}
-                            className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg font-bold hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/30 flex items-center gap-2 disabled:opacity-50"
+                            className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white  font-bold hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/30 flex items-center gap-2 disabled:opacity-50"
                         >
                             {saving ? (
                                 <>
-                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent -full animate-spin" />
                                     Kaydediliyor...
                                 </>
                             ) : (
@@ -324,12 +324,12 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
             {/* Nested Add Product Modal */}
             {showAddProductModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
-                    <div className="bg-white rounded-lg w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+                    <div className="bg-white  w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
                         {/* Add Product Header */}
                         <div className="bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 px-6 py-5">
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm  flex items-center justify-center">
                                         <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                         </svg>
@@ -341,7 +341,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                 </div>
                                 <button
                                     onClick={() => setShowAddProductModal(false)}
-                                    className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-all"
+                                    className="w-10 h-10 bg-white/20 hover:bg-white/30  flex items-center justify-center transition-all"
                                 >
                                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -360,7 +360,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                     value={productSearch}
                                     onChange={(e) => setProductSearch(e.target.value)}
                                     placeholder="Ürün adı, stok kodu veya barkod..."
-                                    className="w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-sm text-white placeholder-purple-200 rounded-lg border border-white/30 focus:outline-none focus:bg-white/30 focus:border-white/50 transition-all"
+                                    className="w-full pl-12 pr-4 py-3 bg-white/20 backdrop-blur-sm text-white placeholder-purple-200  border border-white/30 focus:outline-none focus:bg-white/30 focus:border-white/50 transition-all"
                                     autoFocus
                                 />
                             </div>
@@ -376,9 +376,9 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                         <div
                                             key={product.id}
                                             onClick={() => addProductToSale(product)}
-                                            className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-lg hover:border-purple-200 transition-all duration-300 cursor-pointer overflow-hidden group p-4 flex items-center gap-4"
+                                            className="bg-white  border border-gray-100 shadow-sm hover:shadow-lg hover:border-purple-200 transition-all duration-300 cursor-pointer overflow-hidden group p-4 flex items-center gap-4"
                                         >
-                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500  flex items-center justify-center flex-shrink-0">
                                                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                                 </svg>
@@ -403,7 +403,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/80">
                             <button
                                 onClick={() => setShowAddProductModal(false)}
-                                className="w-full py-3 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition-colors"
+                                className="w-full py-3 bg-gray-200 text-gray-700  font-bold hover:bg-gray-300 transition-colors"
                             >
                                 İptal
                             </button>
@@ -414,3 +414,4 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
         </div>
     );
 }
+

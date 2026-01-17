@@ -13,6 +13,7 @@ export default function KeyboardShortcutsModal({ onClose, onSave }) {
     };
 
     const [shortcuts, setShortcuts] = useState(defaultShortcuts);
+    const [activeKey, setActiveKey] = useState(null);
 
     // Available keys
     const availableKeys = [
@@ -33,6 +34,7 @@ export default function KeyboardShortcutsModal({ onClose, onSave }) {
 
     const handleChange = (action, key) => {
         setShortcuts(prev => ({ ...prev, [action]: key }));
+        setActiveKey(null);
     };
 
     const handleSave = () => {
@@ -42,58 +44,103 @@ export default function KeyboardShortcutsModal({ onClose, onSave }) {
     };
 
     const actions = [
-        { id: 'miktar_duzenle', label: 'Miktar Düzenle' },
-        { id: 'iskonto_ekle', label: 'İskonto Ekle' },
-        { id: 'fiyat_duzenle', label: 'Fiyat Düzenle' },
-        { id: 'nakit_odeme', label: 'Nakit Ödeme' },
-        { id: 'pos_odeme', label: 'POS Ödeme' },
-        { id: 'musteri_sec', label: 'Müşteri Seç' },
-        { id: 'search_focus', label: 'Ürün Arama Odak' }
+        { id: 'search_focus', label: 'Ürün Arama', icon: '🔍' },
+        { id: 'miktar_duzenle', label: 'Miktar Düzenle', icon: '🔢' },
+        { id: 'iskonto_ekle', label: 'İskonto Ekle', icon: '🏷️' },
+        { id: 'fiyat_duzenle', label: 'Fiyat Düzenle', icon: '💵' },
+        { id: 'musteri_sec', label: 'Müşteri Seç', icon: '👤' },
+        { id: 'nakit_odeme', label: 'Nakit Ödeme', icon: '💶' },
+        { id: 'pos_odeme', label: 'Kredi Kartı', icon: '💳' },
     ];
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-                <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-gray-800">Klavye Kısayolları</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+
+                {/* Header */}
+                <div className="bg-gradient-to-r from-violet-600 to-indigo-600 p-6 flex justify-between items-center shrink-0">
+                    <div>
+                        <h2 className="text-2xl font-bold text-white tracking-tight">Klavye Kısayolları</h2>
+                        <p className="text-indigo-100 text-sm mt-1">Hızlı satış işlemleri için tuşları özelleştirin</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center text-white transition-all shadow-lg shadow-black/10"
+                    >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                    {actions.map(action => (
-                        <div key={action.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                            <span className="font-semibold text-gray-700">{action.label}</span>
-                            <div className="flex items-center gap-3">
-                                <select
-                                    value={shortcuts[action.id] || 'None'}
-                                    onChange={(e) => handleChange(action.id, e.target.value)}
-                                    className="block w-28 pl-3 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm bg-white"
-                                >
-                                    {availableKeys.map(key => (
-                                        <option key={key} value={key}>{key}</option>
-                                    ))}
-                                </select>
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-2 bg-gray-50/50">
+                    <div className="grid gap-2 p-2">
+                        {actions.map(action => (
+                            <div
+                                key={action.id}
+                                className={`
+                                    group flex items-center justify-between p-4 rounded-xl border transition-all duration-200
+                                    ${activeKey === action.id
+                                        ? 'bg-white border-violet-500 shadow-lg shadow-violet-100 ring-2 ring-violet-100 transform scale-[1.02] z-10'
+                                        : 'bg-white border-gray-100 hover:border-gray-300 hover:shadow-md'
+                                    }
+                                `}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`
+                                        w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm transition-colors
+                                        ${activeKey === action.id ? 'bg-violet-100' : 'bg-gray-100 group-hover:bg-gray-200'}
+                                    `}>
+                                        {action.icon}
+                                    </div>
+                                    <span className="font-bold text-gray-700 text-lg">{action.label}</span>
+                                </div>
+                                <div className="relative">
+                                    <select
+                                        value={shortcuts[action.id] || 'None'}
+                                        onChange={(e) => handleChange(action.id, e.target.value)}
+                                        onFocus={() => setActiveKey(action.id)}
+                                        onBlur={() => setActiveKey(null)}
+                                        className={`
+                                            appearance-none cursor-pointer w-28 py-2.5 pl-4 pr-8 text-center font-mono font-bold text-lg rounded-lg border-2 outline-none transition-all
+                                            ${activeKey === action.id
+                                                ? 'bg-violet-50 border-violet-500 text-violet-700 shadow-inner'
+                                                : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
+                                            }
+                                        `}
+                                    >
+                                        {availableKeys.map(key => (
+                                            <option key={key} value={key}>{key}</option>
+                                        ))}
+                                    </select>
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
 
-                <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
-                    >
-                        İptal
-                    </button>
+                {/* Footer */}
+                <div className="p-6 bg-white border-t border-gray-100 shrink-0">
                     <button
                         onClick={handleSave}
-                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold shadow-md hover:shadow-lg transition-all"
+                        className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                        Kaydet
+                        <span>Değişiklikleri Kaydet</span>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={onClose}
+                        className="w-full mt-3 py-3 text-gray-500 font-semibold hover:text-gray-700 transition-colors text-sm"
+                    >
+                        Vazgeç
                     </button>
                 </div>
             </div>

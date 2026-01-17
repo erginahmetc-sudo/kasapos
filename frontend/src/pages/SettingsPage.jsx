@@ -3,142 +3,102 @@ import ShortcutGroupsModal from '../components/modals/ShortcutGroupsModal';
 import ReceiptDesignerModal from '../components/modals/ReceiptDesignerModal';
 import IntegrationSettingsModal from '../components/modals/IntegrationSettingsModal';
 import SecretTokenModal from '../components/modals/SecretTokenModal';
-import { supabase } from '../lib/supabaseClient';
-import { API_URL } from '../lib/config';
+import { settingsAPI } from '../services/api';
 
 export default function SettingsPage() {
+    const [loading, setLoading] = useState(true);
+
+    // Settings State
     const [askQuantity, setAskQuantity] = useState(false);
-    // Cancellation password state
-    const [cancelPassword, setCancelPassword] = useState('');
-    const [savedPassword, setSavedPassword] = useState('');
-
-    useEffect(() => {
-        const savedSetting = localStorage.getItem('pos_settings_ask_quantity');
-        if (savedSetting === 'true') {
-            setAskQuantity(true);
-        }
-
-        // Load saved password
-        const savedPwd = localStorage.getItem('sales_cancel_password');
-        if (savedPwd) {
-            setSavedPassword(savedPwd);
-            setCancelPassword(savedPwd);
-        } else {
-            // Default password if not set
-            setSavedPassword('123456');
-            setCancelPassword('123456');
-            localStorage.setItem('sales_cancel_password', '123456');
-        }
-    }, []);
-
-    const toggleAskQuantity = () => {
-        const newValue = !askQuantity;
-        setAskQuantity(newValue);
-        localStorage.setItem('pos_settings_ask_quantity', newValue);
-    };
-
-    const handlePasswordChange = (e) => {
-        const newPassword = e.target.value;
-        setCancelPassword(newPassword);
-        localStorage.setItem('sales_cancel_password', newPassword);
-        setSavedPassword(newPassword);
-    };
-
-    // Sales Page Visibility Settings
+    const [cancelPassword, setCancelPassword] = useState('123456');
     const [showTotalSales, setShowTotalSales] = useState(true);
     const [showTotalRevenue, setShowTotalRevenue] = useState(true);
-
-    useEffect(() => {
-        const savedShowSales = localStorage.getItem('sales_show_total_sales');
-        if (savedShowSales !== null) {
-            setShowTotalSales(savedShowSales === 'true');
-        }
-
-        const savedShowRevenue = localStorage.getItem('sales_show_total_revenue');
-        if (savedShowRevenue !== null) {
-            setShowTotalRevenue(savedShowRevenue === 'true');
-        }
-    }, []);
-
-    const toggleShowTotalSales = () => {
-        const newValue = !showTotalSales;
-        setShowTotalSales(newValue);
-        localStorage.setItem('sales_show_total_sales', newValue);
-    };
-
-    const toggleShowTotalRevenue = () => {
-        const newValue = !showTotalRevenue;
-        setShowTotalRevenue(newValue);
-        localStorage.setItem('sales_show_total_revenue', newValue);
-    };
-
-    // Invoice Settings
     const [showInvoiceTotal, setShowInvoiceTotal] = useState(true);
+    const [sendSalesToBirFatura, setSendSalesToBirFatura] = useState(false);
+    const [secretToken, setSecretToken] = useState('...');
 
-    useEffect(() => {
-        const savedShowTotal = localStorage.getItem('invoices_show_total');
-        if (savedShowTotal !== null) {
-            setShowInvoiceTotal(savedShowTotal === 'true');
-        }
-    }, []);
-
-    const toggleShowInvoiceTotal = () => {
-        const newValue = !showInvoiceTotal;
-        setShowInvoiceTotal(newValue);
-        localStorage.setItem('invoices_show_total', newValue);
-    };
-
+    // Modals
     const [showShortcutModal, setShowShortcutModal] = useState(false);
     const [showReceiptDesigner, setShowReceiptDesigner] = useState(false);
     const [showIntegrationModal, setShowIntegrationModal] = useState(false);
     const [showSecretTokenModal, setShowSecretTokenModal] = useState(false);
 
-    const [sendSalesToBirFatura, setSendSalesToBirFatura] = useState(false);
-    const [secretToken, setSecretToken] = useState('...');
-
     useEffect(() => {
-        const savedSendSales = localStorage.getItem('integration_send_sales_to_birfatura');
-        if (savedSendSales !== null) {
-            setSendSalesToBirFatura(savedSendSales === 'true');
-        }
-
-        // Fetch Secret Token for display
-        const fetchToken = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                const token = session?.access_token;
-
-                if (!token) {
-                    setSecretToken('Giriş Yapılmalı');
-                    return;
-                }
-
-                const res = await fetch(`${API_URL}/api/settings`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.secret_token) {
-                        setSecretToken(data.secret_token);
-                    }
-                } else {
-                    setSecretToken('Yetkisiz Erişim');
-                }
-            } catch (err) {
-                console.error("Token fetch error:", err);
-                setSecretToken('Hata');
-            }
-        };
-
-        fetchToken();
+        loadSettings();
     }, []);
+
+    const loadSettings = async () => {
+        setLoading(true);
+        try {
+            const { data } = await settingsAPI.getAll();
+            if (data) {
+                if (data['pos_settings_ask_quantity'] !== undefined) setAskQuantity(data['pos_settings_ask_quantity']);
+                if (data['sales_cancel_password']) setCancelPassword(data['sales_cancel_password']);
+                if (data['sales_show_total_sales'] !== undefined) setShowTotalSales(data['sales_show_total_sales']);
+                if (data['sales_show_total_revenue'] !== undefined) setShowTotalRevenue(data['sales_show_total_revenue']);
+                if (data['invoices_show_total'] !== undefined) setShowInvoiceTotal(data['invoices_show_total']);
+                if (data['integration_send_sales_to_birfatura'] !== undefined) setSendSalesToBirFatura(data['integration_send_sales_to_birfatura']);
+                if (data['secret_token']) setSecretToken(data['secret_token']);
+            }
+        } catch (error) {
+            console.error("Settings load error:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const updateSetting = async (key, value) => {
+        try {
+            await settingsAPI.set(key, value);
+        } catch (err) {
+            console.error(`Failed to save setting ${key}:`, err);
+            alert("Ayar kaydedilemedi.");
+        }
+    };
+
+    const toggleAskQuantity = () => {
+        const newValue = !askQuantity;
+        setAskQuantity(newValue);
+        updateSetting('pos_settings_ask_quantity', newValue);
+    };
+
+    const handlePasswordChange = async (e) => {
+        const newPassword = e.target.value;
+        setCancelPassword(newPassword);
+        // Debounce saving if needed, but for password field usually we save on blur or specific button?
+        // For now, let's just save on every change like before (localStorage behavior)
+        // Or better: update state, but save on Blur is cleaner API-wise. 
+        // But to keep behavior same:
+        updateSetting('sales_cancel_password', newPassword);
+    };
+
+    const toggleShowTotalSales = () => {
+        const newValue = !showTotalSales;
+        setShowTotalSales(newValue);
+        updateSetting('sales_show_total_sales', newValue);
+    };
+
+    const toggleShowTotalRevenue = () => {
+        const newValue = !showTotalRevenue;
+        setShowTotalRevenue(newValue);
+        updateSetting('sales_show_total_revenue', newValue);
+    };
+
+    const toggleShowInvoiceTotal = () => {
+        const newValue = !showInvoiceTotal;
+        setShowInvoiceTotal(newValue);
+        updateSetting('invoices_show_total', newValue);
+    };
 
     const toggleSendSalesToBirFatura = () => {
         const newValue = !sendSalesToBirFatura;
         setSendSalesToBirFatura(newValue);
-        localStorage.setItem('integration_send_sales_to_birfatura', newValue);
+        updateSetting('integration_send_sales_to_birfatura', newValue);
     };
+
+    if (loading) {
+        return <div className="p-8 text-center text-gray-500">Ayarlar yükleniyor...</div>;
+    }
 
     return (
         <div className="p-6">
@@ -146,15 +106,15 @@ export default function SettingsPage() {
 
             <div className="bg-white rounded-xl shadow-md p-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
-                    Satis Ekrani Ayarlari
+                    Satış Ekranı Ayarları
                 </h2>
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div>
-                            <h3 className="font-semibold text-gray-800">Urun Secince Miktar Sor</h3>
+                            <h3 className="font-semibold text-gray-800">Ürün Seçince Miktar Sor</h3>
                             <p className="text-sm text-gray-500 mt-1">
-                                Aktif edilirse, urun listesinden veya barkod ile urun secildiginde miktar girmeniz icin bir pencere acilir.
+                                Aktif edilirse, ürün listesinden veya barkod ile ürün seçildiğinde miktar girmeniz için bir pencere açılır.
                             </p>
                         </div>
 
@@ -172,9 +132,9 @@ export default function SettingsPage() {
 
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div>
-                            <h3 className="font-semibold text-gray-800">Satis Ekranindaki Kisayol Grup Isimleri</h3>
+                            <h3 className="font-semibold text-gray-800">Satış Ekranındaki Kısayol Grup İsimleri</h3>
                             <p className="text-sm text-gray-500 mt-1">
-                                Satis ekraninda gorunen ozel urun grubu kategorilerini yonetin.
+                                Satış ekranında görünen özel ürün grubu kategorilerini yönetin.
                             </p>
                         </div>
 
@@ -182,24 +142,24 @@ export default function SettingsPage() {
                             onClick={() => setShowShortcutModal(true)}
                             className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors shadow-sm"
                         >
-                            Gruplari Yonet
+                            Grupları Yönet
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Satis Ayarlari / Iptal Sifresi */}
+            {/* Satış Ayarları / İptal Şifresi */}
             <div className="bg-white rounded-xl shadow-md p-6 mt-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
-                    Satis ve Iptal Ayarlari
+                    Satış ve İptal Ayarları
                 </h2>
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
                         <div>
-                            <h3 className="font-semibold text-red-800">Satisi Iptal Etme Parolasi</h3>
+                            <h3 className="font-semibold text-red-800">Satışı İptal Etme Parolası</h3>
                             <p className="text-sm text-red-600 mt-1">
-                                "Satis Detayi" ekraninda satisi iptal etmek istediginizde sorulacak parolayi belirleyin.
+                                "Satış Detayı" ekranında satışı iptal etmek istediğinizde sorulacak parolayı belirleyin.
                             </p>
                         </div>
 
@@ -217,9 +177,9 @@ export default function SettingsPage() {
 
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div>
-                            <h3 className="font-semibold text-gray-800">Toplam Satis Kartini Goster</h3>
+                            <h3 className="font-semibold text-gray-800">Toplam Satış Kartını Göster</h3>
                             <p className="text-sm text-gray-500 mt-1">
-                                Satislar sayfasindaki "Toplam Satis" bilgi kartini goster veya gizle.
+                                Satışlar sayfasındaki "Toplam Satış" bilgi kartını göster veya gizle.
                             </p>
                         </div>
 
@@ -237,9 +197,9 @@ export default function SettingsPage() {
 
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div>
-                            <h3 className="font-semibold text-gray-800">Toplam Ciro Kartini Goster</h3>
+                            <h3 className="font-semibold text-gray-800">Toplam Ciro Kartını Göster</h3>
                             <p className="text-sm text-gray-500 mt-1">
-                                Satislar sayfasindaki "Toplam Ciro" bilgi kartini goster veya gizle.
+                                Satışlar sayfasındaki "Toplam Ciro" bilgi kartını göster veya gizle.
                             </p>
                         </div>
 
@@ -257,23 +217,23 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            {/* Fis Tasarimi Bolumu */}
+            {/* Fiş Tasarımı Bölümü */}
             <div className="bg-white rounded-xl shadow-md p-6 mt-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
-                    Satis Sonrasi Fis Tasarimi
+                    Satış Sonrası Fiş Tasarımı
                 </h2>
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
                         <div>
-                            <h3 className="font-semibold text-gray-800">Fis Gorunumu Tasarla</h3>
+                            <h3 className="font-semibold text-gray-800">Fiş Görünümü Tasarla</h3>
                             <p className="text-sm text-gray-500 mt-1">
-                                Satis sonrasi yazdirilacak fisin gorsel tasarimini ozellestin. Metin, sekil ve resim elementleri ekleyebilirsin.
+                                Satış sonrası yazdırılacak fişin görsel tasarımını özelleştirin. Metin, şekil ve resim elementleri ekleyebilirsiniz.
                             </p>
                             <div className="flex gap-2 mt-2">
-                                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">Surukle Birak</span>
-                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Canli Onizleme</span>
-                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Degisken Destegi</span>
+                                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">Sürükle Bırak</span>
+                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Canlı Önizleme</span>
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Değişken Desteği</span>
                             </div>
                         </div>
 
@@ -284,7 +244,7 @@ export default function SettingsPage() {
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                            Tasarimciyi Ac
+                            Tasarımcıyı Aç
                         </button>
                     </div>
                 </div>
@@ -406,7 +366,10 @@ export default function SettingsPage() {
 
             <SecretTokenModal
                 isOpen={showSecretTokenModal}
-                onClose={() => setShowSecretTokenModal(false)}
+                onClose={() => {
+                    setShowSecretTokenModal(false);
+                    loadSettings(); // Reload to show new token
+                }}
             />
         </div>
     );

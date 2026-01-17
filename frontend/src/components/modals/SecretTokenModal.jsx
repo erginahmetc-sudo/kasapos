@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { API_URL } from '../../lib/config';
+import { settingsAPI } from '../../services/api';
 
 export default function SecretTokenModal({ isOpen, onClose }) {
     const [secretToken, setSecretToken] = useState('Yükleniyor...');
@@ -14,59 +13,23 @@ export default function SecretTokenModal({ isOpen, onClose }) {
 
     const loadToken = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
-
-            if (!token) {
-                setSecretToken('Oturum Kapalı');
-                return;
-            }
-
-            const res = await fetch(`${API_URL}/api/settings`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setSecretToken(data.secret_token || '');
-            } else {
-                setSecretToken('Yetkisiz Erişim');
-            }
+            const { data } = await settingsAPI.get('secret_token');
+            setSecretToken(data || '');
         } catch (e) {
             console.error("Error fetching secret token", e);
-            setSecretToken('Bağlantı Hatası (Backend çalışmıyor olabilir)');
+            setSecretToken('Hata');
         }
     };
 
     const handleSave = async () => {
         setSaving(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
-
-            if (!token) {
-                alert("Oturum süreniz dolmuş, lütfen tekrar giriş yapın.");
-                return;
-            }
-
-            const res = await fetch(`${API_URL}/api/settings`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ secret_token: secretToken.trim() })
-            });
-
-            if (res.ok) {
-                alert("Token başarıyla kaydedildi. Backend'in yeni token ile çalışması için lütfen programı yeniden başlatın.");
-                onClose();
-            } else {
-                alert("Token kaydedilemedi.");
-            }
+            await settingsAPI.set('secret_token', secretToken.trim());
+            alert("Token başarıyla kaydedildi.");
+            onClose();
         } catch (e) {
             console.error("Error saving token", e);
-            alert("Bağlantı hatası.");
+            alert("Bağlantı hatası: " + e.message);
         } finally {
             setSaving(false);
         }

@@ -2,11 +2,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const menuItems = [
-    { path: '/', label: 'Satış', icon: '🛒', permission: 'can_view_pos' },
-    { path: '/products', label: 'Ürünler', icon: '📦', permission: 'can_view_products' },
-    { path: '/customers', label: 'Müşteriler', icon: '👥', permission: 'can_view_customers' },
-    { path: '/sales', label: 'Satışlar', icon: '📋', permission: 'can_view_sales' },
-    { path: '/invoices', label: 'Faturalar', icon: '📄', permission: 'can_view_invoices' },
+    { path: '/', label: 'Satış Ekranı', icon: '🛒', permission: 'can_view_pos' },
+    { path: '/products', label: 'Ürün Listesi', icon: '📦', permission: 'can_view_products' },
+    { path: '/customers', label: 'Bakiyeler Listesi', icon: '👥', permission: 'can_view_customers' },
+    { path: '/sales', label: 'Satış Geçmişi', icon: '📋', permission: 'can_view_sales' },
+    { path: '/invoices', label: 'Gelen Faturalar(Entegrasyonlu)', icon: '📄', permission: 'can_view_invoices' },
     { path: '/settings', label: 'Ayarlar', icon: '⚙️', permission: 'can_view_users' },
     { path: '/users', label: 'Kullanıcılar', icon: '👤', permission: 'can_view_users' },
 ];

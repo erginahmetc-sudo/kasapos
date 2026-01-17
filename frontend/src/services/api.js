@@ -777,6 +777,66 @@ export const invoicesAPI = {
     }
 };
 
+// ============ SETTINGS API ============
+export const settingsAPI = {
+    // Get a specific setting value
+    get: async (key) => {
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) return { data: null };
+
+        const { data, error } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', key)
+            .eq('company_code', companyCode)
+            .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found"
+            console.error(`Error fetching setting ${key}:`, error);
+        }
+
+        return { data: data?.value || null };
+    },
+
+    // Save/Update a setting
+    set: async (key, value) => {
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) throw new Error("Şirket kodu bulunamadı.");
+
+        const { error } = await supabase
+            .from('app_settings')
+            .upsert({
+                key: key,
+                value: value,
+                company_code: companyCode
+            }, { onConflict: 'company_code, key' }); // Use the new composite index
+
+        if (error) throw error;
+        return { data: { success: true } };
+    },
+
+    // Get all settings for the company
+    getAll: async () => {
+        const companyCode = getCurrentCompanyCode();
+        if (!companyCode) return { data: {} };
+
+        const { data, error } = await supabase
+            .from('app_settings')
+            .select('key, value')
+            .eq('company_code', companyCode);
+
+        if (error) throw error;
+
+        // Convert array to object { key: value }
+        const settingsMap = {};
+        data.forEach(item => {
+            settingsMap[item.key] = item.value;
+        });
+
+        return { data: settingsMap };
+    }
+};
+
 export default {
     get: async () => ({ data: {} }),
     post: async () => ({ data: {} }),

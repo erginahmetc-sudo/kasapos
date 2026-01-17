@@ -546,6 +546,12 @@ export const usersAPI = {
             return response(null, error);
         }
 
+        // Supabase returns a fake user with empty identities if duplicate email exists (and email confirm is enabled/security settings)
+        // This causes the FK error when trying to insert into user_profiles
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+            return response(null, { message: 'E-Mail daha önce kaydedilmiştir.' });
+        }
+
         if (data.user) {
             // 3. Manually insert/update profile
             // We use upsert in case a Trigger partially created it

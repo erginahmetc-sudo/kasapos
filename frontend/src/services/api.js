@@ -11,7 +11,7 @@ const response = (data, error) => {
 
 // ============ AUTH API ============
 export const authAPI = {
-    login: async (email, password, companyCode) => {
+    login: async (email, password) => {
 
         // Enforce Email Usage
         if (!email.includes('@')) {
@@ -37,19 +37,7 @@ export const authAPI = {
             .eq('id', data.user.id)
             .single();
 
-        // Security Check: Company Code Match
-        if (profile) {
-            if (profile.company_code !== companyCode) {
-                // Logout immediately
-                await supabase.auth.signOut();
-                throw { response: { data: { message: 'Hatalı Şirket Kodu! Bu kullanıcı bu şirkete ait değil.' } } };
-            }
-        } else {
-            // Profile missing, this shouldn't happen for valid users
-            console.warn('Profile missing for user', data.user.id);
-        }
-
-        let finalProfile = profile || { role: 'user', permissions: {}, company_code: companyCode };
+        let finalProfile = profile || { role: 'user', permissions: {} };
 
         return {
             status: 200,

@@ -327,13 +327,16 @@ export default function UsersPage() {
                                                 >
                                                     📅 Takvim
                                                 </button>
-                                                <button
-                                                    onClick={() => handleDeleteUser(user.id)}
-                                                    className="px-2 py-1.5 text-xs bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
-                                                    title="Sil"
-                                                >
-                                                    🗑️ Sil
-                                                </button>
+                                                {/* Only allow deleting 'calisan', protect 'kurucu' (Main Account) */}
+                                                {user.role !== 'kurucu' && (
+                                                    <button
+                                                        onClick={() => handleDeleteUser(user.id)}
+                                                        className="px-2 py-1.5 text-xs bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                                                        title="Sil"
+                                                    >
+                                                        🗑️ Sil
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </td>

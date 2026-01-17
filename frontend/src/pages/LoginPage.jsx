@@ -5,7 +5,6 @@ import { authAPI } from '../services/api';
 
 export default function LoginPage() {
     const [formData, setFormData] = useState({
-        company_code: '',
         email: '',
         password: ''
     });
@@ -20,8 +19,8 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            // Pass company_code to login
-            const response = await authAPI.login(formData.email, formData.password, formData.company_code);
+            // Login with email and password only
+            const response = await authAPI.login(formData.email, formData.password);
 
             if (response.status === 200) {
                 login(response.data.user);
@@ -63,21 +62,7 @@ export default function LoginPage() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Company Code Field */}
-                        <div>
-                            <label className="block text-white/80 text-sm font-medium mb-2">
-                                Şirket Kodu
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.company_code}
-                                onChange={(e) => setFormData({ ...formData, company_code: e.target.value })}
-                                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all tracking-widest text-center font-mono"
-                                placeholder="XXXXXXX"
-                                maxLength={7}
-                                required
-                            />
-                        </div>
+
 
                         <div>
                             <label className="block text-white/80 text-sm font-medium mb-2">

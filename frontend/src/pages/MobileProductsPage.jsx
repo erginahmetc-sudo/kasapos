@@ -65,21 +65,27 @@ export default function MobileProductsPage() {
         setSaving(true);
         try {
             const updateData = {
-                ...formData,
+                name: formData.name,
+                barcode: formData.barcode,
                 price: parseFloat(formData.price) || 0,
-                stock: parseInt(formData.stock) || 0
+                stock: parseInt(formData.stock) || 0,
+                image_url: formData.image_url
             };
 
-            const response = await productsAPI.update(editingProduct.id, updateData);
-            if (response.data?.success) {
+            // API uses stock_code as identifier
+            const response = await productsAPI.update(editingProduct.stock_code, updateData);
+
+            // API returns data array on success
+            if (response.data) {
                 alert('Ürün güncellendi!');
                 setShowEditModal(false);
                 loadProducts();
             } else {
-                alert('Hata: ' + (response.data?.message || 'Bilinmeyen hata'));
+                alert('Hata: Güncelleme başarısız');
             }
         } catch (error) {
-            alert('Güncelleme hatası: ' + (error.response?.data?.message || error.message));
+            console.error('Update error:', error);
+            alert('Güncelleme hatası: ' + (error.response?.data?.message || error.message || 'Bilinmeyen hata'));
         } finally {
             setSaving(false);
         }
@@ -285,12 +291,20 @@ export default function MobileProductsPage() {
                                 onChange={handleImageChange}
                                 className="hidden"
                             />
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="mt-2 px-4 py-2 bg-blue-100 text-blue-600 rounded-lg text-sm font-semibold"
-                            >
-                                📷 Resim {formData.image_url ? 'Değiştir' : 'Ekle'}
-                            </button>
+                            <div className="flex gap-2 mt-2">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg text-sm font-semibold"
+                                >
+                                    📷 Resim {formData.image_url ? 'Değiştir' : 'Ekle'}
+                                </button>
+                                <button
+                                    onClick={startBarcodeScanner}
+                                    className="px-4 py-2 bg-green-100 text-green-600 rounded-lg text-sm font-semibold"
+                                >
+                                    🔍 Barkod Okut
+                                </button>
+                            </div>
                         </div>
 
                         <div className="space-y-4">

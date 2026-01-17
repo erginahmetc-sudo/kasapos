@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { productsAPI, salesAPI, customersAPI, shortcutsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -23,11 +23,18 @@ export default function MobilePOSPage() {
     const [showAddQuantityModal, setShowAddQuantityModal] = useState(false);
     const [showDiscountModal, setShowDiscountModal] = useState(false);
     const [showPriceModal, setShowPriceModal] = useState(false);
+    const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
     const [modalValue, setModalValue] = useState('');
     const [productToAdd, setProductToAdd] = useState(null);
     const [addQuantityValue, setAddQuantityValue] = useState(1);
     const [successMessage, setSuccessMessage] = useState('');
+    const [scannerError, setScannerError] = useState('');
+
+    // Barcode scanner refs
+    const videoRef = useRef(null);
+    const streamRef = useRef(null);
+    const scanningRef = useRef(false);
     const [customerSearchTerm, setCustomerSearchTerm] = useState('');
 
     useEffect(() => {
@@ -78,9 +85,11 @@ export default function MobilePOSPage() {
                 matchesCategory = groupItems.includes(p.stock_code);
             }
 
-            const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.barcode?.includes(searchTerm) ||
-                p.stock_code?.toLowerCase().includes(searchTerm.toLowerCase());
+            const searchLower = searchTerm.toLowerCase();
+            const matchesSearch = !searchTerm ||
+                p.name?.toLowerCase().includes(searchLower) ||
+                p.barcode?.toLowerCase().includes(searchLower) ||
+                p.stock_code?.toLowerCase().includes(searchLower);
             return matchesCategory && matchesSearch;
         });
 
@@ -190,6 +199,113 @@ export default function MobilePOSPage() {
         }
     };
 
+    // Barcode scanner functions
+    const addProductByBarcode = useCallback((barcode) => {
+        const product = products.find(p =>
+            p.barcode === barcode ||
+            p.stock_code === barcode ||
+            p.stock_code?.toLowerCase() === barcode.toLowerCase()
+        );
+
+        if (product) {
+            // Add to cart directly with quantity 1
+            const existingIndex = cart.findIndex(item => item.stock_code === product.stock_code);
+            if (existingIndex >= 0) {
+                const newCart = [...cart];
+                newCart[existingIndex].quantity += 1;
+                setCart(newCart);
+            } else {
+                setCart(prev => [...prev, { ...product, quantity: 1, discount_rate: 0, final_price: product.price }]);
+            }
+            setSuccessMessage(`${product.name} eklendi!`);
+            setTimeout(() => setSuccessMessage(''), 1500);
+            return true;
+        } else {
+            setScannerError(`Barkod bulunamadı: ${barcode}`);
+            setTimeout(() => setScannerError(''), 3000);
+            return false;
+        }
+    }, [products, cart]);
+
+    const startBarcodeScanner = async () => {
+        setScannerError('');
+        setShowBarcodeScanner(true);
+        scanningRef.current = true;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+
+            streamRef.current = stream;
+
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play();
+
+                // Check if BarcodeDetector is available (Chrome/Edge)
+                if ('BarcodeDetector' in window) {
+                    const barcodeDetector = new window.BarcodeDetector({
+                        formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e']
+                    });
+
+                    const detectBarcode = async () => {
+                        if (!scanningRef.current || !videoRef.current) return;
+
+                        try {
+                            const barcodes = await barcodeDetector.detect(videoRef.current);
+                            if (barcodes.length > 0) {
+                                const barcode = barcodes[0].rawValue;
+                                console.log('Barkod bulundu:', barcode);
+
+                                if (addProductByBarcode(barcode)) {
+                                    // Optionally keep scanning or close
+                                    // stopBarcodeScanner();
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Barkod algılama hatası:', err);
+                        }
+
+                        if (scanningRef.current) {
+                            requestAnimationFrame(detectBarcode);
+                        }
+                    };
+
+                    // Start detection after video is ready
+                    videoRef.current.onloadedmetadata = () => {
+                        detectBarcode();
+                    };
+                } else {
+                    setScannerError('Bu tarayıcı barkod okumayı desteklemiyor. Chrome veya Edge kullanın.');
+                }
+            }
+        } catch (err) {
+            console.error('Kamera başlatma hatası:', err);
+            setScannerError('Kamera açılamadı. Lütfen kamera izni verin.');
+        }
+    };
+
+    const stopBarcodeScanner = () => {
+        scanningRef.current = false;
+
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+
+        setShowBarcodeScanner(false);
+        setScannerError('');
+    };
+
     return (
         <div className="flex flex-col w-screen h-screen bg-gray-100 overflow-hidden select-none">
             {/* Success Message */}
@@ -249,7 +365,10 @@ export default function MobilePOSPage() {
                     />
                 </div>
                 <div className="flex gap-3 ml-3">
-                    <button className="bg-blue-50 text-blue-600 border-none rounded-lg p-3 text-xl cursor-pointer hover:bg-blue-600 hover:text-white transition-colors">
+                    <button
+                        onClick={startBarcodeScanner}
+                        className="bg-blue-50 text-blue-600 border-none rounded-lg p-3 text-xl cursor-pointer hover:bg-blue-600 hover:text-white transition-colors"
+                    >
                         📷
                     </button>
                 </div>
@@ -275,7 +394,7 @@ export default function MobilePOSPage() {
                 </div>
 
                 {/* Product Grid */}
-                <div className="flex-1 overflow-y-auto grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 content-start pb-24">
+                <div className="flex-1 overflow-y-auto grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 content-start pb-36">
                     {filteredProducts.map(product => (
                         <div
                             key={product.id || product.stock_code}
@@ -294,15 +413,61 @@ export default function MobilePOSPage() {
                 </div>
             </div>
 
-            {/* Bottom Cart Summary */}
-            <div className="fixed bottom-0 left-0 w-full bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] px-5 py-4 flex justify-between items-center z-[500]">
-                <span className="text-2xl font-bold text-green-600">{calculateTotal().toFixed(2)} TL</span>
-                <button
-                    onClick={() => setShowCartModal(true)}
-                    className="absolute left-1/2 -translate-x-1/2 bg-blue-600 text-white border-none rounded-lg px-6 py-3 text-lg font-bold cursor-pointer hover:bg-blue-700 transition-colors"
+            {/* Bottom Navigation Menu Bar - Scrollable */}
+            <div className="fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.15)] z-[500]">
+                {/* Top row: Total and Cart */}
+                <div className="flex justify-between items-center px-4 py-2 border-b border-gray-100">
+                    <span className="text-xl font-bold text-green-600">{calculateTotal().toFixed(2)} TL</span>
+                    <button
+                        onClick={() => setShowCartModal(true)}
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-none rounded-xl px-5 py-2 text-base font-bold cursor-pointer hover:shadow-lg transition-all flex items-center gap-2"
+                    >
+                        🛒 <span>{cart.length}</span> Sepet
+                    </button>
+                </div>
+
+                {/* Bottom row: Scrollable menu buttons */}
+                <div
+                    className="flex gap-3 overflow-x-auto px-4 py-3"
+                    style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
-                    <span>{cart.length}</span> Sepet
-                </button>
+                    <Link
+                        to="/"
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl font-semibold shadow-lg shadow-slate-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
+                    >
+                        🏠 Ana Sayfa
+                    </Link>
+                    <Link
+                        to="/customers"
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
+                    >
+                        👥 Müşteriler
+                    </Link>
+                    <Link
+                        to="/sales"
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg shadow-purple-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
+                    >
+                        📊 Satışlar
+                    </Link>
+                    <Link
+                        to="/products"
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-semibold shadow-lg shadow-orange-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap no-underline"
+                    >
+                        📦 Ürünler
+                    </Link>
+                    <button
+                        onClick={startBarcodeScanner}
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap"
+                    >
+                        📷 Barkod Tara
+                    </button>
+                    <button
+                        onClick={() => { logout(); }}
+                        className="flex-shrink-0 px-5 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold shadow-lg shadow-red-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap"
+                    >
+                        🚪 Çıkış
+                    </button>
+                </div>
             </div>
 
             {/* Cart Modal */}
@@ -614,6 +779,61 @@ export default function MobilePOSPage() {
                             className="w-full py-4 bg-blue-500 text-white text-lg font-bold rounded-lg cursor-pointer hover:bg-blue-600 transition-colors"
                         >
                             Misafir Müşteri Olarak Devam Et
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Barcode Scanner Modal */}
+            {showBarcodeScanner && (
+                <div className="fixed inset-0 bg-black z-[2000] flex flex-col items-center justify-center">
+                    <button
+                        onClick={stopBarcodeScanner}
+                        className="absolute top-5 right-5 text-4xl text-white bg-transparent border-none cursor-pointer z-10"
+                    >
+                        &times;
+                    </button>
+
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-[90%] max-w-[640px] h-auto rounded-xl border-4 border-white"
+                    />
+
+                    <p className="text-white text-lg mt-4">Barkodu kameraya gösterin...</p>
+
+                    {scannerError && (
+                        <div className="mt-4 px-6 py-3 bg-red-500 text-white rounded-lg text-center">
+                            {scannerError}
+                        </div>
+                    )}
+
+                    {/* Manual barcode input as fallback */}
+                    <div className="mt-6 flex gap-2 w-[90%] max-w-[400px]">
+                        <input
+                            type="text"
+                            placeholder="Barkodu manuel girin..."
+                            className="flex-1 px-4 py-3 rounded-lg text-lg"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && e.target.value) {
+                                    addProductByBarcode(e.target.value);
+                                    e.target.value = '';
+                                }
+                            }}
+                        />
+                        <button
+                            onClick={(e) => {
+                                const input = e.target.previousSibling;
+                                if (input.value) {
+                                    addProductByBarcode(input.value);
+                                    input.value = '';
+                                }
+                            }}
+                            className="px-6 py-3 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600"
+                        >
+                            Ekle
                         </button>
                     </div>
                 </div>

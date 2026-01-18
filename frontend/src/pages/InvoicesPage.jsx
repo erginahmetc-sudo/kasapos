@@ -383,9 +383,35 @@ export default function InvoicesPage() {
                     }
                 }
 
-                // VAT Rate
-                const taxCat = getTag(itemNode, "ClassifiedTaxCategory");
-                const vatRate = parseFloat(getText(taxCat, "Percent") || 0);
+                // VAT Rate - Türkiye e-Fatura UBL formatında birden fazla yolda olabilir
+                let vatRate = 0;
+
+                // Yol 1: InvoiceLine > TaxTotal > TaxSubtotal > Percent (en yaygın)
+                const taxTotal = getTag(line, "TaxTotal");
+                if (taxTotal) {
+                    const taxSubtotal = getTag(taxTotal, "TaxSubtotal");
+                    if (taxSubtotal) {
+                        // Önce doğrudan Percent'e bak
+                        const directPercent = getText(taxSubtotal, "Percent");
+                        if (directPercent) {
+                            vatRate = parseFloat(directPercent);
+                        } else {
+                            // Yol 2: TaxSubtotal > TaxCategory > Percent
+                            const taxCategory = getTag(taxSubtotal, "TaxCategory");
+                            if (taxCategory) {
+                                vatRate = parseFloat(getText(taxCategory, "Percent") || 0);
+                            }
+                        }
+                    }
+                }
+
+                // Yol 3: Item > ClassifiedTaxCategory > Percent (fallback)
+                if (vatRate === 0) {
+                    const taxCat = getTag(itemNode, "ClassifiedTaxCategory");
+                    if (taxCat) {
+                        vatRate = parseFloat(getText(taxCat, "Percent") || 0);
+                    }
+                }
 
                 // Auto-match product by Barcode (unlikely in UBL but try) or Name
                 // UBL standard for barcode is usually Item > SellersItemIdentification > ID
@@ -620,7 +646,23 @@ export default function InvoicesPage() {
                                 </span>
                                 Fatura Önizleme
                             </h3>
-                            <div className="flex gap-2">
+                            <div className="flex gap-3">
+                                {/* Yazdır Butonu */}
+                                <button
+                                    onClick={() => {
+                                        const printWindow = window.open('', '_blank');
+                                        printWindow.document.write(previewHtml);
+                                        printWindow.document.close();
+                                        printWindow.onload = () => {
+                                            printWindow.print();
+                                        };
+                                    }}
+                                    className="px-5 py-2.5 text-base font-semibold text-white bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 transform hover:scale-105"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                    Yazdır
+                                </button>
+                                {/* İndir Butonu */}
                                 <button
                                     onClick={() => {
                                         const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
@@ -630,15 +672,18 @@ export default function InvoicesPage() {
                                         a.download = `fatura_${Date.now()}.html`;
                                         a.click();
                                     }}
-                                    className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors flex items-center gap-1"
+                                    className="px-5 py-2.5 text-base font-semibold text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 transform hover:scale-105"
                                 >
-                                    ⬇️ İndir
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                    İndir
                                 </button>
+                                {/* Kapat Butonu */}
                                 <button
                                     onClick={() => setPreviewModalOpen(false)}
-                                    className="px-3 py-1.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors flex items-center gap-1"
+                                    className="px-5 py-2.5 text-base font-semibold text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 transform hover:scale-105"
                                 >
-                                    ✕ Kapat
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    Kapat
                                 </button>
                             </div>
                         </div>
@@ -867,12 +912,12 @@ export default function InvoicesPage() {
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-2 relative z-10">
-                                                {/* Görüntüle (Gray) */}
+                                                {/* Görüntüle (Modern) */}
                                                 <button
                                                     onClick={() => handleViewInvoice(invoice)}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-gray-500 text-white rounded hover:bg-gray-600 text-xs font-medium transition-colors"
+                                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-600 to-gray-700 text-white rounded-xl hover:from-slate-700 hover:to-gray-800 text-sm font-semibold transition-all shadow-md hover:shadow-lg transform hover:scale-105"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                                     Görüntüle
                                                 </button>
 

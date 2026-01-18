@@ -472,43 +472,45 @@ export default function MobileInvoicesPage() {
                             </div>
 
                             {/* Action Buttons */}
-                            {selectedInvoice.status === 'Bekliyor' && (
-                                <div className="flex gap-3 pt-2">
+                            {(!selectedInvoice.status || selectedInvoice.status === 'Bekliyor') && (
+                                <>
+                                    <div className="flex gap-3 pt-2">
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await invoicesAPI.updateStatus(selectedInvoice.id, 'İşlenmeyecek');
+                                                    setShowDetail(false);
+                                                    loadData();
+                                                } catch (err) {
+                                                    alert('Hata: ' + err.message);
+                                                }
+                                            }}
+                                            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold"
+                                        >
+                                            İşlenmeyecek
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await invoicesAPI.updateStatus(selectedInvoice.id, 'İşlendi');
+                                                    setShowDetail(false);
+                                                    loadData();
+                                                } catch (err) {
+                                                    alert('Hata: ' + err.message);
+                                                }
+                                            }}
+                                            className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl font-bold"
+                                        >
+                                            ✓ İşlendi
+                                        </button>
+                                    </div>
                                     <button
-                                        onClick={async () => {
-                                            try {
-                                                await invoicesAPI.updateStatus(selectedInvoice.id, 'İşlenmeyecek');
-                                                setShowDetail(false);
-                                                loadData();
-                                            } catch (err) {
-                                                alert('Hata: ' + err.message);
-                                            }
-                                        }}
-                                        className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold"
+                                        onClick={() => openProcessModal(selectedInvoice)}
+                                        className="w-full mt-3 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30"
                                     >
-                                        İşlenmeyecek
+                                        ⚡ Cariye ve Stoklara İşle
                                     </button>
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                await invoicesAPI.updateStatus(selectedInvoice.id, 'İşlendi');
-                                                setShowDetail(false);
-                                                loadData();
-                                            } catch (err) {
-                                                alert('Hata: ' + err.message);
-                                            }
-                                        }}
-                                        className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl font-bold"
-                                    >
-                                        ✓ İşlendi
-                                    </button>
-                                </div>
-                                <button
-                                    onClick={() => openProcessModal(selectedInvoice)}
-                                    className="w-full mt-3 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30"
-                                >
-                                    ⚡ Cariye ve Stoklara İşle
-                                </button>
+                                </>
                             )}
                         </div>
                     </div>

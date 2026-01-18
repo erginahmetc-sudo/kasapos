@@ -448,7 +448,7 @@ export default function MobilePOSPage() {
             {showCartModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000]" onClick={() => setShowCartModal(false)}>
                     <div
-                        className="absolute bottom-0 w-full bg-white rounded-t-3xl p-4 shadow-2xl max-h-[80%] flex flex-col animate-slide-up"
+                        className="absolute top-0 w-full bg-white rounded-b-3xl p-4 shadow-2xl max-h-[85%] flex flex-col animate-slide-down"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
@@ -1177,6 +1177,13 @@ export default function MobilePOSPage() {
                 }
                 .animate-slide-up {
                     animation: slide-up 0.3s ease-out;
+                }
+                @keyframes slide-down {
+                    from { transform: translateY(-100%); }
+                    to { transform: translateY(0); }
+                }
+                .animate-slide-down {
+                    animation: slide-down 0.3s ease-out;
                 }
             `}</style>
         </div>

@@ -335,6 +335,7 @@ export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize
                                         whiteSpace: 'nowrap',
                                     }}
                                     onMouseDown={(e) => handleMouseDown(e, item)}
+                                    onClick={(e) => e.stopPropagation()}
                                 >
                                     {item.type === 'text' && <span>{item.text}</span>}
                                 </div>

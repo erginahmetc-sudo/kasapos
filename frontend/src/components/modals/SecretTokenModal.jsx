@@ -35,7 +35,29 @@ export default function SecretTokenModal({ isOpen, onClose }) {
         }
     };
 
-    if (!isOpen) return null;
+    const handleRegenerate = async () => {
+        if (!window.confirm("UYARI: Secret Token'ı değiştirmek, mevcut entegrasyonların (BirFatura vb.) çalışmasını durdurabilir ve yeni token'ı o sistemlere tekrar girmeniz gerekir.\n\nDevam etmek istiyor musunuz?")) {
+            return;
+        }
+
+        const newToken = crypto.randomUUID();
+        setSaving(true);
+        try {
+            await settingsAPI.set('secret_token', newToken);
+            setSecretToken(newToken);
+            // alert("Yeni token oluşturuldu. Kaydet butonuna basmayı unutmayın."); // No need, we save immediately or just update state? 
+            // The request asked for "Yeni Secret Token butonu koyalım. Her şirket isterse burdan yenileyebilir."
+            // And "database'de kayıtlı kalsın".
+            // Implementation: I'll overwrite the DB immediately with the new token.
+
+            alert("Yeni token oluşturuldu ve kaydedildi.");
+        } catch (e) {
+            console.error("Error regenerating token", e);
+            alert("Token oluşturulamadı: " + e.message);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 font-sans animate-in fade-in duration-200">
@@ -73,14 +95,27 @@ export default function SecretTokenModal({ isOpen, onClose }) {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-base font-semibold text-gray-800">Secret Token</label>
+                        <div className="flex justify-between items-center">
+                            <label className="text-base font-semibold text-gray-800">Secret Token</label>
+                            <button
+                                onClick={handleRegenerate}
+                                className="text-sm text-red-600 hover:text-red-700 font-medium hover:underline flex items-center gap-1"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Yeni Secret Token Oluştur
+                            </button>
+                        </div>
                         <input
                             type="text"
                             value={secretToken}
-                            onChange={(e) => setSecretToken(e.target.value)}
-                            placeholder="Örn: f8d7b6a5-1234-5678-abcd-ef0123456789"
-                            className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all font-mono text-base"
+                            readOnly
+                            className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-600 focus:ring-0 cursor-not-allowed font-mono text-base"
                         />
+                        <p className="text-xs text-gray-500">
+                            Token'ı değiştirmek için yukarıdaki "Yeni Secret Token Oluştur" bağlantısını kullanın.
+                        </p>
                     </div>
                 </div>
 
@@ -90,21 +125,9 @@ export default function SecretTokenModal({ isOpen, onClose }) {
                         onClick={onClose}
                         className="px-8 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl text-base font-semibold hover:bg-gray-100 hover:border-gray-400 transition-all shadow-sm flex items-center gap-2"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        İptal
+                        Kapat
                     </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="px-8 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl text-base font-bold hover:from-red-600 hover:to-rose-700 shadow-lg shadow-red-500/30 transition-all flex items-center gap-2 disabled:opacity-50"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        {saving ? 'Kaydediliyor...' : 'Token Kaydet'}
-                    </button>
+                    {/* Save button removed because we save on generation now, or we can keep it for visual consistency but it's redundant if readonly */}
                 </div>
             </div>
         </div>

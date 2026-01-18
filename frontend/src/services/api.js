@@ -784,6 +784,27 @@ export const usersAPI = {
                 console.error('Tenant profile error:', profileError);
                 return response({ success: true, message: 'Kayıt oldu ancak profil hatası: ' + profileError.message }, null);
             }
+
+            // 3. Generate Secret Token for Integrations
+            // We do this manually here because the user is not logged in yet (no localStorage), 
+            // so we can't use settingsAPI.set() which relies on getCurrentCompanyCode().
+            try {
+                const secretToken = crypto.randomUUID();
+                const { error: settingsError } = await supabase
+                    .from('app_settings')
+                    .insert({
+                        key: 'secret_token',
+                        value: secretToken,
+                        company_code: userData.company_code
+                    });
+
+                if (settingsError) {
+                    console.error('Secret token generation error:', settingsError);
+                    // Don't fail the registration for this, but log it
+                }
+            } catch (tokenError) {
+                console.error('Secret token generation exception:', tokenError);
+            }
         }
 
         return response({ success: true, message: 'Şirket kaydı başarıyla oluşturuldu.' }, null);

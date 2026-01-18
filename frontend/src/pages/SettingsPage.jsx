@@ -16,6 +16,7 @@ export default function SettingsPage() {
     const [showTotalRevenue, setShowTotalRevenue] = useState(true);
     const [showInvoiceTotal, setShowInvoiceTotal] = useState(true);
     const [sendSalesToBirFatura, setSendSalesToBirFatura] = useState(false);
+    const [autoPrintReceipt, setAutoPrintReceipt] = useState(true);
     const [secretToken, setSecretToken] = useState('...');
 
     // Modals
@@ -40,6 +41,7 @@ export default function SettingsPage() {
                 if (data['sales_show_total_revenue'] !== undefined) setShowTotalRevenue(data['sales_show_total_revenue']);
                 if (data['invoices_show_total'] !== undefined) setShowInvoiceTotal(data['invoices_show_total']);
                 if (data['integration_send_sales_to_birfatura'] !== undefined) setSendSalesToBirFatura(data['integration_send_sales_to_birfatura']);
+                if (data['receipt_auto_print'] !== undefined) setAutoPrintReceipt(data['receipt_auto_print']);
                 if (data['secret_token']) setSecretToken(data['secret_token']);
             }
         } catch (error) {
@@ -241,13 +243,39 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            {/* Fiş Tasarımı Bölümü */}
+            {/* Fiş Ayarları Bölümü */}
             <div className="bg-white rounded-xl shadow-md p-6 mt-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
-                    Satış Sonrası Fiş Tasarımı
+                    Satış Sonrası Fişi Ayarları
                 </h2>
 
                 <div className="space-y-4">
+                    {/* Otomatik Yazdırma Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                        <div>
+                            <h3 className="font-semibold text-gray-800">Satış Sonrası Fişi Otomatik Yazdırılsın</h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Açık olduğunda her satış sonrası fiş otomatik olarak yazıcıya gönderilir.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                const newValue = !autoPrintReceipt;
+                                setAutoPrintReceipt(newValue);
+                                updateSetting('receipt_auto_print', newValue);
+                                localStorage.setItem('receipt_auto_print', newValue.toString());
+                            }}
+                            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${autoPrintReceipt ? 'bg-green-600' : 'bg-gray-300'
+                                }`}
+                        >
+                            <span
+                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${autoPrintReceipt ? 'translate-x-8' : 'translate-x-1'
+                                    }`}
+                            />
+                        </button>
+                    </div>
+
+                    {/* Fiş Tasarımcısı */}
                     <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
                         <div>
                             <h3 className="font-semibold text-gray-800">Fiş Görünümü Tasarla</h3>

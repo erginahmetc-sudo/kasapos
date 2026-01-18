@@ -476,6 +476,61 @@ export default function POSPage() {
         setSelectedCartIndex(null);
     };
 
+    // Print Receipt Function
+    const printReceipt = (saleData) => {
+        const receiptContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Satış Fişi</title>
+                <style>
+                    body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 10px; }
+                    .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                    .header h1 { font-size: 16px; margin: 5px 0; }
+                    .items { border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                    .item { display: flex; justify-content: space-between; margin: 5px 0; }
+                    .item-name { flex: 1; }
+                    .item-qty { width: 30px; text-align: center; }
+                    .item-price { width: 70px; text-align: right; }
+                    .total { font-size: 14px; font-weight: bold; text-align: right; margin-top: 10px; }
+                    .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+                    @media print { body { margin: 0; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>SATIŞ FİŞİ</h1>
+                    <div>${new Date().toLocaleString('tr-TR')}</div>
+                    <div>Müşteri: ${saleData.customer}</div>
+                    <div>Ödeme: ${saleData.paymentMethod}</div>
+                </div>
+                <div class="items">
+                    ${saleData.items.map(item => `
+                        <div class="item">
+                            <span class="item-name">${item.name}</span>
+                            <span class="item-qty">${item.quantity}x</span>
+                            <span class="item-price">${(item.price * item.quantity * (1 - (item.discount_rate || 0) / 100)).toFixed(2)} ₺</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="total">TOPLAM: ${saleData.total.toFixed(2)} ₺</div>
+                <div class="footer">
+                    <p>Bizi tercih ettiğiniz için teşekkürler!</p>
+                </div>
+            </body>
+            </html>
+        `;
+
+        const printWindow = window.open('', '_blank', 'width=400,height=600');
+        if (printWindow) {
+            printWindow.document.write(receiptContent);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        }
+    };
+
     const calculateTotal = () => {
         return cart.reduce((sum, item) => {
             const price = item.price * item.quantity;
@@ -539,6 +594,17 @@ export default function POSPage() {
                         // Optional: alert users or just log. Choosing alert for visibility.
                         alert("BirFatura Entegrasyon Uyarısı: " + result.message);
                     }
+                });
+            }
+
+            // Auto-print receipt if setting is enabled
+            const autoPrint = localStorage.getItem('receipt_auto_print');
+            if (autoPrint === null || autoPrint === 'true') { // Default to true
+                printReceipt({
+                    customer: customer,
+                    paymentMethod: paymentMethod,
+                    items: cart,
+                    total: calculateTotal()
                 });
             }
 

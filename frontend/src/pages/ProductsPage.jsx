@@ -13,6 +13,7 @@ export default function ProductsPage() {
     const [showImageModal, setShowImageModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
     const [selectedImage, setSelectedImage] = useState(null);
+    const [errorModal, setErrorModal] = useState({ show: false, title: '', message: '' });
 
     // Sidebar Context (Global Navigation)
     // Local Filter Sidebar State (Mobile Only)
@@ -247,11 +248,20 @@ export default function ProductsPage() {
             setShowModal(false);
             loadProducts();
         } catch (error) {
-            const msg = error.response?.data?.message || error.message;
-            if (msg.includes('products_stock_code_key')) {
-                alert('Hata: Bu stok kodu zaten kullanımda! Lütfen başka bir kod giriniz.');
+            const msg = error.response?.data?.message || error.message || '';
+            // Check for both old and new constraint names
+            if (msg.includes('products_stock_code') && msg.includes('unique')) {
+                setErrorModal({
+                    show: true,
+                    title: '⚠️ Stok Kodu Kullanımda',
+                    message: `"${formData.stock_code}" stok kodu sistemde zaten kayıtlıdır. Lütfen farklı bir stok kodu giriniz.`
+                });
             } else {
-                alert('Hata: ' + msg);
+                setErrorModal({
+                    show: true,
+                    title: '❌ Hata Oluştu',
+                    message: msg || 'Bilinmeyen bir hata oluştu.'
+                });
             }
         }
     };
@@ -848,6 +858,31 @@ export default function ProductsPage() {
                 onClose={() => setLabelPrintModalOpen(false)}
                 products={products}
             />
+
+            {/* Modern Error Modal */}
+            {errorModal.show && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-red-500 to-rose-600 px-6 py-4">
+                            <h3 className="text-xl font-bold text-white">{errorModal.title}</h3>
+                        </div>
+                        {/* Body */}
+                        <div className="p-6">
+                            <p className="text-gray-700 text-base leading-relaxed">{errorModal.message}</p>
+                        </div>
+                        {/* Footer */}
+                        <div className="px-6 pb-6">
+                            <button
+                                onClick={() => setErrorModal({ show: false, title: '', message: '' })}
+                                className="w-full py-3 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white font-bold rounded-xl transition-all shadow-lg"
+                            >
+                                Tamam
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div >
 

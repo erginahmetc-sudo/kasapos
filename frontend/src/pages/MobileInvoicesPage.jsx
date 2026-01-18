@@ -341,10 +341,10 @@ export default function MobileInvoicesPage() {
             const newCustomer = {
                 name: invoiceDetail.supplier_name,
                 tax_number: invoiceDetail.supplier_tax || '',
-                type: 'Tedarikçi',
-                phone: '',
+                phone: '-',
                 email: '',
-                address: ''
+                address: '-',
+                balance: 0
             };
 
             const res = await customersAPI.add(newCustomer);

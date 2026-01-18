@@ -4,6 +4,7 @@ import ReceiptDesignerModal from '../components/modals/ReceiptDesignerModal';
 import IntegrationSettingsModal from '../components/modals/IntegrationSettingsModal';
 import SecretTokenModal from '../components/modals/SecretTokenModal';
 import { settingsAPI, productsAPI } from '../services/api';
+import axios from 'axios';
 
 export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
@@ -105,10 +106,18 @@ export default function SettingsPage() {
         if (!code) return;
 
         try {
-            const result = await productsAPI.repairStockCode(code.trim());
-            alert(result.message);
+            // Call backend proxy which has admin/service role access
+            const response = await axios.post('/api/products/force-delete', { stockCode: code.trim() });
+
+            if (response.data.success) {
+                alert(response.data.message);
+            } else {
+                alert("İşlem başarısız: " + response.data.message);
+            }
         } catch (err) {
-            alert("İşlem başarısız: " + (err.message || err));
+            console.error(err);
+            const msg = err.response?.data?.message || err.message;
+            alert("İşlem başarısız: " + msg);
         }
     };
 

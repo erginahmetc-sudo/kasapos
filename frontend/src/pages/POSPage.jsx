@@ -584,6 +584,8 @@ export default function POSPage() {
                 staticHtml += `<div style="${style}">${replaceVariables(item.text)}</div>`;
             } else if (item.type === 'shape') {
                 staticHtml += `<div style="${style}"></div>`;
+            } else if (item.type === 'image') {
+                staticHtml += `<div style="${style}"><img src="${item.src}" style="width: 100%; height: 100%; object-fit: contain;"></div>`;
             }
         });
 
@@ -642,6 +644,8 @@ export default function POSPage() {
                 footerHtml += `<div style="${style}">${replaceVariables(item.text)}</div>`;
             } else if (item.type === 'shape') {
                 footerHtml += `<div style="${style}"></div>`;
+            } else if (item.type === 'image') {
+                footerHtml += `<div style="${style}"><img src="${item.src}" style="width: 100%; height: 100%; object-fit: contain;"></div>`;
             }
         });
 

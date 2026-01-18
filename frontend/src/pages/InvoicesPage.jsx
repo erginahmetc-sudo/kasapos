@@ -241,13 +241,16 @@ export default function InvoicesPage() {
                 // 4. Map to our format
                 const mappedInvoices = rawInvoices.map(wrap => {
                     const inv = wrap.inBoxInvoice;
+                    // Check if invoice already exists to preserve status
+                    const existingInv = invoices.find(i => i.uuid === inv.UUID);
+
                     return {
                         uuid: inv.UUID,
                         invoice_number: inv.InvoiceNo,
                         supplier_name: inv.SenderName,
                         date: (inv.IssueDate || '').split('T')[0] + " 00:00:00",
                         total: inv.PayableAmount || 0,
-                        status: 'Bekliyor', // Default status
+                        status: existingInv ? existingInv.status : 'Bekliyor', // Preserve existing status or default to Bekliyor
                         // Store full json or lines if needed, for simplicity storing basic info
                         // In a real app we'd parse lines here too
                     };

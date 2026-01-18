@@ -4,7 +4,6 @@ import ReceiptDesignerModal from '../components/modals/ReceiptDesignerModal';
 import IntegrationSettingsModal from '../components/modals/IntegrationSettingsModal';
 import SecretTokenModal from '../components/modals/SecretTokenModal';
 import { settingsAPI, productsAPI } from '../services/api';
-import axios from 'axios';
 
 export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
@@ -99,26 +98,6 @@ export default function SettingsPage() {
         const newValue = !sendSalesToBirFatura;
         setSendSalesToBirFatura(newValue);
         updateSetting('integration_send_sales_to_birfatura', newValue);
-    };
-
-    const handleRepairStockCode = async () => {
-        const code = prompt("Sorunlu stok kodunu giriniz (Örn: STK-0001):");
-        if (!code) return;
-
-        try {
-            // Call backend proxy which has admin/service role access
-            const response = await axios.post('/api/products/force-delete', { stockCode: code.trim() });
-
-            if (response.data.success) {
-                alert(response.data.message);
-            } else {
-                alert("İşlem başarısız: " + response.data.message);
-            }
-        } catch (err) {
-            console.error(err);
-            const msg = err.response?.data?.message || err.message;
-            alert("İşlem başarısız: " + msg);
-        }
     };
 
     if (loading) {
@@ -389,34 +368,6 @@ export default function SettingsPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
                             Düzenle
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Veri Onarımı / Araçlar */}
-            <div className="bg-white rounded-xl shadow-md p-6 mt-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
-                    Veri Onarımı ve Araçlar
-                </h2>
-
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-zinc-50 rounded-lg border border-gray-200">
-                        <div>
-                            <h3 className="font-semibold text-gray-800">Stok Kodu Çakışması Gider</h3>
-                            <p className="text-sm text-gray-500 mt-1">
-                                "Stok kodu kullanımda" hatası alıyorsanız ancak ürünü bulamıyorsanız bu aracı kullanın. Silinmiş/gizli kaydı temizler.
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={handleRepairStockCode}
-                            className="px-5 py-2.5 bg-zinc-700 text-white rounded-lg hover:bg-zinc-800 font-semibold text-sm transition-all shadow-lg shadow-gray-500/25 flex items-center gap-2"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                            </svg>
-                            Stok Kodu Onar
                         </button>
                     </div>
                 </div>

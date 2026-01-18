@@ -8,6 +8,9 @@ export default function ShortcutGroupsModal({ isOpen, onClose }) {
     const [newGroupName, setNewGroupName] = useState('');
     const [adding, setAdding] = useState(false);
     const [editingGroup, setEditingGroup] = useState(null);
+    const [renamingGroup, setRenamingGroup] = useState(null);
+    const [renameValue, setRenameValue] = useState('');
+    const [renaming, setRenaming] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -63,6 +66,36 @@ export default function ShortcutGroupsModal({ isOpen, onClose }) {
         } catch (error) {
             console.error(error);
             alert("Silme işlemi başarısız.");
+        }
+    };
+
+    const openRenameModal = (groupName) => {
+        setRenamingGroup(groupName);
+        setRenameValue(groupName);
+    };
+
+    const handleRename = async () => {
+        if (!renameValue.trim() || renameValue.trim() === renamingGroup) {
+            setRenamingGroup(null);
+            return;
+        }
+
+        // Check for duplicate
+        if (groups.some(g => g.name.toLowerCase() === renameValue.trim().toLowerCase() && g.name !== renamingGroup)) {
+            alert("Bu isimde bir grup zaten var.");
+            return;
+        }
+
+        setRenaming(true);
+        try {
+            await shortcutsAPI.updateCategory(renamingGroup, { name: renameValue.trim() });
+            await loadGroups();
+            setRenamingGroup(null);
+        } catch (error) {
+            console.error(error);
+            alert("İsim değiştirme başarısız.");
+        } finally {
+            setRenaming(false);
         }
     };
 
@@ -134,10 +167,19 @@ export default function ShortcutGroupsModal({ isOpen, onClose }) {
                                         </div>
                                         <span className="font-semibold text-gray-800 text-lg">{group.name}</span>
                                     </div>
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => openRenameModal(group.name)}
+                                            className="px-4 py-2.5 bg-amber-100 hover:bg-amber-600 text-amber-700 hover:text-white rounded-xl font-semibold transition-all flex items-center gap-2"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                            İsmi Değiştir
+                                        </button>
                                         <button
                                             onClick={() => setEditingGroup(group.name)}
-                                            className="px-5 py-2.5 bg-blue-100 hover:bg-blue-600 text-blue-700 hover:text-white rounded-xl font-semibold transition-all flex items-center gap-2"
+                                            className="px-4 py-2.5 bg-blue-100 hover:bg-blue-600 text-blue-700 hover:text-white rounded-xl font-semibold transition-all flex items-center gap-2"
                                         >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -146,7 +188,7 @@ export default function ShortcutGroupsModal({ isOpen, onClose }) {
                                         </button>
                                         <button
                                             onClick={() => handleDelete(group.name)}
-                                            className="px-5 py-2.5 bg-red-100 hover:bg-red-600 text-red-700 hover:text-white rounded-xl font-semibold transition-all flex items-center gap-2"
+                                            className="px-4 py-2.5 bg-red-100 hover:bg-red-600 text-red-700 hover:text-white rounded-xl font-semibold transition-all flex items-center gap-2"
                                         >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -175,6 +217,44 @@ export default function ShortcutGroupsModal({ isOpen, onClose }) {
                     onClose={() => setEditingGroup(null)}
                     groupName={editingGroup}
                 />
+
+                {/* Rename Modal */}
+                {renamingGroup && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[70] animate-in fade-in duration-200">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5">
+                                <h3 className="text-xl font-bold text-white">Grup İsmini Değiştir</h3>
+                                <p className="text-amber-100 text-sm mt-1">Yeni grup adını giriniz</p>
+                            </div>
+                            <div className="p-6">
+                                <label className="text-base font-semibold text-gray-800 mb-2 block">Grup Adı</label>
+                                <input
+                                    type="text"
+                                    value={renameValue}
+                                    onChange={(e) => setRenameValue(e.target.value)}
+                                    className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all text-base"
+                                    autoFocus
+                                    onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+                                />
+                            </div>
+                            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setRenamingGroup(null)}
+                                    className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-100 transition-all"
+                                >
+                                    İptal
+                                </button>
+                                <button
+                                    onClick={handleRename}
+                                    disabled={renaming || !renameValue.trim()}
+                                    className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50"
+                                >
+                                    {renaming ? 'Kaydediliyor...' : 'Kaydet'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

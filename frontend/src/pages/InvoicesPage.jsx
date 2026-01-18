@@ -554,6 +554,7 @@ export default function InvoicesPage() {
             case 'İşlendi': return 'bg-green-100 text-green-700';
             case 'İşlenmeyecek': return 'bg-gray-100 text-gray-700';
             case 'İptal Edildi': return 'bg-red-100 text-red-700';
+            case 'İşlendi ancak iptal edildi': return 'bg-orange-100 text-orange-700';
             default: return 'bg-gray-100 text-gray-700';
         }
     };
@@ -627,6 +628,142 @@ export default function InvoicesPage() {
         } catch (error) {
             console.error(error);
             alert("İşlem sırasında hata oluştu: " + error.message);
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    // --- CANCEL INVOICE LOGIC ---
+    const handleCancelInvoice = async (invoice) => {
+        if (!invoice || invoice.status !== 'İşlendi') {
+            alert("Sadece 'İşlendi' durumundaki faturalar iptal edilebilir.");
+            return;
+        }
+
+        if (!confirm(`"${invoice.invoice_number}" numaralı faturayı iptal etmek istediğinize emin misiniz?\n\nBu işlem:\n• Stoklara eklenen ürünleri geri düşecek\n• Cariye işlenen borcu iptal edecek\n• Fatura durumunu değiştirecek`)) {
+            return;
+        }
+
+        setProcessing(true);
+        try {
+            // 1. Get credentials
+            const savedConfig = localStorage.getItem('birfatura_config');
+            if (!savedConfig) {
+                alert("API ayarları bulunamadı. Stok ve cari iptali manuel yapılmalıdır.");
+                // Still update status even without API
+                await invoicesAPI.updateStatus(invoice.id, 'İşlendi ancak iptal edildi');
+                loadInvoices();
+                setProcessing(false);
+                return;
+            }
+            const config = JSON.parse(savedConfig);
+
+            // 2. Fetch invoice details again (to get line items)
+            const payload = {
+                "documentUUID": invoice.uuid,
+                "inOutCode": "IN",
+                "systemTypeCodes": "EFATURA"
+            };
+
+            const response = await axios.post('/api/birfatura-proxy', {
+                endpoint: 'OutEBelgeV2/DocumentDownloadByUUID',
+                payload: payload,
+                apiKey: config.api_key,
+                secretKey: config.secret_key,
+                integrationKey: config.integration_key
+            });
+
+            if (!response.data.Success) {
+                throw new Error(response.data.Message || "Fatura detayı alınamadı");
+            }
+
+            const contentBase64 = response.data.Result?.content;
+            if (!contentBase64) {
+                // No content - update status anyway
+                await invoicesAPI.updateStatus(invoice.id, 'İşlendi ancak iptal edildi');
+                alert("Fatura detayları alınamadı ama durum güncellendi. Stok ve cari iptali manuel yapılmalıdır.");
+                loadInvoices();
+                setProcessing(false);
+                return;
+            }
+
+            // 3. Parse XML to get line items
+            const zip = new JSZip();
+            const zipContent = await zip.loadAsync(contentBase64, { base64: true });
+            const xmlFileName = Object.keys(zipContent.files).find(name => name.toLowerCase().endsWith('.xml'));
+            if (!xmlFileName) throw new Error("XML bulunamadı");
+            const xmlString = await zipContent.files[xmlFileName].async("string");
+
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+
+            const getText = (parent, tagName) => {
+                if (!parent) return "";
+                const els = parent.getElementsByTagName("*");
+                for (let i = 0; i < els.length; i++) {
+                    if (els[i].localName === tagName) return els[i].textContent;
+                }
+                return "";
+            };
+
+            const getTag = (parent, tagName) => {
+                if (!parent) return null;
+                const els = parent.getElementsByTagName("*");
+                for (let i = 0; i < els.length; i++) {
+                    if (els[i].localName === tagName) return els[i];
+                }
+                return null;
+            };
+
+            // Extract Lines
+            const invoiceLines = Array.from(xmlDoc.getElementsByTagName("*")).filter(el => el.localName === "InvoiceLine");
+            const lines = invoiceLines.map(line => {
+                const itemNode = getTag(line, "Item");
+                const quantity = parseFloat(getText(line, "InvoicedQuantity") || 0);
+                return {
+                    name: getText(itemNode, "Name"),
+                    quantity: quantity
+                };
+            });
+
+            // Get total from invoice record (already in DB)
+            const totalAmount = invoice.total || 0;
+
+            // 4. Reverse Stock Changes
+            for (const line of lines) {
+                // Find matching product by name
+                const product = products.find(p => p.name.toLowerCase() === line.name.toLowerCase());
+                if (product) {
+                    const newStock = Math.max(0, (product.stock || 0) - line.quantity);
+                    await productsAPI.updateStock(product.stock_code, { stock: newStock });
+                }
+            }
+
+            // 5. Reverse Customer Balance - Find supplier by name
+            const supplierParty = getTag(xmlDoc, "AccountingSupplierParty");
+            const partyNameInfo = getTag(supplierParty, "PartyName");
+            const supplierName = getText(partyNameInfo, "Name");
+
+            const matchedCustomer = customers.find(c => c.name.toLowerCase() === supplierName?.toLowerCase());
+            if (matchedCustomer) {
+                await customersAPI.cancelPurchaseTransaction({
+                    customer_id: matchedCustomer.id,
+                    amount: totalAmount,
+                    description: `Fatura İptali (${invoice.invoice_number})`
+                });
+            }
+
+            // 6. Update Invoice Status
+            await invoicesAPI.updateStatus(invoice.id, 'İşlendi ancak iptal edildi');
+
+            alert("Fatura başarıyla iptal edildi!\n• Stoklar düşüldü\n• Cari borcu silindi\n• Durum güncellendi");
+            loadInvoices();
+            // Refresh products to see updated stock
+            loadDataForMatching();
+
+        } catch (error) {
+            console.error("İptal Hatası:", error);
+            alert("İptal sırasında hata oluştu: " + error.message);
         } finally {
             setProcessing(false);
         }
@@ -903,12 +1040,28 @@ export default function InvoicesPage() {
                                         <td className="px-4 py-4 font-medium text-gray-800 text-base truncate max-w-xs" title={invoice.supplier_name}>{invoice.supplier_name || '-'}</td>
                                         <td className="px-4 py-4 font-bold text-gray-900 text-lg">₺{invoice.total?.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td className="px-4 py-4">
-                                            <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${invoice.status === 'Bekliyor' ? 'bg-amber-100 text-amber-600' :
-                                                invoice.status === 'İşlendi' ? 'bg-blue-100 text-blue-600' :
-                                                    'bg-gray-100 text-gray-600'
-                                                }`}>
-                                                {invoice.status || 'Bekliyor'}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${invoice.status === 'Bekliyor' ? 'bg-amber-100 text-amber-600' :
+                                                    invoice.status === 'İşlendi' ? 'bg-green-100 text-green-600' :
+                                                        invoice.status === 'İşlendi ancak iptal edildi' ? 'bg-orange-100 text-orange-600' :
+                                                            invoice.status === 'İşlenmeyecek' ? 'bg-gray-100 text-gray-600' :
+                                                                'bg-gray-100 text-gray-600'
+                                                    }`}>
+                                                    {invoice.status || 'Bekliyor'}
+                                                </span>
+                                                {/* İptal Et butonu - sadece İşlendi durumunda görünür */}
+                                                {invoice.status === 'İşlendi' && (
+                                                    <button
+                                                        onClick={() => handleCancelInvoice(invoice)}
+                                                        disabled={processing}
+                                                        className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                                                        title="Fatura işlemini iptal et"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        İptal
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-2 relative z-10">
@@ -954,7 +1107,7 @@ export default function InvoicesPage() {
             {/* Detail Modal Redesign (Ultra Premium Glassmorphism) */}
             {showDetailModal && selectedInvoice && (
                 <div className="fixed inset-0 bg-gradient-to-br from-slate-900/90 via-indigo-900/80 to-purple-900/90 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-                    <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden ring-1 ring-white/20 relative">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-none shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden ring-1 ring-white/20 relative">
 
                         {/* Decorative Glows */}
                         <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
@@ -1079,17 +1232,17 @@ export default function InvoicesPage() {
                             ) : invoiceDetail ? (
                                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden ring-1 ring-black/5">
                                     <table className="w-full">
-                                        <thead className="bg-gradient-to-r from-slate-800 to-indigo-900 text-white font-bold text-sm uppercase tracking-wide">
+                                        <thead className="bg-gradient-to-r from-slate-800 to-indigo-900 text-white font-bold text-xs uppercase tracking-wide">
                                             <tr>
-                                                <th className="px-6 py-5 text-center w-16">#</th>
-                                                <th className="px-6 py-5 text-left">Ürün / Hizmet</th>
-                                                <th className="px-6 py-5 text-center w-28">Miktar</th>
-                                                <th className="px-6 py-5 text-right w-36">Birim Fiyat</th>
-                                                <th className="px-6 py-5 text-center w-24">İsk. %</th>
-                                                <th className="px-6 py-5 text-center w-24">KDV %</th>
-                                                <th className="px-6 py-5 text-right w-36">Net Tutar</th>
-                                                <th className="px-6 py-5 text-center w-32">Durum</th>
-                                                <th className="px-6 py-5 text-center w-48">Eşleştirme</th>
+                                                <th className="px-4 py-4 text-center w-12">#</th>
+                                                <th className="px-4 py-4 text-left min-w-[200px]">Ürün / Hizmet</th>
+                                                <th className="px-4 py-4 text-center w-20">Miktar</th>
+                                                <th className="px-4 py-4 text-right w-40">Birim Fiyat<br /><span className="text-[10px] text-indigo-300 font-normal">(KDV Dahil)</span></th>
+                                                <th className="px-4 py-4 text-center w-16">İsk.%</th>
+                                                <th className="px-4 py-4 text-center w-16">KDV%</th>
+                                                <th className="px-4 py-4 text-right w-40">Net Tutar<br /><span className="text-[10px] text-indigo-300 font-normal">(KDV Dahil)</span></th>
+                                                <th className="px-4 py-4 text-center w-24">Durum</th>
+                                                <th className="px-4 py-4 text-center w-32">Eşleştirme</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
@@ -1099,45 +1252,45 @@ export default function InvoicesPage() {
 
                                                 return (
                                                     <tr key={index} className={`hover:bg-indigo-50/50 transition-all duration-200 group ${isMatched ? 'bg-emerald-50/50 hover:bg-emerald-50/70' : ''}`}>
-                                                        <td className="px-6 py-5 text-center">
-                                                            <span className="text-gray-400 font-bold text-base">{index + 1}</span>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <span className="text-gray-400 font-bold text-sm">{index + 1}</span>
                                                         </td>
-                                                        <td className="px-6 py-5">
-                                                            <div className="font-bold text-gray-900 text-base">{item.name}</div>
-                                                            <div className="flex items-center gap-2 mt-2">
+                                                        <td className="px-4 py-3">
+                                                            <div className="font-semibold text-gray-900 text-sm">{item.name}</div>
+                                                            <div className="flex items-center gap-2 mt-1">
                                                                 {matchedProduct ? (
-                                                                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 shadow-sm">
-                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                                                    <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
                                                                         {matchedProduct.stock_code}
                                                                     </div>
                                                                 ) : (
-                                                                    <span className="text-xs font-bold text-gray-500 bg-gray-200 px-3 py-1 rounded-full">⚠ Eşleşmedi</span>
+                                                                    <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">⚠ Eşleşmedi</span>
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-5 text-center">
-                                                            <span className="font-bold text-gray-800 text-lg bg-indigo-100 px-4 py-2 rounded-xl">{item.quantity}</span>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <span className="font-bold text-gray-800 text-sm bg-indigo-100 px-3 py-1 rounded-lg">{item.quantity}</span>
                                                         </td>
-                                                        <td className="px-6 py-5 text-right">
-                                                            <span className="font-mono text-gray-700 text-base font-semibold">₺{item.unit_price.toFixed(2)}</span>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <span className="font-mono text-gray-700 text-sm font-semibold">₺{item.unit_price.toFixed(2)}</span>
                                                         </td>
-                                                        <td className="px-6 py-5 text-center">
+                                                        <td className="px-4 py-3 text-center">
                                                             {item.discount > 0 ? (
-                                                                <span className="text-red-600 font-bold text-base bg-red-100 px-3 py-1 rounded-lg">%{((item.discount / (item.quantity * item.unit_price)) * 100).toFixed(0)}</span>
-                                                            ) : <span className="text-gray-400 text-base">-</span>}
+                                                                <span className="text-red-600 font-bold text-xs bg-red-100 px-2 py-0.5 rounded">%{((item.discount / (item.quantity * item.unit_price)) * 100).toFixed(0)}</span>
+                                                            ) : <span className="text-gray-400 text-sm">-</span>}
                                                         </td>
-                                                        <td className="px-6 py-5 text-center">
-                                                            <span className="font-bold text-indigo-700 text-base bg-indigo-100 px-3 py-1 rounded-lg">%{item.vat_rate}</span>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <span className="font-bold text-indigo-700 text-xs bg-indigo-100 px-2 py-0.5 rounded">%{item.vat_rate}</span>
                                                         </td>
-                                                        <td className="px-6 py-5 text-right">
-                                                            <span className="font-bold text-gray-900 text-lg">₺{item.line_net.toFixed(2)}</span>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <span className="font-bold text-gray-900 text-sm">₺{item.line_net.toFixed(2)}</span>
                                                         </td>
-                                                        <td className="px-6 py-5 text-center">
-                                                            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border border-amber-200">
+                                                        <td className="px-4 py-3 text-center">
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border border-amber-200">
                                                                 ⏳ Bekliyor
                                                             </span>
                                                         </td>
-                                                        <td className="px-6 py-5 text-center">
+                                                        <td className="px-4 py-3 text-center">
                                                             <div className="flex justify-center">
                                                                 {isMatched ? (
                                                                     <button
@@ -1145,9 +1298,9 @@ export default function InvoicesPage() {
                                                                             setMatchModalData({ index, line: item });
                                                                             setMatchModalOpen(true);
                                                                         }}
-                                                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 shadow-lg shadow-emerald-500/25 transition-all text-sm font-bold transform hover:scale-105"
+                                                                        className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:from-emerald-600 hover:to-green-700 shadow-md transition-all text-xs font-bold"
                                                                     >
-                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                                                         Değiştir
                                                                     </button>
                                                                 ) : (
@@ -1156,9 +1309,9 @@ export default function InvoicesPage() {
                                                                             setMatchModalData({ index, line: item });
                                                                             setMatchModalOpen(true);
                                                                         }}
-                                                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/25 transition-all text-sm font-bold transform hover:scale-105"
+                                                                        className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 shadow-md transition-all text-xs font-bold"
                                                                     >
-                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                                                         Eşleştir
                                                                     </button>
                                                                 )}

@@ -379,6 +379,46 @@ export const customersAPI = {
         if (updateError) throw updateError;
         return { data: { success: true, message: 'Cari hesaba işlendi.' } };
     },
+    cancelPurchaseTransaction: async (data) => {
+        // This reverses a processed invoice - increases customer balance (removes debt)
+        const { customer_id, amount, description } = data;
+
+        const { data: customer, error: fetchError } = await supabase
+            .from('customers')
+            .select('balance')
+            .eq('id', customer_id)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        const currentBalance = parseFloat(customer?.balance) || 0;
+        const txAmount = parseFloat(amount) || 0;
+        const newBalance = currentBalance + txAmount; // Cancellation increases balance (removes debt)
+
+        // Add record to payments table as cancellation
+        const { error: txError } = await supabase
+            .from('customer_payments')
+            .insert({
+                customer_id: customer_id,
+                amount: -txAmount, // Negative to indicate reversal
+                payment_type: 'Fatura İptali',
+                description: description || 'Fatura İptali',
+                created_at: new Date().toISOString()
+            });
+
+        if (txError) console.error('Cancel transaction record error:', txError);
+
+        const { error: updateError } = await supabase
+            .from('customers')
+            .update({
+                balance: newBalance,
+                last_transaction_date: new Date().toISOString()
+            })
+            .eq('id', customer_id);
+
+        if (updateError) throw updateError;
+        return { data: { success: true, message: 'Fatura iptali cariye işlendi.' } };
+    },
     deletePayment: async (id, customerId, amount) => {
         // 1. Delete payment record
         const { error: deleteError } = await supabase

@@ -59,6 +59,8 @@ export default function SecretTokenModal({ isOpen, onClose }) {
         }
     };
 
+    if (!isOpen) return null;
+
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 font-sans animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">

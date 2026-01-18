@@ -72,10 +72,20 @@ export default function InvoicesPage() {
 
     useEffect(() => {
         loadInvoices();
-        const savedShowTotal = localStorage.getItem('invoices_show_total');
-        if (savedShowTotal !== null) {
-            setShowTotal(savedShowTotal === 'true');
-        }
+        // Load visibility setting from DB
+        const loadVisibility = async () => {
+            try {
+                const res = await settingsAPI.get('invoices_show_total');
+                if (res.data !== null && res.data !== undefined) {
+                    // Handle boolean or string 'true'/'false'
+                    const val = res.data;
+                    setShowTotal(val === true || val === 'true');
+                }
+            } catch (e) {
+                console.error("Error loading settings", e);
+            }
+        };
+        loadVisibility();
     }, []);
 
     const loadInvoices = async () => {
@@ -998,7 +1008,7 @@ export default function InvoicesPage() {
                     <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white text-center">
                         <p className="text-violet-100 text-sm">Toplam Tutar</p>
                         <p className="text-2xl font-bold">
-                            {showTotal ? `₺${totalAmount.toLocaleString('tr-TR')}` : '******'}
+                            {showTotal ? `₺${totalAmount.toLocaleString('tr-TR')}` : '*************'}
                         </p>
                     </div>
                 </div>

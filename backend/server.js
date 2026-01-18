@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
 dotenv.config();
 
@@ -30,6 +31,56 @@ try {
 
 app.use(cors());
 app.use(express.json());
+
+// --- BIRFATURA API PROXY ---
+// Frontend'in CORS sorunu olmadan BirFatura API'sine erişmesi için proxy
+app.post('/api/birfatura-proxy', async (req, res) => {
+    try {
+        const { endpoint, payload, apiKey, secretKey, integrationKey } = req.body;
+
+        if (!endpoint || !apiKey || !secretKey || !integrationKey) {
+            return res.status(400).json({
+                Success: false,
+                Message: 'Eksik parametre: endpoint, apiKey, secretKey ve integrationKey gerekli.'
+            });
+        }
+
+        const url = `https://uygulama.edonustur.com/api/${endpoint}`;
+
+        const headers = {
+            "X-Api-Key": apiKey,
+            "X-Secret-Key": secretKey,
+            "X-Integration-Key": integrationKey,
+            "Content-Type": "application/json"
+        };
+
+        console.log(`[BirFatura Proxy] POST ${url}`);
+
+        const response = await axios.post(url, payload, {
+            headers,
+            timeout: 30000
+        });
+
+        res.json(response.data);
+    } catch (error) {
+        console.error('[BirFatura Proxy] Error:', error.message);
+
+        if (error.response) {
+            // BirFatura API'den gelen hata
+            res.status(error.response.status).json({
+                Success: false,
+                Message: error.response.data?.Message || error.message,
+                StatusCode: error.response.status
+            });
+        } else {
+            // Ağ hatası vb.
+            res.status(500).json({
+                Success: false,
+                Message: 'BirFatura API\'ye bağlanılamadı: ' + error.message
+            });
+        }
+    }
+});
 
 // --- HELPER: Date Parsing (BirFatura format: DD.MM.YYYY HH:mm:ss) ---
 function parseDate(dateStr) {

@@ -109,23 +109,20 @@ export default function InvoicesPage() {
             }
             const config = JSON.parse(savedConfig);
 
-            // Common Headers
-            const headers = {
-                "X-Api-Key": config.api_key,
-                "X-Secret-Key": config.secret_key,
-                "X-Integration-Key": config.integration_key,
-                "Content-Type": "application/json"
-            };
-
             // --- ADIM 1: HAM VERİYİ İNDİR ---
-            const urlDownload = "/birfatura/api/OutEBelgeV2/DocumentDownloadByUUID";
             const payloadDownload = {
                 "documentUUID": invoice.uuid,
                 "inOutCode": "IN",
                 "systemTypeCodes": "EFATURA"
             };
 
-            const resp1 = await axios.post(urlDownload, payloadDownload, { headers, timeout: 30000 });
+            const resp1 = await axios.post('/api/birfatura-proxy', {
+                endpoint: 'OutEBelgeV2/DocumentDownloadByUUID',
+                payload: payloadDownload,
+                apiKey: config.api_key,
+                secretKey: config.secret_key,
+                integrationKey: config.integration_key
+            }, { timeout: 30000 });
 
             if (!resp1.data?.Success) {
                 throw new Error("İndirme Başarısız: " + (resp1.data?.Message || "Bilinmeyen hata"));
@@ -137,13 +134,18 @@ export default function InvoicesPage() {
             }
 
             // --- ADIM 2: ORİJİNAL HTML GÖRÜNTÜSÜNÜ İSTE ---
-            const urlPreview = "/birfatura/api/OutEBelgeV2/PreviewDocumentReturnHTML";
             const payloadPreview = {
                 "documentBytes": contentBase64,
                 "systemTypeCodes": "EFATURA"
             };
 
-            const resp2 = await axios.post(urlPreview, payloadPreview, { headers, timeout: 30000 });
+            const resp2 = await axios.post('/api/birfatura-proxy', {
+                endpoint: 'OutEBelgeV2/PreviewDocumentReturnHTML',
+                payload: payloadPreview,
+                apiKey: config.api_key,
+                secretKey: config.secret_key,
+                integrationKey: config.integration_key
+            }, { timeout: 30000 });
 
             if (!resp2.data?.Success) {
                 throw new Error("Önizleme Başarısız: " + (resp2.data?.Message || "Bilinmeyen hata"));
@@ -209,13 +211,6 @@ export default function InvoicesPage() {
             const startStr = filters.startDate ? `${filters.startDate}T00:00:00Z` : new Date(new Date().setDate(new Date().getDate() - 30)).toISOString();
             const endStr = filters.endDate ? `${filters.endDate}T23:59:59Z` : new Date().toISOString();
 
-            const url = "/birfatura/api/OutEBelgeV2/GetInBoxDocumentsWithDetail";
-            const headers = {
-                "X-Api-Key": config.api_key,
-                "X-Secret-Key": config.secret_key,
-                "X-Integration-Key": config.integration_key,
-                "Content-Type": "application/json"
-            };
             const payload = {
                 "systemType": "EFATURA",
                 "startDateTime": startStr,
@@ -225,9 +220,14 @@ export default function InvoicesPage() {
                 "pageNumber": 0
             };
 
-            // 3. Fetch from BirFatura
-            // Note: This requires CORS to be allowed or a proxy. Assuming desktop/electron environment or proxy.
-            const bfResponse = await axios.post(url, payload, { headers });
+            // 3. Fetch from BirFatura via Backend Proxy (avoids CORS issues)
+            const bfResponse = await axios.post('/api/birfatura-proxy', {
+                endpoint: 'OutEBelgeV2/GetInBoxDocumentsWithDetail',
+                payload: payload,
+                apiKey: config.api_key,
+                secretKey: config.secret_key,
+                integrationKey: config.integration_key
+            });
 
             if (bfResponse.data?.Success) {
                 const rawInvoices = bfResponse.data.Result?.InBoxInvoices?.objects || [];
@@ -295,21 +295,20 @@ export default function InvoicesPage() {
             }
             const config = JSON.parse(savedConfig);
 
-            // 1. Fetch Detailed Content (ZIP/XML)
-            const url = "/birfatura/api/OutEBelgeV2/DocumentDownloadByUUID";
-            const headers = {
-                "X-Api-Key": config.api_key,
-                "X-Secret-Key": config.secret_key,
-                "X-Integration-Key": config.integration_key,
-                "Content-Type": "application/json"
-            };
+            // 1. Fetch Detailed Content (ZIP/XML) via Backend Proxy
             const payload = {
                 "documentUUID": invoice.uuid,
                 "inOutCode": "IN",
                 "systemTypeCodes": "EFATURA"
             };
 
-            const response = await axios.post(url, payload, { headers });
+            const response = await axios.post('/api/birfatura-proxy', {
+                endpoint: 'OutEBelgeV2/DocumentDownloadByUUID',
+                payload: payload,
+                apiKey: config.api_key,
+                secretKey: config.secret_key,
+                integrationKey: config.integration_key
+            });
 
             if (!response.data.Success) {
                 throw new Error(response.data.Message || "İçerik alınamadı");

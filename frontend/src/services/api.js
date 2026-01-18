@@ -205,6 +205,38 @@ export const productsAPI = {
         if (updateError) throw updateError;
         return { data: { success: true, image_url: data.publicUrl } };
     },
+    repairStockCode: async (stockCode) => {
+        // 1. Try to find the product (ignoring company filter to catch ghosts if possible)
+        const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .eq('stock_code', stockCode);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            // Found it. Try to delete.
+            const { error: delError } = await supabase
+                .from('products')
+                .delete()
+                .eq('stock_code', stockCode);
+
+            if (delError) {
+                // If delete fails (likely FK), rename it.
+                const newCode = `${stockCode}_DEL_${Math.floor(Date.now() / 1000)}`;
+                const { error: updError } = await supabase
+                    .from('products')
+                    .update({ stock_code: newCode })
+                    .eq('stock_code', stockCode);
+
+                if (updError) throw updError;
+                return { success: true, message: `Kayıt silinemedi (bağlı veriler var), ancak ${newCode} olarak yeniden adlandırıldı. Artık ${stockCode} kullanılabilir.` };
+            }
+            return { success: true, message: 'Eski kayıt başarıyla veritabanından silindi.' };
+        } else {
+            return { success: false, message: 'Bu stok koduna sahip kayıt bulunamadı.' };
+        }
+    },
 };
 
 // ============ CUSTOMERS API ============

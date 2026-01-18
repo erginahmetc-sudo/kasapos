@@ -190,15 +190,9 @@ export default function ProductsPage() {
     };
 
     const generateStockCode = () => {
-        const prefix = 'STK-';
-        let count = products.length + 1;
-        let code = prefix + String(count).padStart(4, '0');
-
-        // Ensure uniqueness
-        while (products.some(p => p.stock_code === code)) {
-            count++;
-            code = prefix + String(count).padStart(4, '0');
-        }
+        // Use random 6 digits to generate a unique code and avoid conflicts with deleted items in DB
+        const randomNum = Math.floor(100000 + Math.random() * 900000);
+        const code = `STK-${randomNum}`;
         return code;
     };
 

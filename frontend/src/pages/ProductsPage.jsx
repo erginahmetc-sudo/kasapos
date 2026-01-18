@@ -189,11 +189,24 @@ export default function ProductsPage() {
         });
     };
 
+    const generateStockCode = () => {
+        const prefix = 'STK-';
+        let count = products.length + 1;
+        let code = prefix + String(count).padStart(4, '0');
+
+        // Ensure uniqueness
+        while (products.some(p => p.stock_code === code)) {
+            count++;
+            code = prefix + String(count).padStart(4, '0');
+        }
+        return code;
+    };
+
     const openAddModal = () => {
         setEditingProduct(null);
         setFormData({
             name: '',
-            stock_code: '',
+            stock_code: generateStockCode(),
             barcode: '',
             price: '',
             stock: '',
@@ -240,7 +253,12 @@ export default function ProductsPage() {
             setShowModal(false);
             loadProducts();
         } catch (error) {
-            alert('Hata: ' + (error.response?.data?.message || error.message));
+            const msg = error.response?.data?.message || error.message;
+            if (msg.includes('products_stock_code_key')) {
+                alert('Hata: Bu stok kodu zaten kullanımda! Lütfen başka bir kod giriniz.');
+            } else {
+                alert('Hata: ' + msg);
+            }
         }
     };
 

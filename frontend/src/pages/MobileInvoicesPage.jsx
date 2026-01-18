@@ -193,6 +193,8 @@ export default function MobileInvoicesPage() {
 
             // 4. Auto-Match Supplier
             const supplierParty = getTag(xmlDoc, "AccountingSupplierParty");
+            const partyIdent = getTag(supplierParty, "PartyIdentification");
+            const supplierTax = getText(partyIdent, "ID");
             const partyNameInfo = getTag(supplierParty, "PartyName");
             const supplierName = getText(partyNameInfo, "Name");
 
@@ -240,7 +242,12 @@ export default function MobileInvoicesPage() {
                 };
             });
 
-            setInvoiceDetail({ lines, total_amount: parseFloat(invoice.total || 0), supplier_name: supplierName });
+            setInvoiceDetail({
+                lines,
+                total_amount: parseFloat(invoice.total || 0),
+                supplier_name: supplierName,
+                supplier_tax: supplierTax // Add tax info
+            });
 
             // 6. Auto-Match Products
             const initialMatches = {};
@@ -321,6 +328,44 @@ export default function MobileInvoicesPage() {
             alert("Hata: " + error.message);
         } finally {
             setProcessing(false);
+        }
+    };
+
+    const handleAddNewCustomer = async () => {
+        if (!invoiceDetail?.supplier_name) return;
+
+        if (!confirm(`"${invoiceDetail.supplier_name}" sisteme yeni cari olarak eklensin mi?`)) return;
+
+        try {
+            const newCustomer = {
+                name: invoiceDetail.supplier_name,
+                tax_number: invoiceDetail.supplier_tax || '',
+                type: 'Tedarikçi',
+                phone: '',
+                email: '',
+                address: ''
+            };
+
+            const res = await customersAPI.add(newCustomer);
+            if (res.data?.success) {
+                // Refresh customers
+                const custRes = await customersAPI.getAll();
+                const newCustomers = custRes.data?.customers || [];
+                setCustomers(newCustomers);
+
+                // Try to find and select
+                const created = newCustomers.find(c => c.name === newCustomer.name);
+                if (created) {
+                    setSupplierMatch(created.id);
+                    alert("Cari eklendi ve seçildi.");
+                } else {
+                    alert("Cari eklendi ancak listede bulunamadı.");
+                }
+            } else {
+                alert("Ekleme başarısız.");
+            }
+        } catch (err) {
+            alert("Hata: " + err.message);
         }
     };
 
@@ -571,6 +616,12 @@ export default function MobileInvoicesPage() {
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
+                                    <button
+                                        onClick={handleAddNewCustomer}
+                                        className="mt-2 w-full py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-200 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <span>➕</span> Yeni Cari Olarak Ekle
+                                    </button>
                                 </div>
 
                                 {/* 2. Products */}
@@ -585,9 +636,19 @@ export default function MobileInvoicesPage() {
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div className="flex-1">
                                                         <p className="font-bold text-gray-800 text-sm">{line.name}</p>
-                                                        <div className="flex gap-2 mt-1 text-xs text-gray-500">
-                                                            <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-700 font-bold">{line.quantity} Adet</span>
-                                                            <span>x {line.unit_price.toFixed(2)} TL</span>
+                                                        <div className="mt-2 space-y-1 text-xs">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-700 font-bold">{line.quantity} Adet</span>
+                                                                <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-bold">KDV %{line.vat_rate}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-gray-500">
+                                                                <span>KDV Hariç Fiyat:</span>
+                                                                <span className="font-mono">{line.raw_unit_price.toFixed(2)} TL</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-gray-800 font-bold">
+                                                                <span>KDV Dahil Fiyat:</span>
+                                                                <span className="font-mono">{line.unit_price.toFixed(2)} TL</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">

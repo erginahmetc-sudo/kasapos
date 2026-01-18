@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { invoicesAPI, productsAPI, customersAPI } from '../services/api';
+import { invoicesAPI, productsAPI, customersAPI, settingsAPI } from '../services/api';
 import axios from 'axios';
 import JSZip from 'jszip';
 import pako from 'pako';
@@ -89,6 +89,17 @@ export default function InvoicesPage() {
         }
     };
 
+    // Helper to get BirFatura Config from DB
+    const getBirFaturaConfig = async () => {
+        const [k1, k2, k3] = await Promise.all([
+            settingsAPI.get('birfatura_api_key'),
+            settingsAPI.get('birfatura_secret_key'),
+            settingsAPI.get('birfatura_integration_key')
+        ]);
+        if (!k1.data || !k2.data || !k3.data) return null;
+        return { api_key: k1.data, secret_key: k2.data, integration_key: k3.data };
+    };
+
     const handleViewInvoice = async (invoice) => {
         if (!invoice.uuid) {
             alert("Fatura UUID bulunamadı.");
@@ -101,13 +112,13 @@ export default function InvoicesPage() {
 
         try {
             // 1. Get credentials
-            const savedConfig = localStorage.getItem('birfatura_config');
-            if (!savedConfig) {
+            // 1. Get credentials
+            const config = await getBirFaturaConfig();
+            if (!config) {
                 alert("API ayarları eksik. Lütfen ayarlardan BirFatura entegrasyonunu kontrol edin.");
                 setViewLoading(false);
                 return;
             }
-            const config = JSON.parse(savedConfig);
 
             // --- ADIM 1: HAM VERİYİ İNDİR ---
             const payloadDownload = {
@@ -193,15 +204,10 @@ export default function InvoicesPage() {
         setSyncing(true);
         try {
             // 1. Get credentials
-            const savedConfig = localStorage.getItem('birfatura_config');
-            if (!savedConfig) {
+            // 1. Get credentials
+            const config = await getBirFaturaConfig();
+            if (!config) {
                 alert("Lütfen önce Ayarlar > Entegrasyon Ayarları bölümünden API anahtarlarını girin.");
-                setSyncing(false);
-                return;
-            }
-            const config = JSON.parse(savedConfig);
-            if (!config.api_key || !config.secret_key || !config.integration_key) {
-                alert("Eksik API anahtarı. Lütfen ayarları kontrol edin.");
                 setSyncing(false);
                 return;
             }
@@ -283,8 +289,9 @@ export default function InvoicesPage() {
 
         try {
             // 0. Pre-check credentials presence to avoid ugly errors
-            const savedConfig = localStorage.getItem('birfatura_config');
-            if (!savedConfig) {
+            // 0. Pre-check credentials presence to avoid ugly errors
+            const config = await getBirFaturaConfig();
+            if (!config) {
                 if (confirm("Fatura detaylarını görüntülemek için API anahtarlarını girmeniz gerekmektedir. Ayarlara gitmek ister misiniz?")) {
                     // Simple redirect for now, or just close
                     window.location.href = '/settings';
@@ -293,7 +300,6 @@ export default function InvoicesPage() {
                 setDetailLoading(false);
                 return;
             }
-            const config = JSON.parse(savedConfig);
 
             // 1. Fetch Detailed Content (ZIP/XML) via Backend Proxy
             const payload = {
@@ -647,8 +653,9 @@ export default function InvoicesPage() {
         setProcessing(true);
         try {
             // 1. Get credentials
-            const savedConfig = localStorage.getItem('birfatura_config');
-            if (!savedConfig) {
+            // 1. Get credentials
+            const config = await getBirFaturaConfig();
+            if (!config) {
                 alert("API ayarları bulunamadı. Stok ve cari iptali manuel yapılmalıdır.");
                 // Still update status even without API
                 await invoicesAPI.updateStatus(invoice.id, 'İşlendi ancak iptal edildi');
@@ -656,7 +663,6 @@ export default function InvoicesPage() {
                 setProcessing(false);
                 return;
             }
-            const config = JSON.parse(savedConfig);
 
             // 2. Fetch invoice details again (to get line items)
             const payload = {

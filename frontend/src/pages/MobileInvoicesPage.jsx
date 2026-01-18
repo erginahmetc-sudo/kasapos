@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
-import { invoicesAPI, productsAPI, customersAPI } from '../services/api';
+import { invoicesAPI, productsAPI, customersAPI, settingsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import JSZip from 'jszip';
 import axios from 'axios';
@@ -143,10 +143,23 @@ export default function MobileInvoicesPage() {
         setSupplierMatch(null);
 
         try {
-            // 1. Get credentials
-            const savedConfig = localStorage.getItem('birfatura_config');
-            if (!savedConfig) throw new Error("API ayarları bulunamadı.");
-            const config = JSON.parse(savedConfig);
+            // 1. Get credentials (ALWAYS DB)
+            // Cihazlara kaydetme istenmediği için her seferinde DB'den çekiyoruz.
+            const [k1, k2, k3] = await Promise.all([
+                settingsAPI.get('birfatura_api_key'),
+                settingsAPI.get('birfatura_secret_key'),
+                settingsAPI.get('birfatura_integration_key')
+            ]);
+
+            if (!k1.data || !k2.data || !k3.data) {
+                throw new Error("API ayarları veritabanında bulunamadı. Lütfen Ayarlar > Entegrasyon Ayarları bölümünden bilgileri girin.");
+            }
+
+            const config = {
+                api_key: k1.data,
+                secret_key: k2.data,
+                integration_key: k3.data
+            };
 
             // 2. Fetch Invoice XML
             const payload = {

@@ -40,12 +40,7 @@ export default function IntegrationSettingsModal({ isOpen, onClose }) {
             await settingsAPI.set('birfatura_secret_key', secretKey.trim());
             await settingsAPI.set('birfatura_integration_key', integrationKey.trim());
 
-            // Also update localStorage for backward compatibility with existing invoice pages
-            localStorage.setItem('birfatura_config', JSON.stringify({
-                api_key: apiKey.trim(),
-                secret_key: secretKey.trim(),
-                integration_key: integrationKey.trim()
-            }));
+
 
             alert("Ayarlar başarıyla kaydedildi.");
             onClose();

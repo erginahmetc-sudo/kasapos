@@ -1,19 +1,36 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
-import { invoicesAPI, productsAPI } from '../services/api';
+import { invoicesAPI, productsAPI, customersAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import JSZip from 'jszip';
+import axios from 'axios';
 
 export default function MobileInvoicesPage() {
     const { logout } = useAuth();
     const [invoices, setInvoices] = useState([]);
     const [products, setProducts] = useState([]);
+    const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('Tümü');
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
+
+    // Processing States
+    const [showProcessModal, setShowProcessModal] = useState(false);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [invoiceDetail, setInvoiceDetail] = useState(null);
+    const [productMatches, setProductMatches] = useState({});
+    const [supplierMatch, setSupplierMatch] = useState(null);
+    const [processing, setProcessing] = useState(false);
+
+    // Mobile Product Match Modal States
+    const [showMatchModal, setShowMatchModal] = useState(false);
+    const [matchModalData, setMatchModalData] = useState(null); // { index, line }
+    const [matchSearch, setMatchSearch] = useState('');
+
 
     // Price Check Modal States
     const [showPriceCheckModal, setShowPriceCheckModal] = useState(false);
@@ -28,12 +45,14 @@ export default function MobileInvoicesPage() {
 
     const loadData = async () => {
         try {
-            const [invRes, prodRes] = await Promise.all([
+            const [invRes, prodRes, custRes] = await Promise.all([
                 invoicesAPI.getAll(),
-                productsAPI.getAll()
+                productsAPI.getAll(),
+                customersAPI.getAll()
             ]);
             setInvoices(invRes.data?.invoices || []);
             setProducts(prodRes.data?.products || []);
+            setCustomers(custRes.data?.customers || []);
         } catch (error) {
             console.error('Veri yüklenirken hata:', error);
         } finally {
@@ -50,8 +69,11 @@ export default function MobileInvoicesPage() {
                 setSyncing(false);
                 return;
             }
-            // Simplified sync - in production this would call the API
-            alert('Senkronizasyon başlatıldı...');
+
+            // Trigger sync on backend via simple fetch if needed, or just reload
+            // For now assuming the button just refreshes data as per original code, 
+            // but normally you might want to call invoicesAPI.sync() if it exists.
+            alert('Senkronizasyon kontrol ediliyor...');
             await loadData();
         } catch (error) {
             alert('Senkronizasyon hatası: ' + error.message);
@@ -91,6 +113,204 @@ export default function MobileInvoicesPage() {
         processed: invoices.filter(i => i.status === 'İşlendi').length,
         totalAmount: invoices.reduce((sum, i) => sum + (parseFloat(i.total) || 0), 0)
     };
+
+    // --- HELPERS FROM DESKTOP ---
+    const getText = (parent, tagName) => {
+        if (!parent) return "";
+        const els = parent.getElementsByTagName("*");
+        for (let i = 0; i < els.length; i++) {
+            if (els[i].localName === tagName) return els[i].textContent;
+        }
+        return "";
+    };
+
+    const getTag = (parent, tagName) => {
+        if (!parent) return null;
+        const els = parent.getElementsByTagName("*");
+        for (let i = 0; i < els.length; i++) {
+            if (els[i].localName === tagName) return els[i];
+        }
+        return null;
+    };
+
+    const openProcessModal = async (invoice) => {
+        setSelectedInvoice(invoice);
+        setShowDetail(false); // Close simple detail modal
+        setShowProcessModal(true); // Open process modal
+        setDetailLoading(true);
+        setInvoiceDetail(null);
+        setProductMatches({});
+        setSupplierMatch(null);
+
+        try {
+            // 1. Get credentials
+            const savedConfig = localStorage.getItem('birfatura_config');
+            if (!savedConfig) throw new Error("API ayarları bulunamadı.");
+            const config = JSON.parse(savedConfig);
+
+            // 2. Fetch Invoice XML
+            const payload = {
+                "documentUUID": invoice.uuid,
+                "inOutCode": "IN",
+                "systemTypeCodes": "EFATURA"
+            };
+
+            const response = await axios.post('/api/birfatura-proxy', {
+                endpoint: 'OutEBelgeV2/DocumentDownloadByUUID',
+                payload: payload,
+                apiKey: config.api_key,
+                secretKey: config.secret_key,
+                integrationKey: config.integration_key
+            });
+
+            if (!response.data.Success) throw new Error(response.data.Message || "Fatura detayı alınamadı");
+
+            const contentBase64 = response.data.Result?.content;
+            if (!contentBase64) throw new Error("Dosya içeriği boş");
+
+            // 3. Unzip & Parse
+            const zip = new JSZip();
+            const zipContent = await zip.loadAsync(contentBase64, { base64: true });
+            const xmlFileName = Object.keys(zipContent.files).find(name => name.toLowerCase().endsWith('.xml'));
+            if (!xmlFileName) throw new Error("XML bulunamadı");
+            const xmlString = await zipContent.files[xmlFileName].async("string");
+
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+
+            // 4. Auto-Match Supplier
+            const supplierParty = getTag(xmlDoc, "AccountingSupplierParty");
+            const partyNameInfo = getTag(supplierParty, "PartyName");
+            const supplierName = getText(partyNameInfo, "Name");
+
+            // Fuzzy match supplier
+            const matchedCustomer = customers.find(c =>
+                c.name.toLowerCase().includes(supplierName.toLowerCase()) ||
+                supplierName.toLowerCase().includes(c.name.toLowerCase())
+            );
+            if (matchedCustomer) setSupplierMatch(matchedCustomer.id);
+
+
+            // 5. Parse Lines
+            const invoiceLines = Array.from(xmlDoc.getElementsByTagName("*")).filter(el => el.localName === "InvoiceLine");
+            const lines = invoiceLines.map(line => {
+                const itemNode = getTag(line, "Item");
+                const priceNode = getTag(line, "Price");
+                const taxTotal = getTag(line, "TaxTotal");
+                const taxSubtotal = getTag(taxTotal, "TaxSubtotal");
+                const taxCat = getTag(taxSubtotal, "TaxCategory");
+
+                const quantity = parseFloat(getText(line, "InvoicedQuantity") || 0);
+                const unitPrice = parseFloat(getText(priceNode, "PriceAmount") || 0);
+                const lineExtensionAmount = parseFloat(getText(line, "LineExtensionAmount") || 0);
+                const vatRate = parseFloat(getText(taxCat, "Percent") || 0);
+
+                // Discount calculation (if any)
+                const allowanceCharge = getTag(line, "AllowanceCharge");
+                let discount = 0;
+                if (allowanceCharge && getText(allowanceCharge, "ChargeIndicator") === "false") {
+                    discount = parseFloat(getText(allowanceCharge, "Amount") || 0);
+                }
+
+                // KDV Dahil Net Tutar
+                const vatAmount = lineExtensionAmount * (vatRate / 100);
+                const lineNet = lineExtensionAmount + vatAmount;
+
+                return {
+                    name: getText(itemNode, "Name"),
+                    quantity,
+                    unit_price: unitPrice * (1 + vatRate / 100), // KDV Dahil Birim Fiyat (Approx for display)
+                    raw_unit_price: unitPrice,
+                    line_net: lineNet,
+                    vat_rate: vatRate,
+                    discount
+                };
+            });
+
+            setInvoiceDetail({ lines, total_amount: parseFloat(invoice.total || 0), supplier_name: supplierName });
+
+            // 6. Auto-Match Products
+            const initialMatches = {};
+            lines.forEach((line, index) => {
+                // Exact match attempts
+                const found = products.find(p =>
+                    p.name.toLowerCase() === line.name.toLowerCase() ||
+                    (p.barcode && line.name.includes(p.barcode))
+                );
+                if (found) initialMatches[index] = found.id;
+            });
+            setProductMatches(initialMatches);
+
+        } catch (error) {
+            console.error("Detay hatası:", error);
+            alert("Fatura detayları alınamadı: " + error.message);
+            setShowProcessModal(false);
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    const handleMatch = (product) => {
+        if (!matchModalData) return;
+        setProductMatches(prev => ({
+            ...prev,
+            [matchModalData.index]: product.id
+        }));
+        setShowMatchModal(false);
+        setMatchModalData(null);
+    };
+
+    const handleProcessInvoice = async () => {
+        if (!invoiceDetail || !supplierMatch) {
+            alert("Lütfen bir cari seçin.");
+            return;
+        }
+
+        const allMatched = invoiceDetail.lines.every((_, index) => productMatches[index]);
+        if (!allMatched) {
+            alert("Lütfen tüm ürünleri eşleştirin.");
+            return;
+        }
+
+        if (!confirm("Faturayı işlemek istediğinize emin misiniz?")) return;
+
+        setProcessing(true);
+        try {
+            // A. Update Stocks
+            for (let i = 0; i < invoiceDetail.lines.length; i++) {
+                const line = invoiceDetail.lines[i];
+                const productId = productMatches[i];
+                const product = products.find(p => p.id == productId);
+
+                if (product) {
+                    const newStock = (product.stock || 0) + line.quantity;
+                    // Note: Ideally update buying price too based on raw_unit_price
+                    await productsAPI.updateStock(product.stock_code, { stock: newStock });
+                }
+            }
+
+            // B. Add Transaction
+            await customersAPI.addPurchaseTransaction({
+                customer_id: supplierMatch,
+                amount: invoiceDetail.total_amount,
+                description: `Fatura İşleme (${selectedInvoice.invoice_number})`
+            });
+
+            // C. Update Status
+            await invoicesAPI.updateStatus(selectedInvoice.id, 'İşlendi');
+
+            alert("Fatura başarıyla işlendi!");
+            setShowProcessModal(false);
+            loadData();
+
+        } catch (error) {
+            console.error(error);
+            alert("Hata: " + error.message);
+        } finally {
+            setProcessing(false);
+        }
+    };
+
 
     if (loading) {
         return (
@@ -283,7 +503,203 @@ export default function MobileInvoicesPage() {
                                         ✓ İşlendi
                                     </button>
                                 </div>
+                                <button
+                                    onClick={() => openProcessModal(selectedInvoice)}
+                                    className="w-full mt-3 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30"
+                                >
+                                    ⚡ Cariye ve Stoklara İşle
+                                </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Process Modal (Full Screen) */}
+            {showProcessModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex flex-col animate-slide-up bg-gray-50">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-violet-900 to-indigo-900 text-white p-4 shadow-lg flex-none z-10">
+                        <div className="flex justify-between items-center mb-2">
+                            <h2 className="text-lg font-bold flex items-center gap-2">
+                                ⚡ Fatura İşle
+                            </h2>
+                            <button onClick={() => setShowProcessModal(false)} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-lg">✕</button>
+                        </div>
+                        {invoiceDetail && (
+                            <div>
+                                <p className="text-indigo-200 text-xs">{selectedInvoice?.invoice_number}</p>
+                                <h3 className="font-semibold text-sm truncate">{invoiceDetail.supplier_name}</h3>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {detailLoading ? (
+                            <div className="flex flex-col items-center justify-center py-20">
+                                <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                <p className="mt-3 text-gray-500 text-sm">Fatura Analiz Ediliyor...</p>
+                            </div>
+                        ) : invoiceDetail ? (
+                            <>
+                                {/* 1. Supplier Match */}
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-indigo-100">
+                                    <h4 className="text-xs font-bold text-indigo-600 uppercase mb-2">1. Cari Eşleştirme</h4>
+                                    <select
+                                        value={supplierMatch || ''}
+                                        onChange={(e) => setSupplierMatch(e.target.value)}
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="">-- Cari Seçiniz --</option>
+                                        {customers.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* 2. Products */}
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-bold text-indigo-600 uppercase px-1">2. Ürün Eşleştirme</h4>
+                                    {invoiceDetail.lines.map((line, index) => {
+                                        const matchedId = productMatches[index];
+                                        const matchedProduct = matchedId ? products.find(p => p.id == matchedId) : null;
+
+                                        return (
+                                            <div key={index} className={`bg-white rounded-xl p-3 shadow-sm border ${matchedProduct ? 'border-emerald-200' : 'border-red-200'}`}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex-1">
+                                                        <p className="font-bold text-gray-800 text-sm">{line.name}</p>
+                                                        <div className="flex gap-2 mt-1 text-xs text-gray-500">
+                                                            <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-700 font-bold">{line.quantity} Adet</span>
+                                                            <span>x {line.unit_price.toFixed(2)} TL</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-bold text-gray-900 text-sm">{line.line_net.toFixed(2)} TL</p>
+                                                    </div>
+                                                </div>
+
+                                                {matchedProduct ? (
+                                                    <div className="flex justify-between items-center bg-emerald-50 rounded-lg p-2 border border-emerald-100">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs">✓</div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-emerald-700">{matchedProduct.name}</p>
+                                                                <p className="text-[10px] text-emerald-600">{matchedProduct.stock_code}</p>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                setMatchModalData({ index, line });
+                                                                setShowMatchModal(true);
+                                                                setMatchSearch("");
+                                                            }}
+                                                            className="text-xs text-emerald-600 underline px-2"
+                                                        >
+                                                            Değiştir
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => {
+                                                            setMatchModalData({ index, line });
+                                                            setShowMatchModal(true);
+                                                            setMatchSearch(line.name); // Auto search
+                                                        }}
+                                                        className="w-full py-2 bg-red-50 text-red-600 rounded-lg text-sm font-bold border border-red-100 flex items-center justify-center gap-1"
+                                                    >
+                                                        ⚠️ Eşleştir
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="text-center py-10 text-gray-500">Fatura verisi yüklenemedi.</div>
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    {invoiceDetail && (
+                        <div className="bg-white border-t border-gray-200 p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-20">
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-gray-500 text-sm">Genel Toplam</span>
+                                <span className="text-xl font-black text-gray-800">₺{invoiceDetail.total_amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <button
+                                onClick={handleProcessInvoice}
+                                disabled={processing}
+                                className="w-full py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 disabled:opacity-70"
+                            >
+                                {processing ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        İşleniyor...
+                                    </>
+                                ) : (
+                                    <>🚀 Kaydet ve Stoklara İşle</>
+                                )}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Match Modal (Full Screen) */}
+            {showMatchModal && (
+                <div className="fixed inset-0 bg-white z-[1100] flex flex-col animate-slide-up">
+                    <div className="bg-white border-b border-gray-200 p-3 flex gap-2 items-center shadow-sm">
+                        <button onClick={() => setShowMatchModal(false)} className="w-10 h-10 flex items-center justify-center text-2xl text-gray-500">←</button>
+                        <div className="flex-1 relative">
+                            <input
+                                autoFocus
+                                type="text"
+                                className="w-full bg-gray-100 rounded-xl px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                placeholder="Ürün ara..."
+                                value={matchSearch}
+                                onChange={(e) => setMatchSearch(e.target.value)}
+                            />
+                            <span className="absolute left-3 top-3.5 text-gray-400">🔍</span>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-2">
+                        {matchModalData && (
+                            <div className="bg-violet-50 p-3 rounded-lg mb-2 text-sm text-violet-800 border border-violet-100">
+                                <span className="font-bold">Aranan:</span> {matchModalData.line.name}
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            {products
+                                .filter(product => {
+                                    const search = matchSearch.toLowerCase();
+                                    return !search ||
+                                        product.name.toLowerCase().includes(search) ||
+                                        product.stock_code?.toLowerCase().includes(search) ||
+                                        product.barcode?.includes(search);
+                                })
+                                .slice(0, 50) // Limit results
+                                .map(product => (
+                                    <button
+                                        key={product.id}
+                                        onClick={() => handleMatch(product)}
+                                        className="w-full text-left bg-white p-3 rounded-xl border border-gray-100 shadow-sm active:bg-gray-50 flex justify-between items-center"
+                                    >
+                                        <div>
+                                            <p className="font-bold text-gray-800 text-sm">{product.name}</p>
+                                            <p className="text-xs text-gray-500 font-mono mt-0.5">{product.stock_code}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-violet-600 text-sm">₺{product.price}</p>
+                                            <p className="text-[10px] text-gray-400">Stok: {product.stock}</p>
+                                        </div>
+                                    </button>
+                                ))
+                            }
                         </div>
                     </div>
                 </div>

@@ -951,165 +951,193 @@ export default function InvoicesPage() {
                 </div>
             </main>
 
-            {/* Detail Modal Redesign (Modern & enhanced) */}
+            {/* Detail Modal Redesign (Ultra Premium Glassmorphism) */}
             {showDetailModal && selectedInvoice && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden ring-1 ring-gray-200">
+                <div className="fixed inset-0 bg-gradient-to-br from-slate-900/90 via-indigo-900/80 to-purple-900/90 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden ring-1 ring-white/20 relative">
 
-                        {/* 1. Header (Premium Gradient) */}
-                        <div className="bg-gradient-to-r from-slate-50 to-gray-100 p-8 border-b border-gray-200 grid grid-cols-12 gap-8 items-center relative overflow-hidden">
-                            {/* Decorative background element */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                        {/* Decorative Glows */}
+                        <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
+                        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full blur-3xl opacity-20 pointer-events-none"></div>
 
-                            <div className="col-span-12 md:col-span-8 grid grid-cols-2 gap-x-12 gap-y-4 relative z-10">
-                                <div>
-                                    <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">TEDARİKÇİ BİLGİSİ</span>
-                                    <span className="text-slate-800 font-extrabold text-xl leading-tight block">{invoiceDetail?.supplier_name || selectedInvoice.supplier_name}</span>
-                                    <span className="text-gray-500 text-sm font-medium mt-1 block flex items-center gap-1">
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                        VKN: {invoiceDetail?.supplier_tax_no || '-'}
-                                    </span>
-                                </div>
-                                <div className="text-right md:text-left">
-                                    <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">FATURA NO</span>
-                                    <span className="text-slate-800 font-bold text-xl leading-tight font-mono">{selectedInvoice.invoice_number}</span>
-                                </div>
-
-                                {/* Enhanced Supplier Matcher */}
-                                <div className="col-span-2 mt-2 bg-white/60 p-1.5 rounded-lg border border-indigo-100 flex items-center gap-2 shadow-sm backdrop-blur-sm">
-                                    <span className="text-[10px] font-bold text-indigo-700 whitespace-nowrap px-2 bg-indigo-50 rounded py-1">CARİ EŞLEŞTİRME</span>
-                                    <div className="flex-1 flex gap-2">
-                                        <select
-                                            className="flex-1 bg-transparent border-0 text-sm font-semibold text-gray-700 focus:ring-0 cursor-pointer outline-none"
-                                            value={supplierMatch || ''}
-                                            onChange={(e) => setSupplierMatch(e.target.value)}
-                                        >
-                                            <option value="">-- Bir Cari Seçiniz --</option>
-                                            {customers.map(c => (
-                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                            ))}
-                                        </select>
-
-                                        {!supplierMatch && invoiceDetail?.supplier_name && (
-                                            <button
-                                                onClick={async () => {
-                                                    if (confirm(`"${invoiceDetail.supplier_name}" adında yeni bir cari oluşturulacak. Onaylıyor musunuz?`)) {
-                                                        setProcessing(true);
-                                                        try {
-                                                            const newCustomer = {
-                                                                name: invoiceDetail.supplier_name,
-                                                                tax_number: invoiceDetail.supplier_tax_no,
-                                                                address: '-',
-                                                                phone: '-',
-                                                                balance: 0
-                                                            };
-                                                            const res = await customersAPI.add(newCustomer);
-                                                            if (res.data?.success) {
-                                                                // Refresh customers to get the new one
-                                                                const cRes = await customersAPI.getAll();
-                                                                setCustomers(cRes.data?.customers || []);
-                                                                setSupplierMatch(res.data.id);
-                                                                alert("Cari başarıyla oluşturuldu ve seçildi.");
-                                                            }
-                                                        } catch (e) {
-                                                            alert("Hata: " + e.message);
-                                                        } finally {
-                                                            setProcessing(false);
-                                                        }
-                                                    }
-                                                }}
-                                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow-sm transition-all flex items-center gap-1 whitespace-nowrap"
-                                            >
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                                Yeni Cari Olarak Ekle
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                        {/* 1. Header (Ultra Premium) */}
+                        <div className="bg-gradient-to-r from-slate-800 via-slate-900 to-indigo-900 p-8 border-b border-white/10 relative overflow-hidden">
+                            {/* Animated Background Pattern */}
+                            <div className="absolute inset-0 opacity-10">
+                                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1)_0%,transparent_50%)]"></div>
+                                <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,rgba(79,70,229,0.2)_0%,transparent_50%)]"></div>
                             </div>
 
-                            <div className="col-span-12 md:col-span-4 text-right relative z-10">
-                                <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest block mb-1">GENEL TOPLAM</span>
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 font-extrabold text-4xl tracking-tight">
-                                    {invoiceDetail
-                                        ? `₺${invoiceDetail.total_amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                        : '...'}
-                                </span>
+                            <div className="grid grid-cols-12 gap-8 items-start relative z-10">
+                                {/* Left: Supplier Info */}
+                                <div className="col-span-12 md:col-span-5">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 flex-shrink-0">
+                                            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-1 block">TEDARİKÇİ</span>
+                                            <h2 className="text-white font-extrabold text-2xl leading-tight truncate">{invoiceDetail?.supplier_name || selectedInvoice.supplier_name}</h2>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className="inline-flex items-center gap-1 text-sm text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                                                    VKN: {invoiceDetail?.supplier_tax_no || '-'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Cari Eşleştirme */}
+                                    <div className="mt-5 bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                                        <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-3 block">⚡ CARİ EŞLEŞTİRME</span>
+                                        <div className="flex gap-2">
+                                            <select
+                                                className="flex-1 bg-white/10 border border-white/20 text-white text-sm font-semibold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/20 transition-all cursor-pointer"
+                                                value={supplierMatch || ''}
+                                                onChange={(e) => setSupplierMatch(e.target.value)}
+                                            >
+                                                <option value="" className="text-gray-900">-- Bir Cari Seçiniz --</option>
+                                                {customers.map(c => (
+                                                    <option key={c.id} value={c.id} className="text-gray-900">{c.name}</option>
+                                                ))}
+                                            </select>
+
+                                            {!supplierMatch && invoiceDetail?.supplier_name && (
+                                                <button
+                                                    onClick={async () => {
+                                                        if (confirm(`"${invoiceDetail.supplier_name}" adında yeni bir cari oluşturulacak. Onaylıyor musunuz?`)) {
+                                                            setProcessing(true);
+                                                            try {
+                                                                const newCustomer = {
+                                                                    name: invoiceDetail.supplier_name,
+                                                                    tax_number: invoiceDetail.supplier_tax_no,
+                                                                    address: '-',
+                                                                    phone: '-',
+                                                                    balance: 0
+                                                                };
+                                                                const res = await customersAPI.add(newCustomer);
+                                                                if (res.data?.success) {
+                                                                    const cRes = await customersAPI.getAll();
+                                                                    setCustomers(cRes.data?.customers || []);
+                                                                    setSupplierMatch(res.data.id);
+                                                                    alert("Cari başarıyla oluşturuldu ve seçildi.");
+                                                                }
+                                                            } catch (e) {
+                                                                alert("Hata: " + e.message);
+                                                            } finally {
+                                                                setProcessing(false);
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-2 whitespace-nowrap"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                                    Yeni Cari Ekle
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Center: Invoice Number */}
+                                <div className="col-span-12 md:col-span-3 text-center">
+                                    <span className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-1 block">FATURA NO</span>
+                                    <div className="bg-white/5 backdrop-blur-sm rounded-2xl px-5 py-4 border border-white/10 inline-block">
+                                        <span className="text-white font-bold text-2xl font-mono tracking-wide">{selectedInvoice.invoice_number}</span>
+                                    </div>
+                                    <div className="mt-3 text-slate-400 text-sm">
+                                        {formatDate(selectedInvoice.date)}
+                                    </div>
+                                </div>
+
+                                {/* Right: Total Amount */}
+                                <div className="col-span-12 md:col-span-4 text-right">
+                                    <span className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-1 block">GENEL TOPLAM</span>
+                                    <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 backdrop-blur-sm rounded-2xl px-6 py-4 border border-emerald-500/20 inline-block">
+                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300 font-black text-4xl tracking-tight">
+                                            {invoiceDetail
+                                                ? `₺${invoiceDetail.total_amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                : '...'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* 2. Content (Modern Table) */}
-                        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-8">
+                        {/* 2. Content (Premium Card Table) */}
+                        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 p-8">
                             {detailLoading ? (
                                 <div className="flex flex-col items-center justify-center py-24 space-y-6">
                                     <div className="relative">
-                                        <div className="w-16 h-16 border-4 border-gray-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                                        <div className="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
+                                            <div className="w-3 h-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full animate-pulse"></div>
                                         </div>
                                     </div>
-                                    <p className="text-slate-500 font-medium animate-pulse">Fatura detayları analiz ediliyor...</p>
+                                    <p className="text-slate-600 font-semibold text-lg animate-pulse">Fatura detayları analiz ediliyor...</p>
                                 </div>
                             ) : invoiceDetail ? (
-                                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-gray-50/80 text-gray-500 border-b border-gray-100 font-bold text-xs uppercase tracking-wider">
+                                <div className="bg-white rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden ring-1 ring-black/5">
+                                    <table className="w-full">
+                                        <thead className="bg-gradient-to-r from-slate-800 to-indigo-900 text-white font-bold text-sm uppercase tracking-wide">
                                             <tr>
-                                                <th className="px-6 py-4 text-center w-16">#</th>
-                                                <th className="px-6 py-4 text-left">Ürün / Hizmet</th>
-                                                <th className="px-6 py-4 text-center w-28">Miktar</th>
-                                                <th className="px-6 py-4 text-right w-36">Birim Fiyat</th>
-                                                <th className="px-6 py-4 text-center w-24">İsk. %</th>
-                                                <th className="px-6 py-4 text-center w-24">KDV %</th>
-                                                <th className="px-6 py-4 text-right w-36">Net Tutar</th>
-                                                <th className="px-6 py-4 text-center w-32">Durum</th>
-                                                <th className="px-6 py-4 text-center w-48">Eşleştirme</th>
+                                                <th className="px-6 py-5 text-center w-16">#</th>
+                                                <th className="px-6 py-5 text-left">Ürün / Hizmet</th>
+                                                <th className="px-6 py-5 text-center w-28">Miktar</th>
+                                                <th className="px-6 py-5 text-right w-36">Birim Fiyat</th>
+                                                <th className="px-6 py-5 text-center w-24">İsk. %</th>
+                                                <th className="px-6 py-5 text-center w-24">KDV %</th>
+                                                <th className="px-6 py-5 text-right w-36">Net Tutar</th>
+                                                <th className="px-6 py-5 text-center w-32">Durum</th>
+                                                <th className="px-6 py-5 text-center w-48">Eşleştirme</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-50">
+                                        <tbody className="divide-y divide-gray-100">
                                             {invoiceDetail.lines.map((item, index) => {
                                                 const isMatched = !!productMatches[index];
                                                 const matchedProduct = products.find(p => p.id == productMatches[index]);
 
                                                 return (
-                                                    <tr key={index} className={`hover:bg-slate-50 transition-colors group ${isMatched ? 'bg-green-50/40 hover:bg-green-50/60' : ''}`}>
-                                                        <td className="px-6 py-4 text-center text-gray-400 font-mono text-xs">{index + 1}</td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="font-bold text-gray-800 text-sm">{item.name}</div>
-                                                            <div className="flex items-center gap-2 mt-1">
+                                                    <tr key={index} className={`hover:bg-indigo-50/50 transition-all duration-200 group ${isMatched ? 'bg-emerald-50/50 hover:bg-emerald-50/70' : ''}`}>
+                                                        <td className="px-6 py-5 text-center">
+                                                            <span className="text-gray-400 font-bold text-base">{index + 1}</span>
+                                                        </td>
+                                                        <td className="px-6 py-5">
+                                                            <div className="font-bold text-gray-900 text-base">{item.name}</div>
+                                                            <div className="flex items-center gap-2 mt-2">
                                                                 {matchedProduct ? (
-                                                                    <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                                                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 shadow-sm">
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
                                                                         {matchedProduct.stock_code}
                                                                     </div>
                                                                 ) : (
-                                                                    <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Eşleşmedi</span>
+                                                                    <span className="text-xs font-bold text-gray-500 bg-gray-200 px-3 py-1 rounded-full">⚠ Eşleşmedi</span>
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-center">
-                                                            <span className="font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded-md">{item.quantity}</span>
+                                                        <td className="px-6 py-5 text-center">
+                                                            <span className="font-bold text-gray-800 text-lg bg-indigo-100 px-4 py-2 rounded-xl">{item.quantity}</span>
                                                         </td>
-                                                        <td className="px-6 py-4 text-right font-mono text-gray-600">
-                                                            ₺{item.unit_price.toFixed(2)}
+                                                        <td className="px-6 py-5 text-right">
+                                                            <span className="font-mono text-gray-700 text-base font-semibold">₺{item.unit_price.toFixed(2)}</span>
                                                         </td>
-                                                        <td className="px-6 py-4 text-center text-gray-400">
+                                                        <td className="px-6 py-5 text-center">
                                                             {item.discount > 0 ? (
-                                                                <span className="text-red-500 font-bold">%{((item.discount / (item.quantity * item.unit_price)) * 100).toFixed(0)}</span>
-                                                            ) : '-'}
+                                                                <span className="text-red-600 font-bold text-base bg-red-100 px-3 py-1 rounded-lg">%{((item.discount / (item.quantity * item.unit_price)) * 100).toFixed(0)}</span>
+                                                            ) : <span className="text-gray-400 text-base">-</span>}
                                                         </td>
-                                                        <td className="px-6 py-4 text-center text-gray-500">
-                                                            %{item.vat_rate}
+                                                        <td className="px-6 py-5 text-center">
+                                                            <span className="font-bold text-indigo-700 text-base bg-indigo-100 px-3 py-1 rounded-lg">%{item.vat_rate}</span>
                                                         </td>
-                                                        <td className="px-6 py-4 text-right font-bold text-gray-800">
-                                                            ₺{item.line_net.toFixed(2)}
+                                                        <td className="px-6 py-5 text-right">
+                                                            <span className="font-bold text-gray-900 text-lg">₺{item.line_net.toFixed(2)}</span>
                                                         </td>
-                                                        <td className="px-6 py-4 text-center">
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                                                Bekliyor
+                                                        <td className="px-6 py-5 text-center">
+                                                            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-amber-100 to-orange-100 text-amber-800 border border-amber-200">
+                                                                ⏳ Bekliyor
                                                             </span>
                                                         </td>
-                                                        <td className="px-6 py-4 text-center">
+                                                        <td className="px-6 py-5 text-center">
                                                             <div className="flex justify-center">
                                                                 {isMatched ? (
                                                                     <button
@@ -1117,10 +1145,10 @@ export default function InvoicesPage() {
                                                                             setMatchModalData({ index, line: item });
                                                                             setMatchModalOpen(true);
                                                                         }}
-                                                                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-lg hover:bg-green-50 shadow-sm transition-all text-xs font-bold"
+                                                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 shadow-lg shadow-emerald-500/25 transition-all text-sm font-bold transform hover:scale-105"
                                                                     >
-                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                                                        Değiştir/Düzelt
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                                                        Değiştir
                                                                     </button>
                                                                 ) : (
                                                                     <button
@@ -1128,9 +1156,9 @@ export default function InvoicesPage() {
                                                                             setMatchModalData({ index, line: item });
                                                                             setMatchModalOpen(true);
                                                                         }}
-                                                                        className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg hover:bg-indigo-100 shadow-sm transition-all text-xs font-bold"
+                                                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/25 transition-all text-sm font-bold transform hover:scale-105"
                                                                     >
-                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                                                         Eşleştir
                                                                     </button>
                                                                 )}
@@ -1158,54 +1186,62 @@ export default function InvoicesPage() {
                             )}
                         </div>
 
-                        {/* 3. Footer (Action Area) */}
-                        <div className="p-6 bg-white border-t border-gray-200 grid grid-cols-12 gap-6 items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
-                            <div className="col-span-12 md:col-span-7">
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                    </div>
-                                    <input
-                                        type="text"
-                                        placeholder="Fatura Açıklaması / İşlem Notu (İsteğe Bağlı)"
-                                        className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl pl-10 pr-4 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-sm"
-                                        value={invoiceDescription}
-                                        onChange={(e) => setInvoiceDescription(e.target.value)}
-                                    />
-                                </div>
+                        {/* 3. Footer (Premium Action Area) */}
+                        <div className="p-8 bg-gradient-to-r from-slate-800 via-slate-900 to-indigo-900 border-t border-white/10 relative overflow-hidden">
+                            {/* Decorative pattern */}
+                            <div className="absolute inset-0 opacity-5">
+                                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]"></div>
                             </div>
-                            <div className="col-span-12 md:col-span-5 flex justify-end gap-3">
-                                <button
-                                    onClick={() => setShowDetailModal(false)}
-                                    className="px-6 py-3.5 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-gray-800 transition-colors shadow-sm text-sm"
-                                >
-                                    Kapat
-                                </button>
-                                <button
-                                    onClick={handleProcessInvoice}
-                                    disabled={processing || selectedInvoice.status === 'İşlendi'}
-                                    className={`px-8 py-3.5 font-bold rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-3 text-sm transform hover:-translate-y-0.5
-                                        ${selectedInvoice.status === 'İşlendi'
-                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none hover:translate-y-0'
-                                            : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700'}`}
-                                >
-                                    {processing ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            İşleniyor...
-                                        </>
-                                    ) : selectedInvoice.status === 'İşlendi' ? (
-                                        <>
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                                            Bu Fatura İşlendi
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                                            Faturayı Kaydet
-                                        </>
-                                    )}
-                                </button>
+
+                            <div className="grid grid-cols-12 gap-6 items-center relative z-10">
+                                <div className="col-span-12 md:col-span-7">
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <svg className="h-5 w-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="📝 Fatura Açıklaması / İşlem Notu (İsteğe Bağlı)"
+                                            className="w-full bg-white/10 border border-white/20 text-white placeholder-slate-400 text-base font-medium rounded-2xl pl-12 pr-4 py-4 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white/20 transition-all backdrop-blur-sm"
+                                            value={invoiceDescription}
+                                            onChange={(e) => setInvoiceDescription(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="col-span-12 md:col-span-5 flex justify-end gap-4">
+                                    <button
+                                        onClick={() => setShowDetailModal(false)}
+                                        className="px-8 py-4 bg-white/10 border border-white/20 text-white font-bold rounded-2xl hover:bg-white/20 transition-all text-base flex items-center gap-2 backdrop-blur-sm"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        Kapat
+                                    </button>
+                                    <button
+                                        onClick={handleProcessInvoice}
+                                        disabled={processing || selectedInvoice.status === 'İşlendi'}
+                                        className={`px-10 py-4 font-bold rounded-2xl shadow-lg hover:shadow-2xl transition-all flex items-center gap-3 text-base transform hover:-translate-y-1
+                                            ${selectedInvoice.status === 'İşlendi'
+                                                ? 'bg-slate-700 text-slate-400 cursor-not-allowed shadow-none hover:translate-y-0'
+                                                : 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:from-emerald-600 hover:to-green-700 shadow-emerald-500/30'}`}
+                                    >
+                                        {processing ? (
+                                            <>
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                İşleniyor...
+                                            </>
+                                        ) : selectedInvoice.status === 'İşlendi' ? (
+                                            <>
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                                Bu Fatura İşlendi
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                                🚀 Faturayı Kaydet
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

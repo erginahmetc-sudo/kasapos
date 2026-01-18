@@ -462,24 +462,27 @@ export default function CustomersPage() {
                 </div>
             </div>
 
-            {/* Add Modal */}
+            {/* Add Modal - 2026 Modern Design */}
             {showAddModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
-                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl my-8">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 px-8 py-6">
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+                    <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl my-8">
+                        {/* Minimalist Dark Header */}
+                        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-10 py-8">
                             <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                         </svg>
                                     </div>
-                                    Yeni Müşteri Ekle
-                                </h2>
+                                    <div>
+                                        <h2 className="text-3xl font-bold text-white tracking-tight">Yeni Müşteri Ekle</h2>
+                                        <p className="text-slate-400 text-base mt-1">Müşteri bilgilerini doldurun</p>
+                                    </div>
+                                </div>
                                 <button
                                     onClick={() => setShowAddModal(false)}
-                                    className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all"
                                 >
                                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -488,145 +491,146 @@ export default function CustomersPage() {
                             </div>
                         </div>
 
-                        <div className="p-8 space-y-5 overflow-y-auto max-h-[calc(90vh-180px)]">
-                            <div className="grid grid-cols-2 gap-5">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Durumu</label>
+                        <div className="p-10 space-y-7 overflow-y-auto max-h-[calc(90vh-200px)] bg-gradient-to-b from-slate-50 to-white">
+                            {/* Müşteri Adı */}
+                            <div className="space-y-2">
+                                <label className="block text-base font-semibold text-slate-700">Müşteri Adı <span className="text-rose-500">*</span></label>
+                                <input
+                                    type="text"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400"
+                                    placeholder="Müşteri adını giriniz..."
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+
+                            {/* Müşteri Kodu */}
+                            <div className="space-y-2">
+                                <label className="block text-base font-semibold text-slate-700">Müşteri Kodu</label>
+                                <input
+                                    type="text"
+                                    value={formData.customer_code}
+                                    onChange={(e) => setFormData({ ...formData, customer_code: e.target.value })}
+                                    placeholder="Otomatik üretilir"
+                                    className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400 font-mono"
+                                />
+                            </div>
+
+                            {/* Firma Bilgileri */}
+                            <div className="space-y-2">
+                                <label className="block text-base font-semibold text-slate-700">Firma Bilgileri</label>
+                                <input
+                                    type="text"
+                                    value={formData.company}
+                                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                                    className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400"
+                                    placeholder="Firma adı..."
+                                />
+                            </div>
+
+                            {/* Grup ve Durum */}
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="block text-base font-semibold text-slate-700">Grubu</label>
+                                    <select
+                                        value={formData.group}
+                                        onChange={(e) => setFormData({ ...formData, group: e.target.value })}
+                                        className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                                    >
+                                        <option value="Cari">Cari</option>
+                                        <option value="Perakende">Perakende</option>
+                                        <option value="Firmalar">Firmalar</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="block text-base font-semibold text-slate-700">Durumu</label>
                                     <select
                                         value={formData.is_active.toString()}
                                         onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'true' })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                        className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
                                     >
                                         <option value="true">Aktif</option>
                                         <option value="false">Pasif</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Müşteri Kodu</label>
-                                    <input
-                                        type="text"
-                                        value={formData.customer_code}
-                                        onChange={(e) => setFormData({ ...formData, customer_code: e.target.value })}
-                                        placeholder="Otomatik üretilir"
-                                        className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                    />
-                                </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Kısa Adı *</label>
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Firma Bilgileri</label>
-                                <input
-                                    type="text"
-                                    value={formData.company}
-                                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Grubu</label>
-                                <select
-                                    value={formData.group}
-                                    onChange={(e) => setFormData({ ...formData, group: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                >
-                                    <option value="Cari">Cari</option>
-                                    <option value="Perakende">Perakende</option>
-                                    <option value="Firmalar">Firmalar</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Adresi</label>
-                                <input
-                                    type="text"
+
+                            {/* Adres */}
+                            <div className="space-y-2">
+                                <label className="block text-base font-semibold text-slate-700">Adres</label>
+                                <textarea
                                     value={formData.address}
                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                    rows="3"
+                                    className="w-full px-6 py-5 text-lg rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none placeholder:text-slate-400"
+                                    placeholder="Adres bilgisi..."
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-5">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">İl</label>
+
+                            {/* İl ve İlçe */}
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="block text-base font-semibold text-slate-700">İl</label>
                                     <input
                                         type="text"
                                         value={formData.city}
                                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                        className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400"
+                                        placeholder="İl"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">İlçe</label>
+                                <div className="space-y-2">
+                                    <label className="block text-base font-semibold text-slate-700">İlçe</label>
                                     <input
                                         type="text"
                                         value={formData.district}
                                         onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                        className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400"
+                                        placeholder="İlçe"
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-5">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Posta Kodu</label>
-                                    <input
-                                        type="text"
-                                        value={formData.zip_code}
-                                        onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ülke</label>
-                                    <input
-                                        type="text"
-                                        value={formData.country}
-                                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-5">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Vergi Dairesi</label>
+
+                            {/* Vergi Dairesi ve Vergi No */}
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="block text-base font-semibold text-slate-700">Vergi Dairesi</label>
                                     <input
                                         type="text"
                                         value={formData.tax_office}
                                         onChange={(e) => setFormData({ ...formData, tax_office: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                        className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400"
+                                        placeholder="Vergi dairesi"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Vergi Numarası</label>
+                                <div className="space-y-2">
+                                    <label className="block text-base font-semibold text-slate-700">Vergi Numarası</label>
                                     <input
                                         type="text"
                                         value={formData.tax_number}
                                         onChange={(e) => setFormData({ ...formData, tax_number: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                        className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400 font-mono"
+                                        placeholder="11111111111"
                                     />
                                 </div>
                             </div>
                         </div>
 
                         {/* Footer */}
-                        <div className="bg-gray-50 px-8 py-5 border-t border-gray-100 flex gap-3">
+                        <div className="bg-slate-50 px-10 py-6 border-t border-slate-100 flex gap-4">
                             <button
                                 onClick={() => setShowAddModal(false)}
-                                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                                className="flex-1 py-5 text-lg font-bold text-slate-600 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all active:scale-[0.98]"
                             >
                                 İptal
                             </button>
                             <button
                                 onClick={handleSaveNew}
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                                className="flex-[2] py-5 text-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl hover:from-emerald-600 hover:to-teal-600 shadow-xl shadow-emerald-500/30 transition-all hover:scale-[1.01] active:scale-[0.99]"
                             >
-                                Kaydet
+                                ✓ Kaydet
                             </button>
                         </div>
                     </div>
@@ -803,24 +807,27 @@ export default function CustomersPage() {
                 </div>
             )}
 
-            {/* Payment Modal */}
+            {/* Payment Modal - 2026 Modern Design */}
             {showPaymentModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl">
-                        {/* Header */}
-                        <div className="bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 px-8 py-6">
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl">
+                        {/* Minimalist Dark Header */}
+                        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-10 py-8">
                             <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-gradient-to-br from-violet-400 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+                                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </div>
-                                    Ödeme Al
-                                </h2>
+                                    <div>
+                                        <h2 className="text-3xl font-bold text-white tracking-tight">Ödeme Al</h2>
+                                        <p className="text-slate-400 text-base mt-1">Müşteriden ödeme tahsil et</p>
+                                    </div>
+                                </div>
                                 <button
                                     onClick={() => setShowPaymentModal(false)}
-                                    className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all"
                                 >
                                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -829,15 +836,16 @@ export default function CustomersPage() {
                             </div>
                         </div>
 
-                        <div className="p-8 space-y-5">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Müşteri Seç</label>
+                        <div className="p-10 space-y-8 bg-gradient-to-b from-slate-50 to-white">
+                            {/* Müşteri Seç */}
+                            <div className="space-y-2">
+                                <label className="block text-base font-semibold text-slate-700">Müşteri Seç <span className="text-rose-500">*</span></label>
                                 <select
                                     value={paymentData.customer_id}
                                     onChange={(e) => setPaymentData({ ...paymentData, customer_id: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                                    className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
                                 >
-                                    <option value="">Seçiniz...</option>
+                                    <option value="">Müşteri seçiniz...</option>
                                     {customers.map(c => (
                                         <option key={c.id} value={c.id}>
                                             {c.name} {c.customer_code ? `(${c.customer_code})` : ''}
@@ -846,29 +854,31 @@ export default function CustomersPage() {
                                 </select>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ödeme Tutarı (TL)</label>
+                            {/* Ödeme Tutarı */}
+                            <div className="space-y-2">
+                                <label className="block text-base font-semibold text-slate-700">Ödeme Tutarı (₺) <span className="text-rose-500">*</span></label>
                                 <input
                                     type="number"
                                     min="0"
                                     step="0.01"
                                     value={paymentData.amount}
                                     onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
-                                    className="w-full px-4 py-4 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-2xl font-bold text-center transition-all"
+                                    className="w-full px-6 py-6 text-3xl font-bold rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all text-center placeholder:text-slate-300"
                                     placeholder="0.00"
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ödeme Yöntemi</label>
-                                <div className="flex gap-3">
+                            {/* Ödeme Yöntemi */}
+                            <div className="space-y-3">
+                                <label className="block text-base font-semibold text-slate-700">Ödeme Yöntemi</label>
+                                <div className="flex gap-4">
                                     {['Nakit', 'Kredi Kartı', 'Havale'].map(method => (
                                         <button
                                             key={method}
                                             onClick={() => setPaymentData({ ...paymentData, payment_type: method })}
-                                            className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all ${paymentData.payment_type === method
-                                                ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/25'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            className={`flex-1 py-5 px-4 rounded-2xl font-bold text-lg transition-all ${paymentData.payment_type === method
+                                                ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-xl shadow-purple-500/30'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                                 }`}
                                         >
                                             {method}
@@ -877,31 +887,32 @@ export default function CustomersPage() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Açıklama</label>
+                            {/* Açıklama */}
+                            <div className="space-y-2">
+                                <label className="block text-base font-semibold text-slate-700">Açıklama</label>
                                 <input
                                     type="text"
                                     value={paymentData.description}
                                     onChange={(e) => setPaymentData({ ...paymentData, description: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                                    className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all placeholder:text-slate-400"
                                     placeholder="Örn: Kasım ayı ödemesi"
                                 />
                             </div>
                         </div>
 
                         {/* Footer */}
-                        <div className="bg-gray-50 px-8 py-5 border-t border-gray-100 flex gap-3">
+                        <div className="bg-slate-50 px-10 py-6 border-t border-slate-100 flex gap-4">
                             <button
                                 onClick={() => setShowPaymentModal(false)}
-                                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                                className="flex-1 py-5 text-lg font-bold text-slate-600 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all active:scale-[0.98]"
                             >
                                 İptal
                             </button>
                             <button
                                 onClick={handlePaymentSubmit}
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                                className="flex-[2] py-5 text-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl hover:from-emerald-600 hover:to-teal-600 shadow-xl shadow-emerald-500/30 transition-all hover:scale-[1.01] active:scale-[0.99]"
                             >
-                                Ödemeyi Onayla
+                                ✓ Ödemeyi Onayla
                             </button>
                         </div>
                     </div>

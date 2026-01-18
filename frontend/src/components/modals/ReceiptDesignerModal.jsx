@@ -66,9 +66,10 @@ export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize
     const paperSize = PAPER_SIZES[template.paper_size] || PAPER_SIZES['A5 (148x210mm)'];
 
     const handleSave = () => {
-        const savedKey = `receipt_design_template_${template.paper_size}`;
+        // Always save with the paper size that was selected in Settings
+        const savedKey = `receipt_design_template_${initialPaperSize || template.paper_size}`;
         localStorage.setItem(savedKey, JSON.stringify(template));
-        alert('Tasarim kaydedildi!');
+        alert(`${initialPaperSize || template.paper_size} için tasarım kaydedildi!`);
     };
 
     const handleReset = () => {
@@ -215,15 +216,10 @@ export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize
                     <div className="w-64 bg-slate-50 border-r border-slate-200 p-4 flex flex-col gap-4 overflow-y-auto">
                         <div>
                             <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Kagit Boyutu</h3>
-                            <select
-                                value={template.paper_size}
-                                onChange={(e) => handlePaperSizeChange(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
-                            >
-                                {Object.keys(PAPER_SIZES).map(size => (
-                                    <option key={size} value={size}>{size}</option>
-                                ))}
-                            </select>
+                            <div className="w-full px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg text-sm font-semibold text-blue-700">
+                                {initialPaperSize || template.paper_size}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">Ayarlar sayfasindan degistirilebilir</p>
                         </div>
 
                         <div>

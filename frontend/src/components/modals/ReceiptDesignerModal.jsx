@@ -42,6 +42,9 @@ export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize
     const [selectedItem, setSelectedItem] = useState(null);
     const [draggedItem, setDraggedItem] = useState(null);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [showBalance, setShowBalance] = useState(() => {
+        return localStorage.getItem('receipt_show_balance') === 'true';
+    });
     const canvasRef = useRef(null);
 
     useEffect(() => {
@@ -69,6 +72,7 @@ export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize
         // Always save with the paper size that was selected in Settings
         const savedKey = `receipt_design_template_${initialPaperSize || template.paper_size}`;
         localStorage.setItem(savedKey, JSON.stringify(template));
+        localStorage.setItem('receipt_show_balance', showBalance);
         alert(`${initialPaperSize || template.paper_size} için tasarım kaydedildi!`);
     };
 
@@ -258,6 +262,22 @@ export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize
                             </div>
                         </div>
 
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Tasarım Ayarları</h3>
+                            <label className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                                <span className="text-xs font-semibold text-slate-700">Tasarımda Bakiyeler Görünsün</span>
+                                <div className={`relative w-9 h-5 rounded-full transition-colors ${showBalance ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={showBalance}
+                                        onChange={(e) => setShowBalance(e.target.checked)}
+                                        className="sr-only"
+                                    />
+                                    <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${showBalance ? 'translate-x-4' : 'translate-x-0'}`} />
+                                </div>
+                            </label>
+                        </div>
+
                         <div className="mt-auto space-y-2">
                             <button
                                 onClick={handleSave}
@@ -279,7 +299,14 @@ export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize
                         <div
                             ref={canvasRef}
                             className="bg-white shadow-xl relative"
-                            style={{ width: paperSize.width, height: paperSize.height, minWidth: paperSize.width }}
+                            style={{
+                                width: paperSize.width,
+                                height: paperSize.height,
+                                minWidth: paperSize.width,
+                                backgroundColor: '#ffffff',
+                                backgroundImage: 'linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px)',
+                                backgroundSize: '20px 20px'
+                            }}
                             onMouseMove={handleMouseMove}
                             onMouseUp={handleMouseUp}
                             onMouseLeave={handleMouseUp}

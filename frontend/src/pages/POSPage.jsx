@@ -521,8 +521,13 @@ export default function POSPage() {
             result = result.replace('{{SAAT}}', now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }));
             result = result.replace('{{MUSTERI_ADI}}', saleData.customer || 'Müşteri');
             result = result.replace('{{GENEL_TOPLAM}}', saleData.total.toFixed(2));
-            result = result.replace('{{ESKI_BAKIYE}}', '0.00');
-            result = result.replace('{{YENI_BAKIYE}}', saleData.total.toFixed(2));
+
+            // Balance variables
+            const previousBalance = saleData.customerData?.balance || 0;
+            const newBalance = previousBalance + saleData.total;
+
+            result = result.replace('{{ESKI_BAKIYE}}', previousBalance.toFixed(2));
+            result = result.replace('{{YENI_BAKIYE}}', newBalance.toFixed(2));
 
             if (item) {
                 result = result.replace('{{URUN_ADI}}', item.name || '');
@@ -535,9 +540,29 @@ export default function POSPage() {
         };
 
         // Separate product rows from static items
+        // Show balance logic: Explicit setting enabled AND (Customer is selected AND not 'Toptan Satış' AND not Retail/Perakende)
+        const showBalanceSetting = localStorage.getItem('receipt_show_balance') === 'true';
+        const isRegisteredCustomer = saleData.customer &&
+            saleData.customer !== 'Toptan Satış' &&
+            !saleData.customer.includes('(Perakende)');
+        const shouldShowBalance = showBalanceSetting && isRegisteredCustomer;
+
+        // Separate product rows from static items and filter footer items
         const staticItems = template.items.filter(i => !i.is_product_row && !i.is_dynamic_footer);
         const productRowTemplates = template.items.filter(i => i.is_product_row);
-        const footerItems = template.items.filter(i => i.is_dynamic_footer);
+
+        // Filter out balance items if shouldShowBalance is false
+        const footerItems = template.items.filter(i => {
+            if (!i.is_dynamic_footer) return false;
+
+            if (!shouldShowBalance) {
+                // Check if item is related to balance
+                const isBalanceItem = (i.id && (i.id.includes('bakiye') || i.id === 'eski_bakiye' || i.id === 'yeni_bakiye')) ||
+                    (i.text && (i.text.includes('Bakiye') || i.text.includes('{{ESKI_BAKIYE}}') || i.text.includes('{{YENI_BAKIYE}}')));
+                if (isBalanceItem) return false;
+            }
+            return true;
+        });
 
         // Build HTML for static items
         let staticHtml = '';
@@ -667,6 +692,14 @@ export default function POSPage() {
     // A5/A4 Table-based Receipt - Clean professional design
     const printA5A4Receipt = (saleData, paperSize) => {
         const dimensions = PAPER_SIZES[paperSize] || PAPER_SIZES['A5 (148x210mm)'];
+
+        // Show balance logic: Explicit setting enabled AND (Customer is selected AND not 'Toptan Satış' AND not Retail/Perakende)
+        const showBalanceSetting = localStorage.getItem('receipt_show_balance') === 'true';
+        const isRegisteredCustomer = saleData.customer &&
+            saleData.customer !== 'Toptan Satış' &&
+            !saleData.customer.includes('(Perakende)');
+        const shouldShowBalance = showBalanceSetting && isRegisteredCustomer;
+
         const receiptContent = `
             <!DOCTYPE html>
             <html>
@@ -792,6 +825,14 @@ export default function POSPage() {
                 <div class="receipt-total">
                     Toplam: ${saleData.total.toFixed(2)} TL
                 </div>
+                ${shouldShowBalance ? `
+                <div class="receipt-info" style="margin-top: 10px; background: #fff; border: 1px solid #ddd;">
+                    <p style="font-size: 11px; color: #666;">Önceki Bakiye: <span style="float:right">${(saleData.customerData?.balance || 0).toFixed(2)} TL</span></p>
+                    <p style="font-size: 14px; font-weight: bold; margin-top: 5px; border-top: 1px dashed #ccc; padding-top: 5px;">
+                        Güncel Bakiye: <span style="float:right">${(saleData.total + (saleData.customerData?.balance || 0)).toFixed(2)} TL</span>
+                    </p>
+                </div>
+                ` : ''}
                 <div class="receipt-footer">
                     <p>Bizi tercih ettiğiniz için teşekkür ederiz.</p>
                 </div>
@@ -931,7 +972,8 @@ export default function POSPage() {
                     customer: customer,
                     paymentMethod: paymentMethod,
                     items: cart,
-                    total: calculateTotal()
+                    total: calculateTotal(),
+                    customerData: selectedCustomer // Pass full customer data for balance info
                 });
             }
 

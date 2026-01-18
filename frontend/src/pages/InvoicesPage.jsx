@@ -1007,6 +1007,12 @@ export default function InvoicesPage() {
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
                                     <th
+                                        onClick={() => handleSort('date')}
+                                        className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                                    >
+                                        Tarih {getSortIcon('date')}
+                                    </th>
+                                    <th
                                         onClick={() => handleSort('invoice_number')}
                                         className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                                     >
@@ -1017,12 +1023,6 @@ export default function InvoicesPage() {
                                         className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                                     >
                                         Tedarikçi {getSortIcon('supplier_name')}
-                                    </th>
-                                    <th
-                                        onClick={() => handleSort('date')}
-                                        className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                                    >
-                                        Tarih {getSortIcon('date')}
                                     </th>
                                     <th
                                         onClick={() => handleSort('total')}

@@ -500,7 +500,7 @@ export default function MobilePOSPage() {
                         </div>
 
                         {/* Edit Buttons */}
-                        <div className="grid grid-cols-3 gap-2 mb-3">
+                        <div className="grid grid-cols-3 gap-2 mb-3 pt-6 mt-6 border-t-2 border-gray-300">
                             <button
                                 onClick={() => {
                                     if (selectedCartIndex !== null && cart[selectedCartIndex]) {

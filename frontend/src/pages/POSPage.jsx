@@ -599,7 +599,7 @@ export default function POSPage() {
 
             // Auto-print receipt if setting is enabled
             const autoPrint = localStorage.getItem('receipt_auto_print');
-            if (autoPrint === null || autoPrint === 'true') { // Default to true
+            if (autoPrint === 'true') { // Default to false - only print if explicitly enabled
                 printReceipt({
                     customer: customer,
                     paymentMethod: paymentMethod,

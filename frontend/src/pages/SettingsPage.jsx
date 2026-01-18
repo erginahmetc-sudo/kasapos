@@ -16,7 +16,7 @@ export default function SettingsPage() {
     const [showTotalRevenue, setShowTotalRevenue] = useState(true);
     const [showInvoiceTotal, setShowInvoiceTotal] = useState(true);
     const [sendSalesToBirFatura, setSendSalesToBirFatura] = useState(false);
-    const [autoPrintReceipt, setAutoPrintReceipt] = useState(true);
+    const [autoPrintReceipt, setAutoPrintReceipt] = useState(false);
     const [secretToken, setSecretToken] = useState('...');
 
     // Modals

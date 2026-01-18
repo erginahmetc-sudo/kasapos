@@ -1,11 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import defaultTemplate from '../../data/default_receipt_template.json';
+import template80mm from '../../data/receipt_template_80mm.json';
+import template58mm from '../../data/receipt_template_58mm.json';
 
 const PAPER_SIZES = {
     'A5 (148x210mm)': { width: 420, height: 595 },
     'A4 (210x297mm)': { width: 595, height: 842 },
     'Termal 80mm': { width: 280, height: 400 },
     'Termal 58mm': { width: 200, height: 400 },
+};
+
+// Get default template by paper size
+const getDefaultTemplateForSize = (paperSize) => {
+    switch (paperSize) {
+        case 'Termal 80mm':
+            return { ...template80mm };
+        case 'Termal 58mm':
+            return { ...template58mm };
+        case 'A4 (210x297mm)':
+        case 'A5 (148x210mm)':
+        default:
+            return { ...defaultTemplate };
+    }
 };
 
 const AVAILABLE_VARIABLES = [
@@ -55,7 +71,14 @@ export default function ReceiptDesignerModal({ isOpen, onClose }) {
 
     const handleReset = () => {
         if (confirm('Varsayilan tasarima donmek istediginize emin misiniz?')) {
-            setTemplate({ ...defaultTemplate });
+            setTemplate(getDefaultTemplateForSize(template.paper_size));
+            setSelectedItem(null);
+        }
+    };
+
+    const handlePaperSizeChange = (newSize) => {
+        if (confirm(`Kagit boyutunu "${newSize}" olarak degistirmek istediginize emin misiniz? Bu, mevcut tasarimi sifirlar.`)) {
+            setTemplate(getDefaultTemplateForSize(newSize));
             setSelectedItem(null);
         }
     };
@@ -192,7 +215,7 @@ export default function ReceiptDesignerModal({ isOpen, onClose }) {
                             <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Kagit Boyutu</h3>
                             <select
                                 value={template.paper_size}
-                                onChange={(e) => setTemplate(prev => ({ ...prev, paper_size: e.target.value }))}
+                                onChange={(e) => handlePaperSizeChange(e.target.value)}
                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm"
                             >
                                 {Object.keys(PAPER_SIZES).map(size => (

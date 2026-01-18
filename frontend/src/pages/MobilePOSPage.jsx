@@ -30,6 +30,11 @@ export default function MobilePOSPage() {
     const [priceCheckSearch, setPriceCheckSearch] = useState('');
     const [showPriceCheckScanner, setShowPriceCheckScanner] = useState(false);
     const priceCheckScannerRef = useRef(null);
+    const [showUndefinedStockModal, setShowUndefinedStockModal] = useState(false);
+    const [undefinedStockName, setUndefinedStockName] = useState('');
+    const [undefinedStockPrice, setUndefinedStockPrice] = useState('');
+    const [undefinedStockQuantity, setUndefinedStockQuantity] = useState(1);
+    const [undefinedStockStep, setUndefinedStockStep] = useState(1);
 
     const [modalValue, setModalValue] = useState('');
     const [productToAdd, setProductToAdd] = useState(null);
@@ -332,24 +337,26 @@ export default function MobilePOSPage() {
             </div>
 
             {/* Header */}
-            <header className="flex justify-between items-center p-3 bg-white shadow-md">
-                <div className="flex gap-3 items-center flex-1">
-                    <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Ürün Adı, Stok Kodu, Barkod"
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:border-blue-500"
-                    />
-                </div>
-                <div className="flex gap-3 ml-3">
-                    <button
-                        onClick={startBarcodeScanner}
-                        className="bg-blue-50 text-blue-600 border-none rounded-xl p-4 text-3xl cursor-pointer hover:bg-blue-600 hover:text-white transition-colors"
-                    >
-                        📷
-                    </button>
-                </div>
+            <header className="flex justify-between items-center p-2 bg-white shadow-md gap-2">
+                <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Ara..."
+                    className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                />
+                <button
+                    onClick={() => setShowUndefinedStockModal(true)}
+                    className="bg-orange-500 text-white border-none rounded-lg px-3 py-2 text-xs font-bold cursor-pointer hover:bg-orange-600 transition-colors whitespace-nowrap"
+                >
+                    Tanımsız
+                </button>
+                <button
+                    onClick={startBarcodeScanner}
+                    className="bg-blue-50 text-blue-600 border-none rounded-lg p-2 text-2xl cursor-pointer hover:bg-blue-600 hover:text-white transition-colors"
+                >
+                    📷
+                </button>
             </header>
 
             {/* Main Content */}
@@ -398,9 +405,9 @@ export default function MobilePOSPage() {
                     <span className="text-xl font-bold text-green-600">{calculateTotal().toFixed(2)} TL</span>
                     <button
                         onClick={() => setShowCartModal(true)}
-                        className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-none rounded-xl px-5 py-2 text-base font-bold cursor-pointer hover:shadow-lg transition-all flex items-center gap-2"
+                        className="bg-gradient-to-r from-green-500 to-green-600 text-white border-none rounded-xl px-5 py-2 text-base font-bold cursor-pointer hover:shadow-lg transition-all flex items-center gap-2"
                     >
-                        🛒 <span>{cart.length}</span> Sepet
+                        🛒 <span>{cart.length}</span> Sepete Git
                     </button>
                 </div>
 
@@ -459,7 +466,7 @@ export default function MobilePOSPage() {
                         </div>
 
                         {/* Cart List */}
-                        <div className="flex-1 overflow-y-auto border-b border-gray-200 mb-3">
+                        <div className="flex-1 overflow-y-auto border-b border-gray-200 mb-3 flex flex-col justify-start">
                             {cart.length === 0 ? (
                                 <div className="text-center py-8 text-gray-500">Sepetinizde ürün bulunmamaktadır.</div>
                             ) : (
@@ -467,8 +474,8 @@ export default function MobilePOSPage() {
                                     <div
                                         key={index}
                                         onClick={() => setSelectedCartIndex(index)}
-                                        className={`flex justify-between items-center py-3 border-b border-gray-100 cursor-pointer
-                                            ${selectedCartIndex === index ? 'bg-yellow-300' : ''}`}
+                                        className={`flex justify-between items-center py-3 px-2 border-b border-gray-100 cursor-pointer rounded-lg mb-1 transition-colors
+                                            ${selectedCartIndex === index ? 'bg-green-200' : 'bg-yellow-50'}`}
                                     >
                                         <div className="flex-1">
                                             <h4 className="m-0 mb-1 text-base font-semibold">{item.name}</h4>
@@ -991,6 +998,174 @@ export default function MobilePOSPage() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Undefined Stock Modal - Step by Step */}
+            {showUndefinedStockModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[1000]">
+                    <div className="bg-white rounded-xl p-6 w-80 shadow-2xl">
+                        <span
+                            onClick={() => {
+                                setShowUndefinedStockModal(false);
+                                setUndefinedStockName('');
+                                setUndefinedStockPrice('');
+                                setUndefinedStockQuantity(1);
+                                setUndefinedStockStep(1);
+                            }}
+                            className="float-right text-3xl text-gray-400 cursor-pointer hover:text-gray-600"
+                        >
+                            &times;
+                        </span>
+
+                        {/* Step 1: Product Name */}
+                        {undefinedStockStep === 1 && (
+                            <>
+                                <h3 className="text-xl font-bold text-slate-800 mb-4">Ürün Adı Girin</h3>
+                                <input
+                                    type="text"
+                                    value={undefinedStockName}
+                                    onChange={(e) => setUndefinedStockName(e.target.value)}
+                                    placeholder="Ürün Adı"
+                                    className="w-full p-4 text-lg border-2 border-blue-500 rounded-lg focus:outline-none mb-4"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && undefinedStockName.trim()) {
+                                            setUndefinedStockStep(2);
+                                        }
+                                    }}
+                                />
+                                <button
+                                    onClick={() => {
+                                        if (!undefinedStockName.trim()) {
+                                            alert('Lütfen ürün adı girin.');
+                                            return;
+                                        }
+                                        setUndefinedStockStep(2);
+                                    }}
+                                    className="w-full py-4 bg-blue-500 text-white text-lg font-bold rounded-lg cursor-pointer hover:bg-blue-600 transition-colors"
+                                >
+                                    İleri →
+                                </button>
+                            </>
+                        )}
+
+                        {/* Step 2: Quantity */}
+                        {undefinedStockStep === 2 && (
+                            <>
+                                <h3 className="text-xl font-bold text-slate-800 mb-2">Miktar Girin</h3>
+                                <p className="text-gray-600 mb-4">{undefinedStockName}</p>
+                                <input
+                                    type="number"
+                                    value={undefinedStockQuantity}
+                                    onChange={(e) => setUndefinedStockQuantity(e.target.value)}
+                                    placeholder="Miktar"
+                                    className="w-full p-4 text-2xl text-center border-2 border-blue-500 rounded-lg focus:outline-none mb-4"
+                                    min="1"
+                                    autoFocus
+                                    onFocus={(e) => e.target.select()}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            setUndefinedStockStep(3);
+                                        }
+                                    }}
+                                />
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setUndefinedStockStep(1)}
+                                        className="flex-1 py-4 bg-gray-300 text-gray-700 text-lg font-bold rounded-lg cursor-pointer hover:bg-gray-400 transition-colors"
+                                    >
+                                        ← Geri
+                                    </button>
+                                    <button
+                                        onClick={() => setUndefinedStockStep(3)}
+                                        className="flex-1 py-4 bg-blue-500 text-white text-lg font-bold rounded-lg cursor-pointer hover:bg-blue-600 transition-colors"
+                                    >
+                                        İleri →
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Step 3: Price */}
+                        {undefinedStockStep === 3 && (
+                            <>
+                                <h3 className="text-xl font-bold text-slate-800 mb-2">Fiyat Girin (TL)</h3>
+                                <p className="text-gray-600 mb-4">{undefinedStockName} - {undefinedStockQuantity} Adet</p>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={undefinedStockPrice}
+                                    onChange={(e) => setUndefinedStockPrice(e.target.value)}
+                                    placeholder="Fiyat"
+                                    className="w-full p-4 text-2xl text-center border-2 border-blue-500 rounded-lg focus:outline-none mb-4"
+                                    autoFocus
+                                    onFocus={(e) => e.target.select()}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && undefinedStockPrice) {
+                                            const price = parseFloat(undefinedStockPrice) || 0;
+                                            const quantity = parseFloat(undefinedStockQuantity) || 1;
+                                            const undefinedProduct = {
+                                                id: 'UNDEFINED-' + Date.now(),
+                                                stock_code: 'TANIMSIZ-' + Date.now(),
+                                                name: undefinedStockName,
+                                                price: price,
+                                                quantity: quantity,
+                                                discount_rate: 0,
+                                                final_price: price
+                                            };
+                                            setCart(prev => [...prev, undefinedProduct]);
+                                            setSuccessMessage(`${undefinedStockName} eklendi!`);
+                                            setTimeout(() => setSuccessMessage(''), 1500);
+                                            setShowUndefinedStockModal(false);
+                                            setUndefinedStockName('');
+                                            setUndefinedStockPrice('');
+                                            setUndefinedStockQuantity(1);
+                                            setUndefinedStockStep(1);
+                                        }
+                                    }}
+                                />
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setUndefinedStockStep(2)}
+                                        className="flex-1 py-4 bg-gray-300 text-gray-700 text-lg font-bold rounded-lg cursor-pointer hover:bg-gray-400 transition-colors"
+                                    >
+                                        ← Geri
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (!undefinedStockPrice) {
+                                                alert('Lütfen fiyat girin.');
+                                                return;
+                                            }
+                                            const price = parseFloat(undefinedStockPrice) || 0;
+                                            const quantity = parseFloat(undefinedStockQuantity) || 1;
+                                            const undefinedProduct = {
+                                                id: 'UNDEFINED-' + Date.now(),
+                                                stock_code: 'TANIMSIZ-' + Date.now(),
+                                                name: undefinedStockName,
+                                                price: price,
+                                                quantity: quantity,
+                                                discount_rate: 0,
+                                                final_price: price
+                                            };
+                                            setCart(prev => [...prev, undefinedProduct]);
+                                            setSuccessMessage(`${undefinedStockName} eklendi!`);
+                                            setTimeout(() => setSuccessMessage(''), 1500);
+                                            setShowUndefinedStockModal(false);
+                                            setUndefinedStockName('');
+                                            setUndefinedStockPrice('');
+                                            setUndefinedStockQuantity(1);
+                                            setUndefinedStockStep(1);
+                                        }}
+                                        className="flex-1 py-4 bg-orange-500 text-white text-lg font-bold rounded-lg cursor-pointer hover:bg-orange-600 transition-colors"
+                                    >
+                                        Sepete Ekle
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

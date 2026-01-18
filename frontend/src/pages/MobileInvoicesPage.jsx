@@ -325,7 +325,8 @@ export default function MobileInvoicesPage() {
 
         } catch (error) {
             console.error(error);
-            alert("Hata: " + error.message);
+            const msg = error.response?.data?.message || error.message || "İşlem başarısız";
+            alert("Hata: " + msg);
         } finally {
             setProcessing(false);
         }
@@ -365,7 +366,9 @@ export default function MobileInvoicesPage() {
                 alert("Ekleme başarısız.");
             }
         } catch (err) {
-            alert("Hata: " + err.message);
+            console.error(err);
+            const msg = err.response?.data?.message || err.message || "Ekleme başarısız";
+            alert("Hata: " + msg);
         }
     };
 

@@ -17,6 +17,7 @@ export default function SettingsPage() {
     const [showInvoiceTotal, setShowInvoiceTotal] = useState(true);
     const [sendSalesToBirFatura, setSendSalesToBirFatura] = useState(false);
     const [autoPrintReceipt, setAutoPrintReceipt] = useState(false);
+    const [receiptPaperSize, setReceiptPaperSize] = useState('Termal 80mm');
     const [secretToken, setSecretToken] = useState('...');
 
     // Modals
@@ -42,6 +43,7 @@ export default function SettingsPage() {
                 if (data['invoices_show_total'] !== undefined) setShowInvoiceTotal(data['invoices_show_total']);
                 if (data['integration_send_sales_to_birfatura'] !== undefined) setSendSalesToBirFatura(data['integration_send_sales_to_birfatura']);
                 if (data['receipt_auto_print'] !== undefined) setAutoPrintReceipt(data['receipt_auto_print']);
+                if (data['receipt_paper_size']) setReceiptPaperSize(data['receipt_paper_size']);
                 if (data['secret_token']) setSecretToken(data['secret_token']);
             }
         } catch (error) {
@@ -275,12 +277,37 @@ export default function SettingsPage() {
                         </button>
                     </div>
 
+                    {/* Kağıt Boyutu Seçimi */}
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                        <div>
+                            <h3 className="font-semibold text-gray-800">Kağıt Boyutu</h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Yazdırılacak fiş için kullanılacak kağıt boyutunu seçin.
+                            </p>
+                        </div>
+                        <select
+                            value={receiptPaperSize}
+                            onChange={(e) => {
+                                const newValue = e.target.value;
+                                setReceiptPaperSize(newValue);
+                                updateSetting('receipt_paper_size', newValue);
+                                localStorage.setItem('receipt_paper_size', newValue);
+                            }}
+                            className="px-4 py-2.5 bg-white border-2 border-blue-200 rounded-lg text-sm font-semibold text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer hover:border-blue-400 transition-all"
+                        >
+                            <option value="Termal 80mm">Termal 80mm</option>
+                            <option value="Termal 58mm">Termal 58mm</option>
+                            <option value="A5 (148x210mm)">A5 (148x210mm)</option>
+                            <option value="A4 (210x297mm)">A4 (210x297mm)</option>
+                        </select>
+                    </div>
+
                     {/* Fiş Tasarımcısı */}
                     <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
                         <div>
                             <h3 className="font-semibold text-gray-800">Fiş Görünümü Tasarla</h3>
                             <p className="text-sm text-gray-500 mt-1">
-                                Satış sonrası yazdırılacak fişin görsel tasarımını özelleştirin. Metin, şekil ve resim elementleri ekleyebilirsiniz.
+                                Seçili kağıt boyutu için fiş tasarımını özelleştirin.
                             </p>
                             <div className="flex gap-2 mt-2">
                                 <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">Sürükle Bırak</span>
@@ -409,6 +436,7 @@ export default function SettingsPage() {
             <ReceiptDesignerModal
                 isOpen={showReceiptDesigner}
                 onClose={() => setShowReceiptDesigner(false)}
+                initialPaperSize={receiptPaperSize}
             />
 
             <IntegrationSettingsModal

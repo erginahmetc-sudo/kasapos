@@ -37,7 +37,7 @@ const AVAILABLE_VARIABLES = [
     { key: '{{YENI_BAKIYE}}', label: 'Yeni Bakiye' },
 ];
 
-export default function ReceiptDesignerModal({ isOpen, onClose }) {
+export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize }) {
     const [template, setTemplate] = useState(null);
     const [selectedItem, setSelectedItem] = useState(null);
     const [draggedItem, setDraggedItem] = useState(null);
@@ -46,26 +46,28 @@ export default function ReceiptDesignerModal({ isOpen, onClose }) {
 
     useEffect(() => {
         if (isOpen) {
-            // Load from localStorage or use default
-            const saved = localStorage.getItem('receipt_design_template');
+            // Load from localStorage or use default based on initialPaperSize
+            const savedKey = `receipt_design_template_${initialPaperSize || 'default'}`;
+            const saved = localStorage.getItem(savedKey);
             if (saved) {
                 try {
                     setTemplate(JSON.parse(saved));
                 } catch {
-                    setTemplate({ ...defaultTemplate });
+                    setTemplate(getDefaultTemplateForSize(initialPaperSize || 'Termal 80mm'));
                 }
             } else {
-                setTemplate({ ...defaultTemplate });
+                setTemplate(getDefaultTemplateForSize(initialPaperSize || 'Termal 80mm'));
             }
         }
-    }, [isOpen]);
+    }, [isOpen, initialPaperSize]);
 
     if (!isOpen || !template) return null;
 
     const paperSize = PAPER_SIZES[template.paper_size] || PAPER_SIZES['A5 (148x210mm)'];
 
     const handleSave = () => {
-        localStorage.setItem('receipt_design_template', JSON.stringify(template));
+        const savedKey = `receipt_design_template_${template.paper_size}`;
+        localStorage.setItem(savedKey, JSON.stringify(template));
         alert('Tasarim kaydedildi!');
     };
 

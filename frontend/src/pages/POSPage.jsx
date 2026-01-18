@@ -476,24 +476,203 @@ export default function POSPage() {
         setSelectedCartIndex(null);
     };
 
-    // Print Receipt Function
+    // Paper size dimensions in pixels (for print)
+    const PAPER_SIZES = {
+        'A5 (148x210mm)': { width: 420, height: 595 },
+        'A4 (210x297mm)': { width: 595, height: 842 },
+        'Termal 80mm': { width: 280, height: 'auto' },
+        'Termal 58mm': { width: 200, height: 'auto' },
+    };
+
+    // Print Receipt Function - Uses saved template
     const printReceipt = (saleData) => {
+        // Get selected paper size
+        const paperSize = localStorage.getItem('receipt_paper_size') || 'Termal 80mm';
+        const savedKey = `receipt_design_template_${paperSize}`;
+        const savedTemplate = localStorage.getItem(savedKey);
+
+        let template;
+        try {
+            template = savedTemplate ? JSON.parse(savedTemplate) : null;
+        } catch {
+            template = null;
+        }
+
+        // If no template saved, use simple fallback
+        if (!template) {
+            printSimpleReceipt(saleData, paperSize);
+            return;
+        }
+
+        const dimensions = PAPER_SIZES[paperSize] || PAPER_SIZES['Termal 80mm'];
+        const now = new Date();
+
+        // Replace variables in text
+        const replaceVariables = (text, item = null) => {
+            let result = text;
+            result = result.replace('{{TARIH}}', now.toLocaleDateString('tr-TR'));
+            result = result.replace('{{SAAT}}', now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }));
+            result = result.replace('{{MUSTERI_ADI}}', saleData.customer || 'Müşteri');
+            result = result.replace('{{GENEL_TOPLAM}}', saleData.total.toFixed(2));
+            result = result.replace('{{ESKI_BAKIYE}}', '0.00');
+            result = result.replace('{{YENI_BAKIYE}}', saleData.total.toFixed(2));
+
+            if (item) {
+                result = result.replace('{{URUN_ADI}}', item.name || '');
+                result = result.replace('{{MIKTAR}}', item.quantity?.toString() || '1');
+                result = result.replace('{{FIYAT}}', item.price?.toFixed(2) || '0.00');
+                const lineTotal = (item.price * item.quantity * (1 - (item.discount_rate || 0) / 100));
+                result = result.replace('{{SATIR_TOPLAM}}', lineTotal.toFixed(2));
+            }
+            return result;
+        };
+
+        // Separate product rows from static items
+        const staticItems = template.items.filter(i => !i.is_product_row && !i.is_dynamic_footer);
+        const productRowTemplates = template.items.filter(i => i.is_product_row);
+        const footerItems = template.items.filter(i => i.is_dynamic_footer);
+
+        // Build HTML for static items
+        let staticHtml = '';
+        staticItems.forEach(item => {
+            const style = `
+                position: absolute;
+                left: ${item.x}px;
+                top: ${item.y}px;
+                width: ${item.text_width || item.width || 100}px;
+                height: ${item.text_height || item.height || 20}px;
+                font-family: ${item.font_family || 'Courier New'}, monospace;
+                font-size: ${item.font_size || 10}px;
+                font-weight: ${item.font_bold ? 'bold' : 'normal'};
+                color: ${item.color || '#000'};
+                text-align: ${item.text_align || 'left'};
+                background-color: ${item.type === 'shape' ? (item.fill_color || 'transparent') : 'transparent'};
+                display: flex;
+                align-items: center;
+                justify-content: ${item.text_align === 'center' ? 'center' : item.text_align === 'right' ? 'flex-end' : 'flex-start'};
+                overflow: hidden;
+                white-space: nowrap;
+            `;
+            if (item.type === 'text') {
+                staticHtml += `<div style="${style}">${replaceVariables(item.text)}</div>`;
+            } else if (item.type === 'shape') {
+                staticHtml += `<div style="${style}"></div>`;
+            }
+        });
+
+        // Build HTML for product rows
+        let productRowsHtml = '';
+        let currentY = productRowTemplates.length > 0 ? productRowTemplates[0].y : 120;
+        const rowHeight = 16;
+
+        saleData.items.forEach((product, index) => {
+            productRowTemplates.forEach(templateItem => {
+                const yOffset = index * rowHeight;
+                const style = `
+                    position: absolute;
+                    left: ${templateItem.x}px;
+                    top: ${templateItem.y + yOffset}px;
+                    width: ${templateItem.text_width || 100}px;
+                    height: ${templateItem.text_height || 14}px;
+                    font-family: ${templateItem.font_family || 'Courier New'}, monospace;
+                    font-size: ${templateItem.font_size || 9}px;
+                    font-weight: ${templateItem.font_bold ? 'bold' : 'normal'};
+                    color: ${templateItem.color || '#000'};
+                    text-align: ${templateItem.text_align || 'left'};
+                    display: flex;
+                    align-items: center;
+                    justify-content: ${templateItem.text_align === 'center' ? 'center' : templateItem.text_align === 'right' ? 'flex-end' : 'flex-start'};
+                    overflow: hidden;
+                    white-space: nowrap;
+                `;
+                productRowsHtml += `<div style="${style}">${replaceVariables(templateItem.text, product)}</div>`;
+            });
+            currentY += rowHeight;
+        });
+
+        // Build HTML for footer items (positioned after products)
+        let footerHtml = '';
+        const footerOffset = (saleData.items.length - 1) * rowHeight;
+        footerItems.forEach(item => {
+            const style = `
+                position: absolute;
+                left: ${item.x}px;
+                top: ${item.y + footerOffset}px;
+                width: ${item.text_width || item.width || 100}px;
+                height: ${item.text_height || item.height || 20}px;
+                font-family: ${item.font_family || 'Courier New'}, monospace;
+                font-size: ${item.font_size || 10}px;
+                font-weight: ${item.font_bold ? 'bold' : 'normal'};
+                color: ${item.color || '#000'};
+                text-align: ${item.text_align || 'left'};
+                background-color: ${item.type === 'shape' ? (item.fill_color || 'transparent') : 'transparent'};
+                display: flex;
+                align-items: center;
+                justify-content: ${item.text_align === 'center' ? 'center' : item.text_align === 'right' ? 'flex-end' : 'flex-start'};
+                overflow: hidden;
+            `;
+            if (item.type === 'text') {
+                footerHtml += `<div style="${style}">${replaceVariables(item.text)}</div>`;
+            } else if (item.type === 'shape') {
+                footerHtml += `<div style="${style}"></div>`;
+            }
+        });
+
+        const totalHeight = currentY + 100; // Extra space for footer
+
         const receiptContent = `
             <!DOCTYPE html>
             <html>
             <head>
                 <title>Satış Fişi</title>
                 <style>
-                    body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 10px; }
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { width: ${dimensions.width}px; margin: 0 auto; }
+                    .receipt { position: relative; width: ${dimensions.width}px; min-height: ${totalHeight}px; }
+                    @media print { 
+                        body { margin: 0; } 
+                        @page { margin: 0; size: ${dimensions.width}px auto; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="receipt">
+                    ${staticHtml}
+                    ${productRowsHtml}
+                    ${footerHtml}
+                </div>
+            </body>
+            </html>
+        `;
+
+        const printWindow = window.open('', '_blank', `width=${dimensions.width + 50},height=600`);
+        if (printWindow) {
+            printWindow.document.write(receiptContent);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 100);
+        }
+    };
+
+    // Simple fallback receipt when no template is saved
+    const printSimpleReceipt = (saleData, paperSize) => {
+        const width = paperSize.includes('58') ? '58mm' : '80mm';
+        const receiptContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Satış Fişi</title>
+                <style>
+                    body { font-family: 'Courier New', monospace; font-size: 12px; width: ${width}; margin: 0 auto; padding: 10px; }
                     .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-                    .header h1 { font-size: 16px; margin: 5px 0; }
+                    .header h1 { font-size: 14px; margin: 5px 0; }
                     .items { border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-                    .item { display: flex; justify-content: space-between; margin: 5px 0; }
-                    .item-name { flex: 1; }
-                    .item-qty { width: 30px; text-align: center; }
-                    .item-price { width: 70px; text-align: right; }
-                    .total { font-size: 14px; font-weight: bold; text-align: right; margin-top: 10px; }
-                    .footer { text-align: center; margin-top: 20px; font-size: 10px; }
+                    .item { display: flex; justify-content: space-between; margin: 3px 0; font-size: 10px; }
+                    .total { font-size: 12px; font-weight: bold; text-align: right; margin-top: 10px; }
+                    .footer { text-align: center; margin-top: 15px; font-size: 9px; }
                     @media print { body { margin: 0; } }
                 </style>
             </head>
@@ -501,27 +680,22 @@ export default function POSPage() {
                 <div class="header">
                     <h1>SATIŞ FİŞİ</h1>
                     <div>${new Date().toLocaleString('tr-TR')}</div>
-                    <div>Müşteri: ${saleData.customer}</div>
-                    <div>Ödeme: ${saleData.paymentMethod}</div>
+                    <div>${saleData.customer}</div>
                 </div>
                 <div class="items">
                     ${saleData.items.map(item => `
                         <div class="item">
-                            <span class="item-name">${item.name}</span>
-                            <span class="item-qty">${item.quantity}x</span>
-                            <span class="item-price">${(item.price * item.quantity * (1 - (item.discount_rate || 0) / 100)).toFixed(2)} ₺</span>
+                            <span>${item.name}</span>
+                            <span>${item.quantity}x ${(item.price * item.quantity * (1 - (item.discount_rate || 0) / 100)).toFixed(2)}₺</span>
                         </div>
                     `).join('')}
                 </div>
                 <div class="total">TOPLAM: ${saleData.total.toFixed(2)} ₺</div>
-                <div class="footer">
-                    <p>Bizi tercih ettiğiniz için teşekkürler!</p>
-                </div>
+                <div class="footer">Teşekkürler!</div>
             </body>
             </html>
         `;
-
-        const printWindow = window.open('', '_blank', 'width=400,height=600');
+        const printWindow = window.open('', '_blank', 'width=350,height=500');
         if (printWindow) {
             printWindow.document.write(receiptContent);
             printWindow.document.close();

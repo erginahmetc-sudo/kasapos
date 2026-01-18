@@ -118,7 +118,7 @@ export default function InvoicesPage() {
             };
 
             // --- ADIM 1: HAM VERİYİ İNDİR ---
-            const urlDownload = "/birfatura/api/outEBelgeV2/DocumentDownloadByUUID";
+            const urlDownload = "/birfatura/api/OutEBelgeV2/DocumentDownloadByUUID";
             const payloadDownload = {
                 "documentUUID": invoice.uuid,
                 "inOutCode": "IN",
@@ -296,7 +296,7 @@ export default function InvoicesPage() {
             const config = JSON.parse(savedConfig);
 
             // 1. Fetch Detailed Content (ZIP/XML)
-            const url = "/birfatura/api/outEBelgeV2/DocumentDownloadByUUID";
+            const url = "/birfatura/api/OutEBelgeV2/DocumentDownloadByUUID";
             const headers = {
                 "X-Api-Key": config.api_key,
                 "X-Secret-Key": config.secret_key,

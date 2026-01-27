@@ -27,10 +27,13 @@ const getDefaultTemplateForSize = (paperSize) => {
 const AVAILABLE_VARIABLES = [
     { key: '{{TARIH}}', label: 'Tarih' },
     { key: '{{SAAT}}', label: 'Saat' },
+    { key: '{{FIS_NO}}', label: 'Fiş No' },
     { key: '{{MUSTERI_ADI}}', label: 'Musteri Adi' },
+    { key: '{{ODEME_TIPI}}', label: 'Ödeme Tipi' },
     { key: '{{URUN_ADI}}', label: 'Urun Adi' },
     { key: '{{MIKTAR}}', label: 'Miktar' },
     { key: '{{FIYAT}}', label: 'Fiyat' },
+    { key: '{{ISKONTO}}', label: 'İskonto' },
     { key: '{{SATIR_TOPLAM}}', label: 'Satir Toplam' },
     { key: '{{GENEL_TOPLAM}}', label: 'Genel Toplam' },
     { key: '{{ESKI_BAKIYE}}', label: 'Eski Bakiye' },

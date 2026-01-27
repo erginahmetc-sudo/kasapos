@@ -514,7 +514,9 @@ export default function POSPage() {
             let result = text;
             result = result.replace('{{TARIH}}', now.toLocaleDateString('tr-TR'));
             result = result.replace('{{SAAT}}', now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }));
+            result = result.replace('{{FIS_NO}}', now.getTime().toString());
             result = result.replace('{{MUSTERI_ADI}}', saleData.customer || 'Müşteri');
+            result = result.replace('{{ODEME_TIPI}}', saleData.paymentMethod || 'Nakit');
             result = result.replace('{{GENEL_TOPLAM}}', saleData.total.toFixed(2));
 
             // Balance variables
@@ -528,6 +530,7 @@ export default function POSPage() {
                 result = result.replace('{{URUN_ADI}}', item.name || '');
                 result = result.replace('{{MIKTAR}}', item.quantity?.toString() || '1');
                 result = result.replace('{{FIYAT}}', item.price?.toFixed(2) || '0.00');
+                result = result.replace('{{ISKONTO}}', (item.discount_rate || 0).toString());
                 const lineTotal = (item.price * item.quantity * (1 - (item.discount_rate || 0) / 100));
                 result = result.replace('{{SATIR_TOPLAM}}', lineTotal.toFixed(2));
             }

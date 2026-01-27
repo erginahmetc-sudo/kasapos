@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { productsAPI, salesAPI, customersAPI, shortcutsAPI, heldSalesAPI } from '../services/api';
 import { birFaturaAPI } from '../services/birFaturaService';
 import { useAuth } from '../context/AuthContext';
+import defaultTemplate from '../data/default_receipt_template.json';
+import template80mm from '../data/receipt_template_80mm.json';
+import template58mm from '../data/receipt_template_58mm.json';
 
 // Mobile detection hook
 function useMobileRedirect() {
@@ -484,7 +487,7 @@ export default function POSPage() {
         'Termal 58mm': { width: 200, height: 'auto' },
     };
 
-    // Print Receipt Function - Uses saved template
+    // Print Receipt Function - Uses saved template or default template
     const printReceipt = (saleData) => {
         // Get selected paper size
         const paperSize = localStorage.getItem('receipt_paper_size') || 'Termal 80mm';
@@ -500,10 +503,21 @@ export default function POSPage() {
             template = null;
         }
 
-        // If no template saved, use simple fallback
+        // If no saved template, use the default template for the paper size
         if (!template) {
-            printSimpleReceipt(saleData, paperSize);
-            return;
+            switch (paperSize) {
+                case 'Termal 80mm':
+                    template = { ...template80mm };
+                    break;
+                case 'Termal 58mm':
+                    template = { ...template58mm };
+                    break;
+                case 'A4 (210x297mm)':
+                case 'A5 (148x210mm)':
+                default:
+                    template = { ...defaultTemplate };
+                    break;
+            }
         }
 
         const dimensions = PAPER_SIZES[paperSize] || PAPER_SIZES['Termal 80mm'];

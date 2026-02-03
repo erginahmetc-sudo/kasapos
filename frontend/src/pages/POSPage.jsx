@@ -525,6 +525,7 @@ export default function POSPage() {
 
         // Replace variables in text
         const replaceVariables = (text, item = null) => {
+            if (!text) return '';
             let result = text;
             result = result.replace('{{TARIH}}', now.toLocaleDateString('tr-TR'));
             result = result.replace('{{SAAT}}', now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }));

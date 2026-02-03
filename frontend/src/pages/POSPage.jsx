@@ -781,16 +781,16 @@ export default function POSPage() {
                         box-sizing: border-box; 
                     }
                     html, body { 
-                        width: ${pageWidth};
-                        min-height: ${pageHeight};
-                        margin: 0;
-                        padding: 0;
+                        width: 100% !important;
+                        height: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
                     }
                     body { 
                         font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif; 
                         font-size: 12px; 
                         color: #333;
-                        padding: 10px;
+                        padding: 10px !important;
                     }
                     .receipt-wrapper {
                         width: 100%;
@@ -828,6 +828,7 @@ export default function POSPage() {
                         width: 100%; 
                         border-collapse: collapse; 
                         margin-bottom: 12px; 
+                        table-layout: fixed;
                     }
                     .receipt-table th { 
                         background: #333; 
@@ -836,24 +837,28 @@ export default function POSPage() {
                         text-align: left; 
                         font-size: 10px;
                         font-weight: bold;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
                     }
-                    .receipt-table th:nth-child(2),
-                    .receipt-table th:nth-child(3),
-                    .receipt-table th:nth-child(4),
-                    .receipt-table th:nth-child(5) { 
-                        text-align: right; 
-                    }
+                    /* Columns: Ürün(40%), Adet(10%), Fiyat(15%), İsk(10%), Toplam(25%) */
+                    .receipt-table th:nth-child(1) { width: 40%; }
+                    .receipt-table th:nth-child(2) { width: 10%; text-align: center; }
+                    .receipt-table th:nth-child(3) { width: 15%; text-align: right; }
+                    .receipt-table th:nth-child(4) { width: 10%; text-align: center; }
+                    .receipt-table th:nth-child(5) { width: 25%; text-align: right; }
                     .receipt-table td { 
                         padding: 6px; 
                         border-bottom: 1px solid #ddd; 
                         font-size: 10px;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
                     }
-                    .receipt-table td:nth-child(2),
-                    .receipt-table td:nth-child(3),
-                    .receipt-table td:nth-child(4),
-                    .receipt-table td:nth-child(5) { 
-                        text-align: right; 
-                    }
+                    .receipt-table td:nth-child(2) { text-align: center; }
+                    .receipt-table td:nth-child(3) { text-align: right; }
+                    .receipt-table td:nth-child(4) { text-align: center; }
+                    .receipt-table td:nth-child(5) { text-align: right; }
                     .receipt-total { 
                         background: #333; 
                         color: #fff; 

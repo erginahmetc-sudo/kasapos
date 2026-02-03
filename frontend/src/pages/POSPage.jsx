@@ -767,198 +767,167 @@ export default function POSPage() {
         }
     };
 
-    // A5/A4 Clean HTML Table-based Receipt
+    // A5/A4 Clean HTML Table-based Receipt - Fixed width approach
     const printA5Receipt = (saleData, paperSize) => {
         const isA4 = paperSize === 'A4 (210x297mm)';
-        const pageWidth = isA4 ? '210mm' : '148mm';
-        const pageHeight = isA4 ? '297mm' : '210mm';
+        // Use exact pixel dimensions for reliable printing
+        // A5: 148mm x 210mm at 96dpi = ~559px x 794px
+        // A4: 210mm x 297mm at 96dpi = ~794px x 1123px
+        const contentWidth = isA4 ? 754 : 519; // Page width minus margins (20mm = ~76px each side for A4, 20mm = ~40px for A5)
         const companyName = localStorage.getItem('receipt_company_name') || 'FIRMA ADI';
         const companyAddress = localStorage.getItem('receipt_company_address') || 'Adres Bilgisi';
         const companyPhone = localStorage.getItem('receipt_company_phone') || 'Tel: 0XXX XXX XX XX';
 
-        const receiptContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Satış Fişi</title>
-                <style>
-                    @page {
-                        size: ${pageWidth} ${pageHeight};
-                        margin: 0;
-                    }
-                    * { 
-                        margin: 0; 
-                        padding: 0; 
-                        box-sizing: border-box; 
-                    }
-                    html, body { 
-                        width: ${pageWidth} !important;
-                        max-width: ${pageWidth} !important;
-                        height: auto !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        overflow: hidden;
-                    }
-                    body { 
-                        font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif; 
-                        font-size: ${isA4 ? '12px' : '11px'}; 
-                        color: #333;
-                        padding: ${isA4 ? '15mm' : '10mm'} !important;
-                        width: ${pageWidth} !important;
-                        max-width: ${pageWidth} !important;
-                    }
-                    .receipt-wrapper {
-                        width: 100%;
-                        max-width: 100%;
-                    }
-                    .receipt-header { 
-                        text-align: center; 
-                        border-bottom: 2px solid #333; 
-                        padding-bottom: 10px; 
-                        margin-bottom: 10px; 
-                    }
-                    .receipt-header h1 { 
-                        font-size: ${isA4 ? '20px' : '16px'}; 
-                        margin-bottom: 3px; 
-                        color: #000;
-                    }
-                    .receipt-header .address { 
-                        font-size: ${isA4 ? '11px' : '9px'}; 
-                        color: #0066cc; 
-                        margin-bottom: 2px;
-                    }
-                    .receipt-header .phone { 
-                        font-size: ${isA4 ? '11px' : '9px'}; 
-                        color: #0066cc; 
-                    }
-                    .receipt-info-row {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 8px;
-                        padding-bottom: 5px;
-                        border-bottom: 1px solid #ddd;
-                    }
-                    .receipt-info-row .date { 
-                        font-size: ${isA4 ? '11px' : '9px'}; 
-                    }
-                    .receipt-info-row .sale-type { 
-                        font-size: ${isA4 ? '12px' : '10px'}; 
-                        font-weight: bold;
-                    }
-                    .receipt-table { 
-                        width: 100%; 
-                        border-collapse: collapse; 
-                        margin-bottom: 15px; 
-                        table-layout: fixed;
-                    }
-                    .receipt-table th { 
-                        background: transparent; 
-                        color: #333; 
-                        padding: 6px 4px; 
-                        text-align: left; 
-                        font-size: ${isA4 ? '10px' : '9px'};
-                        font-weight: bold;
-                        border-bottom: 1px solid #333;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                    }
-                    .receipt-table th:nth-child(1) { width: 45%; text-align: left; }
-                    .receipt-table th:nth-child(2) { width: 12%; text-align: center; }
-                    .receipt-table th:nth-child(3) { width: 18%; text-align: center; }
-                    .receipt-table th:nth-child(4) { width: 25%; text-align: center; }
-                    .receipt-table td { 
-                        padding: 5px 4px; 
-                        font-size: ${isA4 ? '10px' : '9px'};
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                        border-bottom: none;
-                    }
-                    .receipt-table td:nth-child(1) { text-align: left; }
-                    .receipt-table td:nth-child(2) { text-align: center; }
-                    .receipt-table td:nth-child(3) { text-align: center; }
-                    .receipt-table td:nth-child(4) { text-align: center; }
-                    .receipt-total-section { 
-                        margin-top: 20px;
-                        padding-top: 10px;
-                    }
-                    .receipt-total-row {
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        gap: 30px;
-                        font-size: ${isA4 ? '16px' : '14px'}; 
-                        font-weight: bold;
-                    }
-                    .receipt-footer { 
-                        text-align: center; 
-                        margin-top: 30px;
-                        color: #0066cc; 
-                        font-size: ${isA4 ? '10px' : '9px'}; 
-                    }
-                    @media print {
-                        html, body {
-                            width: ${pageWidth} !important;
-                            max-width: ${pageWidth} !important;
-                        }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="receipt-wrapper">
-                    <div class="receipt-header">
-                        <h1>${companyName}</h1>
-                        <p class="address">${companyAddress}</p>
-                        <p class="phone">${companyPhone}</p>
-                    </div>
-                    <div class="receipt-info-row">
-                        <span class="date">${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span class="sale-type">${saleData.customer?.includes('Perakende') ? 'Perakende Satış' : 'Toptan Satış'}</span>
-                    </div>
-                    <table class="receipt-table">
-                        <thead>
-                            <tr>
-                                <th>URUN</th>
-                                <th>ADET</th>
-                                <th>FIYAT</th>
-                                <th>TUTAR</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${(saleData.items || []).map(item => {
+        const receiptContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Satış Fişi</title>
+    <style>
+        @page {
+            size: ${isA4 ? 'A4' : 'A5'};
+            margin: 10mm;
+        }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        html, body { 
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+            font-size: ${isA4 ? '11px' : '10px'};
+            color: #333;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .receipt-container {
+            width: 100%;
+            padding: 0;
+        }
+        .receipt-header { 
+            text-align: center; 
+            border-bottom: 1px solid #333; 
+            padding-bottom: 8px; 
+            margin-bottom: 8px; 
+        }
+        .receipt-header h1 { 
+            font-size: ${isA4 ? '18px' : '14px'}; 
+            margin-bottom: 2px; 
+            color: #000;
+            font-weight: bold;
+        }
+        .receipt-header .sub-info { 
+            font-size: ${isA4 ? '10px' : '8px'}; 
+            color: #0066cc; 
+            line-height: 1.4;
+        }
+        .info-line {
+            display: table;
+            width: 100%;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #ddd;
+            font-size: ${isA4 ? '10px' : '9px'};
+        }
+        .info-line .left { 
+            display: table-cell;
+            text-align: left;
+            width: 50%;
+        }
+        .info-line .right { 
+            display: table-cell;
+            text-align: right;
+            width: 50%;
+            font-weight: bold;
+        }
+        table.items { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 12px;
+        }
+        table.items th { 
+            background: transparent; 
+            color: #333; 
+            padding: 4px 2px; 
+            font-size: ${isA4 ? '9px' : '8px'};
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+        }
+        table.items th.col-name { width: 50%; text-align: left; }
+        table.items th.col-qty { width: 12%; text-align: center; }
+        table.items th.col-price { width: 18%; text-align: center; }
+        table.items th.col-total { width: 20%; text-align: center; }
+        table.items td { 
+            padding: 3px 2px; 
+            font-size: ${isA4 ? '9px' : '8px'};
+            vertical-align: top;
+        }
+        table.items td.col-name { text-align: left; }
+        table.items td.col-qty { text-align: center; }
+        table.items td.col-price { text-align: center; }
+        table.items td.col-total { text-align: center; }
+        .total-section { 
+            margin-top: 15px;
+            text-align: center;
+        }
+        .total-amount {
+            font-size: ${isA4 ? '14px' : '12px'}; 
+            font-weight: bold;
+        }
+        .footer-msg { 
+            text-align: center; 
+            margin-top: 20px;
+            color: #0066cc; 
+            font-size: ${isA4 ? '9px' : '8px'}; 
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="receipt-header">
+            <h1>${companyName}</h1>
+            <div class="sub-info">${companyAddress}<br>${companyPhone}</div>
+        </div>
+        <div class="info-line">
+            <span class="left">${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span class="right">${saleData.customer?.includes('Perakende') ? 'Perakende Satış' : 'Toptan Satış'}</span>
+        </div>
+        <table class="items">
+            <thead>
+                <tr>
+                    <th class="col-name">URUN</th>
+                    <th class="col-qty">ADET</th>
+                    <th class="col-price">FIYAT</th>
+                    <th class="col-total">TUTAR</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(saleData.items || []).map(item => {
             const qty = parseFloat(item.quantity) || 1;
             const price = parseFloat(item.price) || 0;
             const discount = parseFloat(item.discount_rate) || 0;
             const lineTotal = price * qty * (1 - discount / 100);
-            return `
-                                    <tr>
-                                        <td>${item.name || ''}</td>
-                                        <td>${qty.toFixed(0)}</td>
-                                        <td>${price.toFixed(2)}</td>
-                                        <td>${lineTotal.toFixed(2)}</td>
-                                    </tr>
-                                `;
+            return `<tr>
+                        <td class="col-name">${item.name || ''}</td>
+                        <td class="col-qty">${qty.toFixed(0)}</td>
+                        <td class="col-price">${price.toFixed(2)}</td>
+                        <td class="col-total">${lineTotal.toFixed(2)}</td>
+                    </tr>`;
         }).join('')}
-                        </tbody>
-                    </table>
-                    <div class="receipt-total-section">
-                        <div class="receipt-total-row">
-                            <span>TOPLAM:</span>
-                            <span>${(saleData.total || 0).toFixed(2)} TL</span>
-                        </div>
-                    </div>
-                    <div class="receipt-footer">
-                        <p>Bizi tercih ettiğiniz için teşekkürler!</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
+            </tbody>
+        </table>
+        <div class="total-section">
+            <span class="total-amount">TOPLAM: ${(saleData.total || 0).toFixed(2)} TL</span>
+        </div>
+        <div class="footer-msg">Bizi tercih ettiğiniz için teşekkürler!</div>
+    </div>
+</body>
+</html>`;
 
-        const printWindow = window.open('', '_blank', `width=${isA4 ? 800 : 560},height=800`);
+        const printWindow = window.open('', '_blank', `width=${isA4 ? 800 : 600},height=${isA4 ? 1000 : 800}`);
         if (printWindow) {
             printWindow.document.write(receiptContent);
             printWindow.document.close();
@@ -966,7 +935,7 @@ export default function POSPage() {
             setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
-            }, 150);
+            }, 200);
         }
     };
 

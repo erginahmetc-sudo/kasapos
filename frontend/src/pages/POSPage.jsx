@@ -774,8 +774,8 @@ export default function POSPage() {
                         font-family: 'Tahoma', 'Segoe UI', sans-serif; 
                         font-size: 12px; 
                         width: ${width}; 
-                        margin: 0 auto; 
-                        padding: 15px;
+                        margin: 0; 
+                        padding: 8px;
                         color: #333;
                     }
                     .receipt-header { 
@@ -859,8 +859,8 @@ export default function POSPage() {
                         font-size: 11px; 
                     }
                     @media print { 
-                        body { margin: 0; padding: 10px; } 
-                        @page { margin: 5mm; size: ${width} auto; }
+                        html, body { margin: 0 !important; padding: 0 !important; width: ${width} !important; }
+                        @page { margin: 2mm !important; size: ${width} auto; }
                     }
                 </style>
             </head>

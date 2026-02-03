@@ -775,7 +775,7 @@ export default function POSPage() {
             const selectedCustomer = customers.find(c => c.name === customer);
 
             // BirFatura için müşteri adından (Perakende) ekini temizle
-            const cleanCustomerName = customer.replace(/ \(Perakende\)$/i, '').trim();
+            const cleanCustomerName = (customer || 'Toptan Satış').replace(/ \(Perakende\)$/i, '').trim();
 
             await salesAPI.complete({
                 sale_code: saleCode,

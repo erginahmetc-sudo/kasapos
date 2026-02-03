@@ -679,11 +679,21 @@ export default function POSPage() {
                 <title>Satış Fişi</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { width: ${dimensions.width}px; margin: 0 auto; }
+                    body { 
+                        width: ${dimensions.width}px; 
+                        margin: 0 auto;
+                        transform-origin: top left;
+                    }
                     .receipt { position: relative; width: ${dimensions.width}px; min-height: ${totalHeight}px; }
                     @media print { 
-                        body { margin: 0; } 
-                        @page { margin: 0; size: ${dimensions.width}px auto; }
+                        body { 
+                            margin: 0; 
+                            ${(paperSize.includes('A5') || paperSize.includes('A4')) ? 'transform: scale(1.35);' : ''}
+                        } 
+                        @page { 
+                            margin: 0; 
+                            size: ${(paperSize.includes('A5') || paperSize.includes('A4')) ? 'auto' : `${dimensions.width}px auto`}; 
+                        }
                     }
                 </style>
             </head>

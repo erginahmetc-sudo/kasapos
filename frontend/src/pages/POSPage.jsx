@@ -760,66 +760,81 @@ export default function POSPage() {
     // A5/A4 Clean HTML Table-based Receipt
     const printA5Receipt = (saleData, paperSize) => {
         const isA4 = paperSize === 'A4 (210x297mm)';
-        const width = isA4 ? '210mm' : '148mm';
+        const pageWidth = isA4 ? '210mm' : '148mm';
+        const pageHeight = isA4 ? '297mm' : '210mm';
         const companyName = localStorage.getItem('receipt_company_name') || 'POS Sistemi';
 
         const receiptContent = `
             <!DOCTYPE html>
             <html>
             <head>
+                <meta charset="UTF-8">
                 <title>Satış Fişi</title>
                 <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { 
-                        font-family: 'Tahoma', 'Segoe UI', sans-serif; 
-                        font-size: 12px; 
-                        width: 100%; 
-                        max-width: ${width};
+                    @page {
+                        size: ${pageWidth} ${pageHeight};
+                        margin: 0;
+                    }
+                    * { 
                         margin: 0; 
-                        padding: 8px;
+                        padding: 0; 
+                        box-sizing: border-box; 
+                    }
+                    html, body { 
+                        width: ${pageWidth};
+                        min-height: ${pageHeight};
+                        margin: 0;
+                        padding: 0;
+                    }
+                    body { 
+                        font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif; 
+                        font-size: 12px; 
                         color: #333;
+                        padding: 10px;
+                    }
+                    .receipt-wrapper {
+                        width: 100%;
                     }
                     .receipt-header { 
                         text-align: center; 
                         border-bottom: 2px solid #333; 
-                        padding-bottom: 15px; 
-                        margin-bottom: 15px; 
+                        padding-bottom: 12px; 
+                        margin-bottom: 12px; 
                     }
                     .receipt-header h1 { 
-                        font-size: ${isA4 ? '24px' : '20px'}; 
-                        margin-bottom: 5px; 
+                        font-size: ${isA4 ? '22px' : '18px'}; 
+                        margin-bottom: 4px; 
                         color: #000;
                     }
                     .receipt-header p { 
-                        font-size: 14px; 
+                        font-size: 13px; 
                         color: #666; 
                     }
                     .receipt-info { 
-                        background: #f8f9fa; 
-                        border: 1px solid #dee2e6; 
-                        border-radius: 5px;
-                        padding: 12px; 
-                        margin-bottom: 15px; 
+                        background: #f5f5f5; 
+                        border: 1px solid #ddd; 
+                        padding: 10px; 
+                        margin-bottom: 12px; 
                     }
                     .receipt-info p { 
-                        margin: 5px 0; 
+                        margin: 4px 0; 
                         font-size: 11px; 
                     }
                     .receipt-info strong { 
                         display: inline-block; 
-                        width: 90px; 
+                        width: 85px; 
                     }
                     .receipt-table { 
                         width: 100%; 
                         border-collapse: collapse; 
-                        margin-bottom: 15px; 
+                        margin-bottom: 12px; 
                     }
                     .receipt-table th { 
-                        background: #343a40; 
+                        background: #333; 
                         color: #fff; 
-                        padding: 10px 8px; 
+                        padding: 8px 6px; 
                         text-align: left; 
-                        font-size: 11px;
+                        font-size: 10px;
                         font-weight: bold;
                     }
                     .receipt-table th:nth-child(2),
@@ -829,9 +844,9 @@ export default function POSPage() {
                         text-align: right; 
                     }
                     .receipt-table td { 
-                        padding: 8px; 
-                        border-bottom: 1px solid #e0e0e0; 
-                        font-size: 11px;
+                        padding: 6px; 
+                        border-bottom: 1px solid #ddd; 
+                        font-size: 10px;
                     }
                     .receipt-table td:nth-child(2),
                     .receipt-table td:nth-child(3),
@@ -839,82 +854,76 @@ export default function POSPage() {
                     .receipt-table td:nth-child(5) { 
                         text-align: right; 
                     }
-                    .receipt-table tbody tr:hover { 
-                        background: #f5f5f5; 
-                    }
                     .receipt-total { 
-                        background: #343a40; 
+                        background: #333; 
                         color: #fff; 
-                        padding: 12px 15px; 
-                        font-size: ${isA4 ? '18px' : '16px'}; 
+                        padding: 10px 12px; 
+                        font-size: ${isA4 ? '16px' : '14px'}; 
                         font-weight: bold; 
                         text-align: right; 
-                        border-radius: 5px;
-                        margin-bottom: 15px;
+                        margin-bottom: 12px;
                     }
                     .receipt-footer { 
                         text-align: center; 
-                        padding-top: 15px; 
-                        border-top: 1px dashed #ccc; 
+                        padding-top: 12px; 
+                        border-top: 1px dashed #999; 
                         color: #666; 
-                        font-size: 11px; 
-                    }
-                    @media print { 
-                        html, body { margin: 0 !important; padding: 5px !important; width: 100% !important; max-width: none !important; }
-                        @page { margin: 0 !important; size: ${width} auto; }
+                        font-size: 10px; 
                     }
                 </style>
             </head>
             <body>
-                <div class="receipt-header">
-                    <h1>${companyName}</h1>
-                    <p>Satış Fişi</p>
-                </div>
-                <div class="receipt-info">
-                    <p><strong>Fiş No:</strong> ${new Date().getTime()}</p>
-                    <p><strong>Tarih:</strong> ${new Date().toLocaleString('tr-TR')}</p>
-                    <p><strong>Müşteri:</strong> ${saleData.customer || 'Misafir'}</p>
-                    <p><strong>Ödeme Tipi:</strong> ${saleData.paymentMethod || 'Nakit'}</p>
-                </div>
-                <table class="receipt-table">
-                    <thead>
-                        <tr>
-                            <th>Ürün</th>
-                            <th>Adet</th>
-                            <th>Fiyat</th>
-                            <th>İskonto</th>
-                            <th>Toplam</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${(saleData.items || []).map(item => {
+                <div class="receipt-wrapper">
+                    <div class="receipt-header">
+                        <h1>${companyName}</h1>
+                        <p>Satış Fişi</p>
+                    </div>
+                    <div class="receipt-info">
+                        <p><strong>Fiş No:</strong> ${new Date().getTime()}</p>
+                        <p><strong>Tarih:</strong> ${new Date().toLocaleString('tr-TR')}</p>
+                        <p><strong>Müşteri:</strong> ${saleData.customer || 'Misafir'}</p>
+                        <p><strong>Ödeme Tipi:</strong> ${saleData.paymentMethod || 'Nakit'}</p>
+                    </div>
+                    <table class="receipt-table">
+                        <thead>
+                            <tr>
+                                <th>Ürün</th>
+                                <th>Adet</th>
+                                <th>Fiyat</th>
+                                <th>İsk.</th>
+                                <th>Toplam</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${(saleData.items || []).map(item => {
             const qty = parseFloat(item.quantity) || 1;
             const price = parseFloat(item.price) || 0;
             const discount = parseFloat(item.discount_rate) || 0;
             const lineTotal = price * qty * (1 - discount / 100);
             return `
-                                <tr>
-                                    <td>${item.name || ''}</td>
-                                    <td>${qty.toFixed(0)}</td>
-                                    <td>${price.toFixed(2)} TL</td>
-                                    <td>%${discount.toFixed(0)}</td>
-                                    <td>${lineTotal.toFixed(2)} TL</td>
-                                </tr>
-                            `;
+                                    <tr>
+                                        <td>${item.name || ''}</td>
+                                        <td>${qty.toFixed(0)}</td>
+                                        <td>${price.toFixed(2)} TL</td>
+                                        <td>%${discount.toFixed(0)}</td>
+                                        <td>${lineTotal.toFixed(2)} TL</td>
+                                    </tr>
+                                `;
         }).join('')}
-                    </tbody>
-                </table>
-                <div class="receipt-total">
-                    Toplam: ${(saleData.total || 0).toFixed(2)} TL
-                </div>
-                <div class="receipt-footer">
-                    <p>Bizi tercih ettiğiniz için teşekkür ederiz.</p>
+                        </tbody>
+                    </table>
+                    <div class="receipt-total">
+                        Toplam: ${(saleData.total || 0).toFixed(2)} TL
+                    </div>
+                    <div class="receipt-footer">
+                        <p>Bizi tercih ettiğiniz için teşekkür ederiz.</p>
+                    </div>
                 </div>
             </body>
             </html>
         `;
 
-        const printWindow = window.open('', '_blank', `width=${isA4 ? 700 : 500},height=700`);
+        const printWindow = window.open('', '_blank', `width=${isA4 ? 800 : 600},height=900`);
         if (printWindow) {
             printWindow.document.write(receiptContent);
             printWindow.document.close();
@@ -922,7 +931,7 @@ export default function POSPage() {
             setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
-            }, 100);
+            }, 150);
         }
     };
 

@@ -773,7 +773,8 @@ export default function POSPage() {
                     body { 
                         font-family: 'Tahoma', 'Segoe UI', sans-serif; 
                         font-size: 12px; 
-                        width: ${width}; 
+                        width: 100%; 
+                        max-width: ${width};
                         margin: 0; 
                         padding: 8px;
                         color: #333;
@@ -859,8 +860,8 @@ export default function POSPage() {
                         font-size: 11px; 
                     }
                     @media print { 
-                        html, body { margin: 0 !important; padding: 0 !important; width: ${width} !important; }
-                        @page { margin: 2mm !important; size: ${width} auto; }
+                        html, body { margin: 0 !important; padding: 5px !important; width: 100% !important; max-width: none !important; }
+                        @page { margin: 0 !important; size: ${width} auto; }
                     }
                 </style>
             </head>

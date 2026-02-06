@@ -84,7 +84,6 @@ export default function SalesPage() {
 
     const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-    // Kategori listesi (statik veya ürünlerden türetilebilir)
     const categories = ['Tümü', 'Gıda', 'İçecek', 'Temizlik', 'Elektronik', 'Tekstil'];
 
     return (
@@ -158,7 +157,6 @@ export default function SalesPage() {
                                 <div key={item.id} className="flex items-center gap-2 pl-0 pr-2 py-1.5 hover:bg-slate-50 group transition-all">
                                     <div className="w-10 h-10 bg-slate-100 overflow-hidden flex-shrink-0 border-r border-slate-100">
                                         <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400">
-                                            {/* Placeholder image if no image url */}
                                             <span className="material-symbols-outlined text-sm">image</span>
                                         </div>
                                     </div>
@@ -212,6 +210,7 @@ export default function SalesPage() {
 
                 {/* Main Content: Products Grid */}
                 <main className="flex-1 flex flex-col bg-slate-100 overflow-hidden relative">
+                    {/* Category Filters */}
                     <div className="px-6 py-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-200 bg-white flex-none z-10">
                         {categories.map(cat => (
                             <button
@@ -227,25 +226,26 @@ export default function SalesPage() {
                         ))}
                     </div>
 
-                    <div className="flex-none overflow-x-auto custom-scrollbar p-6 bg-slate-50/50 border-b border-slate-200 shadow-inner h-full overflow-y-auto">
+                    {/* Products - Horizontal Scrolling 2-Row Grid */}
+                    <div className="flex-none overflow-x-auto custom-scrollbar p-6 bg-slate-50/50 border-b border-slate-200 shadow-inner h-auto">
                         {loading ? (
-                            <div className="flex items-center justify-center h-full">
+                            <div className="flex items-center justify-center h-40">
                                 <div className="w-12 h-12 border-4 border-pos-primary border-t-transparent rounded-full animate-spin" />
                             </div>
                         ) : filteredProducts.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-1/2 text-slate-400">
+                            <div className="flex flex-col items-center justify-center h-40 text-slate-400">
                                 <span className="material-symbols-outlined text-5xl mb-3 opacity-30">inventory_2</span>
                                 <p className="font-medium">Ürün bulunamadı</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 pb-20">
+                            <div className="grid grid-rows-2 grid-flow-col gap-3 w-max">
                                 {filteredProducts.map(product => (
                                     <div
                                         key={product.id}
                                         onClick={() => addToCart(product)}
-                                        className="bg-white rounded-xl border border-slate-200 p-2 shadow-sm hover:shadow-lg hover:border-pos-accent-blue/30 hover:-translate-y-0.5 transition-all group flex flex-col cursor-pointer h-40"
+                                        className="w-36 h-36 bg-white rounded-xl border border-slate-200 p-2 shadow-sm hover:shadow-lg hover:border-pos-accent-blue/30 hover:-translate-y-0.5 transition-all group flex flex-col cursor-pointer"
                                     >
-                                        <div className="w-full h-16 rounded-lg bg-slate-50 overflow-hidden relative flex-shrink-0 border border-slate-100 mb-2 flex items-center justify-center">
+                                        <div className="w-full h-16 rounded-lg bg-slate-100 overflow-hidden relative flex-shrink-0 border border-slate-100 mb-2 flex items-center justify-center">
                                             <span className="material-symbols-outlined text-slate-300 text-2xl">image</span>
                                         </div>
                                         <div className="flex flex-col flex-1 px-0.5 relative">
@@ -263,6 +263,17 @@ export default function SalesPage() {
                                 ))}
                             </div>
                         )}
+                    </div>
+
+                    {/* Reserved Area for Quick Stats */}
+                    <div className="flex-1 bg-white p-8 flex items-center justify-center opacity-50 relative">
+                        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNlN2U1ZTQiLz48L3N2Zz4=')] opacity-50"></div>
+                        <div className="text-center z-10">
+                            <div className="w-16 h-16 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center mx-auto mb-3">
+                                <span className="material-symbols-outlined text-slate-300 text-3xl">bar_chart</span>
+                            </div>
+                            <p className="text-sm font-medium text-slate-400">Hızlı İstatistikler Alanı</p>
+                        </div>
                     </div>
                 </main>
             </div>

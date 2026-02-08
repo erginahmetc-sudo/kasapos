@@ -512,10 +512,10 @@ export default function SalesPage() {
                                         <tr>
                                             <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Ürün</th>
                                             <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-20">Adet</th>
-                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-24">KDV %</th>
-                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-28">KDV Dahil?</th>
                                             <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-28">Birim Fiyat</th>
                                             <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-right w-28">Tutar</th>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center w-24">KDV Oranı</th>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-center w-28">KDV Dahil?</th>
                                             <th className="px-4 py-3 w-10"></th>
                                         </tr>
                                     </thead>
@@ -541,33 +541,13 @@ export default function SalesPage() {
                                                             type="number"
                                                             value={item.quantity}
                                                             onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                                                            className="w-16 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
+                                                            className="w-16 text-center border rounded py-1 text-sm font-bold text-red-600 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
                                                         />
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
                                                         <input
                                                             type="number"
-                                                            value={item.vat_rate}
-                                                            onChange={(e) => handleItemChange(idx, 'vat_rate', e.target.value)}
-                                                            className="w-16 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-3 text-center">
-                                                        <button
-                                                            onClick={() => handleItemChange(idx, 'is_vat_inc', !item.is_vat_inc)}
-                                                            className={`px-2 py-1 rounded text-xs font-bold transition-colors ${item.is_vat_inc ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
-                                                        >
-                                                            {item.is_vat_inc ? 'EVET' : 'HAYIR'}
-                                                        </button>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-center">
-                                                        <input
-                                                            type="number"
-                                                            value={Number(displayPrice).toFixed(2)} // Use toFixed for display stability or loose? toFixed makes it string. better to keep input type number but might need managing focus.
-                                                            // Actually, for editing, user expects to type.
-                                                            // If I modify value on render, editing can be jumpy.
-                                                            // But here we just toggled.
-                                                            // Let's use simple number input.
+                                                            value={Number(displayPrice).toFixed(2)}
                                                             onChange={(e) => {
                                                                 const val = parseFloat(e.target.value) || 0;
                                                                 let newGrossPrice = val;
@@ -577,11 +557,27 @@ export default function SalesPage() {
                                                                 }
                                                                 handleItemChange(idx, 'price', newGrossPrice);
                                                             }}
-                                                            className="w-24 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
+                                                            className="w-24 text-center border rounded py-1 text-sm font-bold text-red-600 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
                                                         />
                                                     </td>
-                                                    <td className="px-4 py-3 text-right font-bold text-slate-900">
+                                                    <td className="px-4 py-3 text-right font-bold text-red-600">
                                                         {(item.quantity * item.price * (1 - (item.discount_rate || 0) / 100)).toFixed(2)} ₺
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <input
+                                                            type="number"
+                                                            value={item.vat_rate}
+                                                            onChange={(e) => handleItemChange(idx, 'vat_rate', e.target.value)}
+                                                            className="w-16 text-center border rounded py-1 text-xs text-slate-500 font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <button
+                                                            onClick={() => handleItemChange(idx, 'is_vat_inc', !item.is_vat_inc)}
+                                                            className={`px-2 py-1 rounded text-[10px] font-bold transition-colors ${item.is_vat_inc ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
+                                                        >
+                                                            {item.is_vat_inc ? 'EVET' : 'HAYIR'}
+                                                        </button>
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
                                                         <button

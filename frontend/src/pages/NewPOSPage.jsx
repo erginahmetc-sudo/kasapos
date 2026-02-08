@@ -46,22 +46,18 @@ const ProductCard = ({ product, onAddToCart }) => {
                         loading="lazy"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
-                        <span className="material-symbols-outlined text-4xl">image</span>
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 text-slate-400">
+                        <span className="material-symbols-outlined text-3xl">image</span>
+                        <span className="text-[10px] font-medium">Görsel Yok</span>
                     </div>
                 )}
             </div>
             <div className="flex flex-col flex-1 px-1">
                 {/* Fixed height for 2 lines of text to ensure alignment */}
-                <h3 className="text-[11px] font-bold text-slate-700 leading-tight line-clamp-2 h-[28px] flex items-start group-hover:text-blue-600 transition-colors">
+                <h3 className="text-sm font-bold text-slate-700 leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors">
                     {product.name}
                 </h3>
-                <div className="flex items-end justify-between w-full mt-auto pt-1">
-                    <span className="text-sm font-extrabold text-slate-900 leading-none">{product.price?.toFixed(2)} ₺</span>
-                    <div className="w-6 h-6 rounded bg-slate-50 text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all flex items-center justify-center shadow-sm">
-                        <span className="material-symbols-outlined text-sm font-bold">add</span>
-                    </div>
-                </div>
+                <span className="text-base font-extrabold text-red-600 leading-none mt-0.5">{product.price?.toFixed(2)} ₺</span>
             </div>
         </div>
     );
@@ -82,6 +78,7 @@ export default function NewPOSPage() {
     const [customer, setCustomer] = useState('Toptan Satış');
     const [customers, setCustomers] = useState([]);
     const [showCustomerModal, setShowCustomerModal] = useState(false);
+    const [customerSearchQuery, setCustomerSearchQuery] = useState('');
 
     // Modals
     const [showQuantityModal, setShowQuantityModal] = useState(false);
@@ -132,13 +129,27 @@ export default function NewPOSPage() {
         loadShortcuts();
 
         // Load Shortcuts
+        const defaultShortcuts = {
+            'miktar_duzenle': 'F2',
+            'iskonto_ekle': 'F3',
+            'fiyat_duzenle': 'F4',
+            'nakit_odeme': 'F8',
+            'pos_odeme': 'F9',
+            'musteri_sec': 'F10',
+            'search_focus': 'F1',
+            'tanimsiz_urun': 'Insert'
+        };
+
         const saved = localStorage.getItem('pos_keyboard_shortcuts');
         if (saved) {
             try {
-                setKeyboardShortcuts(JSON.parse(saved));
+                setKeyboardShortcuts({ ...defaultShortcuts, ...JSON.parse(saved) });
             } catch (e) {
                 console.error("Shortcuts parse error", e);
+                setKeyboardShortcuts(defaultShortcuts);
             }
+        } else {
+            setKeyboardShortcuts(defaultShortcuts);
         }
     }, []);
 
@@ -185,6 +196,23 @@ export default function NewPOSPage() {
     // Keyboard Shortcuts
     useEffect(() => {
         const handleKeyDown = (e) => {
+            // Handle +/- for quantity on selected item
+            if (selectedCartIndex !== null && cart[selectedCartIndex]) {
+                if (e.key === '+' || e.key === 'Add') {
+                    e.preventDefault();
+                    updateCartItem(selectedCartIndex, 'quantity', cart[selectedCartIndex].quantity + 1);
+                    return;
+                }
+                if (e.key === '-' || e.key === 'Subtract') {
+                    e.preventDefault();
+                    const newQty = cart[selectedCartIndex].quantity - 1;
+                    if (newQty >= 1) {
+                        updateCartItem(selectedCartIndex, 'quantity', newQty);
+                    }
+                    return;
+                }
+            }
+
             const action = Object.keys(keyboardShortcuts).find(key => keyboardShortcuts[key] === e.key);
             if (!action) return;
             if (e.key.startsWith('F')) e.preventDefault();
@@ -224,6 +252,14 @@ export default function NewPOSPage() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [keyboardShortcuts, cart, selectedCartIndex]);
+
+    // Auto-scroll to selected item
+    const cartItemsRef = useRef([]);
+    useEffect(() => {
+        if (selectedCartIndex !== null && cartItemsRef.current[selectedCartIndex]) {
+            cartItemsRef.current[selectedCartIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }, [selectedCartIndex]);
 
     // Filtering (Memoized)
     const filteredProducts = useMemo(() => {
@@ -268,8 +304,10 @@ export default function NewPOSPage() {
             const newCart = [...cart];
             newCart[existingIndex].quantity += 1;
             setCart(newCart);
+            setSelectedCartIndex(existingIndex);
         } else {
             setCart([...cart, { ...product, quantity: 1, discount_rate: 0 }]);
+            setSelectedCartIndex(cart.length);
         }
     };
 
@@ -282,8 +320,10 @@ export default function NewPOSPage() {
             const newCart = [...cart];
             newCart[existingIndex].quantity += quantity;
             setCart(newCart);
+            setSelectedCartIndex(existingIndex);
         } else {
             setCart([...cart, { ...productToAdd, quantity: quantity, discount_rate: 0 }]);
+            setSelectedCartIndex(cart.length);
         }
         setShowAskQuantityModal(false);
         setProductToAdd(null);
@@ -839,40 +879,44 @@ export default function NewPOSPage() {
                         <div className="grid grid-cols-4 gap-2">
                             {/* Customer Button (Takes 2 cols) */}
                             <button
-                                className="col-span-2 bg-slate-50 border border-slate-200 rounded-lg p-2 flex items-center gap-2 hover:border-blue-400 transition-all text-left group"
+                                className={`col-span-2 border rounded-lg p-2 flex items-center gap-2 transition-all text-left group ${customer !== 'Toptan Satış'
+                                    ? 'bg-yellow-100 border-yellow-400 hover:border-yellow-500'
+                                    : 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                                    }`}
                                 onClick={() => setShowCustomerModal(true)}
                                 title="Müşteri Seç"
                             >
-                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${customer !== 'Toptan Satış'
+                                    ? 'bg-yellow-400 text-yellow-800'
+                                    : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
+                                    }`}>
                                     <span className="material-symbols-outlined text-lg">person</span>
                                 </div>
                                 <div className="min-w-0 overflow-hidden">
                                     <p className="text-[9px] text-slate-400 font-bold uppercase leading-none mb-0.5">Müşteri</p>
-                                    <p className="text-[11px] font-bold text-slate-800 truncate leading-none">{customer}</p>
+                                    <p className={`truncate leading-none ${customer !== 'Toptan Satış' ? 'text-sm font-extrabold text-black' : 'text-[11px] font-bold text-slate-800'}`}>{customer}</p>
                                 </div>
                             </button>
 
                             {/* Hold Button (1 col) */}
                             <button
                                 onClick={holdSale}
-                                className="col-span-1 bg-orange-50 border border-orange-100 rounded-lg flex flex-col items-center justify-center hover:bg-orange-100 hover:border-orange-300 transition-all"
+                                className="col-span-1 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-center p-2 hover:bg-orange-100 hover:border-orange-400 transition-all"
                                 title="Satışı Beklemeye Al"
                             >
-                                <span className="material-symbols-outlined text-orange-600 text-lg mb-0.5">pause</span>
-                                <span className="text-[9px] font-bold text-orange-700 leading-none">Beklet</span>
+                                <span className="text-xs font-extrabold text-orange-700 text-center leading-tight">BEKLEMEYE<br />AL</span>
                             </button>
 
                             {/* Waitlist Button (1 col) */}
                             <button
                                 onClick={() => setShowWaitlistModal(true)}
-                                className="col-span-1 bg-slate-50 border border-slate-200 rounded-lg flex flex-col items-center justify-center hover:bg-slate-100 hover:border-slate-300 transition-all relative"
+                                className="col-span-1 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center p-2 hover:bg-slate-100 hover:border-slate-400 transition-all relative"
                                 title="Bekleyen Satışlar"
                             >
                                 {heldSales.length > 0 && (
                                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">{heldSales.length}</span>
                                 )}
-                                <span className="material-symbols-outlined text-slate-600 text-lg mb-0.5">list</span>
-                                <span className="text-[9px] font-bold text-slate-700 leading-none">Liste</span>
+                                <span className="text-xs font-extrabold text-slate-700 text-center leading-tight">BEKLEME<br />LİSTESİ</span>
                             </button>
                         </div>
 
@@ -894,7 +938,7 @@ export default function NewPOSPage() {
                     <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-white border-b border-slate-100">
                         <span className="flex-1">Sepetteki Ürünler</span>
                         <span className="w-16 text-center">Adet</span>
-                        <span className="w-20 text-right">Tutar</span>
+                        <span className="w-24 text-right">Tutar</span>
                     </div>
 
                     {/* Cart Items */}
@@ -907,32 +951,51 @@ export default function NewPOSPage() {
                         ) : (
                             cart.map((item, index) => (
                                 <div
-                                    key={index}
-                                    className={`flex items-center gap-2 pl-0 pr-2 py-1.5 hover:bg-slate-50 group transition-all ${selectedCartIndex === index ? 'bg-blue-50/50' : ''}`}
+                                    key={item.id || `${item.stock_code}-${index}`}
+                                    ref={el => cartItemsRef.current[index] = el}
+                                    className={`flex items-center gap-1.5 pr-2 py-0.5 hover:bg-slate-50 group transition-all border-l-4 ${selectedCartIndex === index ? 'bg-green-100 border-green-500' : 'border-transparent pl-1'}`}
                                     onClick={() => setSelectedCartIndex(index)}
                                 >
-                                    <div className="w-10 h-10 bg-slate-100 overflow-hidden flex-shrink-0 border-r border-slate-100">
-                                        <img
-                                            alt={item.name}
-                                            className="w-full h-full object-cover"
-                                            src={item.image_url || 'https://via.placeholder.com/40'}
-                                            onError={(e) => { e.target.src = 'https://via.placeholder.com/40?text=?'; }}
-                                        />
+                                    <div className="w-8 h-8 bg-slate-100 overflow-hidden flex-shrink-0 border-r border-slate-100">
+                                        {item.image_url ? (
+                                            <img
+                                                alt={item.name}
+                                                loading="lazy"
+                                                className="w-full h-full object-cover"
+                                                src={item.image_url}
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                    e.target.nextSibling.style.display = 'flex';
+                                                }}
+                                            />
+                                        ) : null}
+                                        <div className={`w-full h-full flex-col items-center justify-center bg-slate-100 text-slate-400 ${item.image_url ? 'hidden' : 'flex'}`}>
+                                            <span className="text-[6px] text-center leading-tight font-medium">Görsel<br />Yok</span>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0 pl-1">
-                                        <h4 className="text-xs font-bold text-slate-800 truncate">{item.name}</h4>
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-lg font-bold text-blue-600">{item.price?.toFixed(2)} ₺</p>
-                                            {item.discount_rate > 0 && (
-                                                <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
-                                                    %{item.discount_rate} İsk.
-                                                </span>
+                                    <div className="flex-1 min-w-0 pl-0.5">
+                                        <h4 className="text-lg font-bold text-slate-800 line-clamp-1 leading-tight">{item.name}</h4>
+                                        <div className="flex items-center gap-1 flex-wrap">
+                                            {item.discount_rate > 0 ? (
+                                                <div className="flex flex-col leading-none">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-sm text-slate-400 line-through decoration-red-400">{item.price?.toFixed(2)} ₺</span>
+                                                        <p className="text-xl font-bold text-emerald-600">
+                                                            {(item.price * (1 - (item.discount_rate || 0) / 100)).toFixed(2)} ₺
+                                                        </p>
+                                                    </div>
+                                                    <span className="text-xs font-bold text-red-700 bg-yellow-300 px-2 py-0.5 rounded">
+                                                        %{item.discount_rate} iskonto uygulanmıştır
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <p className="text-xl font-bold text-blue-600">{item.price?.toFixed(2)} ₺</p>
                                             )}
                                         </div>
                                     </div>
                                     <div className="w-16 flex items-center justify-center">
                                         <div
-                                            className="h-6 px-2 bg-slate-100 rounded flex items-center justify-center text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-200"
+                                            className="h-8 px-2 bg-slate-100 rounded flex items-center justify-center text-lg font-bold text-slate-700 cursor-pointer hover:bg-slate-200 transition-colors"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setModalValue(item.quantity);
@@ -943,14 +1006,16 @@ export default function NewPOSPage() {
                                             {item.quantity}
                                         </div>
                                     </div>
-                                    <div className="w-20 text-right">
-                                        <span className="text-xs font-bold text-red-500">{(item.price * item.quantity).toFixed(2)} ₺</span>
+                                    <div className="w-24 text-right">
+                                        <span className="text-lg font-bold text-red-500">
+                                            {(item.price * item.quantity * (1 - (item.discount_rate || 0) / 100)).toFixed(2)} ₺
+                                        </span>
                                     </div>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); removeFromCart(index); }}
-                                        className="w-6 h-6 rounded flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all opacity-0 group-hover:opacity-100"
+                                        className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-rose-500 transition-all ml-1"
                                     >
-                                        <span className="material-symbols-outlined text-base">close</span>
+                                        <span className="material-symbols-outlined text-xl">close</span>
                                     </button>
                                 </div>
                             ))
@@ -965,35 +1030,77 @@ export default function NewPOSPage() {
                                 <span className="text-3xl font-extrabold text-slate-900 tracking-tighter">{calculateTotal().toFixed(2)} ₺</span>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                onClick={() => completeSale('Nakit')}
-                                className="flex flex-col items-center justify-center p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-500/5 hover:shadow-md transition-all group"
-                            >
-                                <span className="material-symbols-outlined text-emerald-500 mb-1 group-hover:scale-110 transition-transform">payments</span>
-                                <span className="text-[10px] font-bold text-slate-700 group-hover:text-emerald-600">NAKİT</span>
-                            </button>
-                            <button
-                                onClick={() => completeSale('POS')}
-                                className="flex flex-col items-center justify-center p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-600 hover:bg-blue-600/5 hover:shadow-md transition-all group"
-                            >
-                                <span className="material-symbols-outlined text-blue-600 mb-1 group-hover:scale-110 transition-transform">credit_card</span>
-                                <span className="text-[10px] font-bold text-slate-700 group-hover:text-blue-600">KREDİ KARTI</span>
-                            </button>
-                            <button
-                                onClick={() => completeSale('Açık Hesap')}
-                                className="flex flex-col items-center justify-center p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 hover:shadow-md transition-all group"
-                            >
-                                <span className="material-symbols-outlined text-orange-500 mb-1 group-hover:scale-110 transition-transform">assignment</span>
-                                <span className="text-[10px] font-bold text-slate-700 group-hover:text-orange-600">VERESİYE</span>
-                            </button>
-                            <button
-                                onClick={() => { if (window.confirm('Sepeti temizle?')) setCart([]); }}
-                                className="flex flex-col items-center justify-center p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-rose-500 hover:bg-rose-50 hover:shadow-md transition-all group"
-                            >
-                                <span className="material-symbols-outlined text-rose-500 mb-1 group-hover:scale-110 transition-transform">delete_sweep</span>
-                                <span className="text-[10px] font-bold text-slate-700 group-hover:text-rose-600">İPTAL</span>
-                            </button>
+                        <div className="space-y-2">
+                            {/* Row 1: Payment Methods */}
+                            <div className="grid grid-cols-3 gap-2">
+                                <button
+                                    onClick={() => completeSale('Nakit')}
+                                    className="flex items-center justify-center p-2 bg-emerald-50 border border-emerald-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-100 hover:shadow-md transition-all"
+                                >
+                                    <span className="text-base font-extrabold text-emerald-700 whitespace-nowrap">NAKİT</span>
+                                </button>
+                                <button
+                                    onClick={() => completeSale('POS')}
+                                    className="flex items-center justify-center p-2 bg-blue-50 border border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-100 hover:shadow-md transition-all"
+                                >
+                                    <span className="text-base font-extrabold text-blue-700 whitespace-nowrap">KREDİ KARTI</span>
+                                </button>
+                                <button
+                                    onClick={() => completeSale('Açık Hesap')}
+                                    className="flex items-center justify-center p-2 bg-orange-50 border border-orange-200 rounded-xl hover:border-orange-500 hover:bg-orange-100 hover:shadow-md transition-all"
+                                >
+                                    <span className="text-base font-extrabold text-orange-700 whitespace-nowrap">VERESİYE</span>
+                                </button>
+                            </div>
+
+                            {/* Row 2: Item Actions */}
+                            <div className="grid grid-cols-4 gap-2">
+                                <button
+                                    onClick={() => {
+                                        if (selectedCartIndex !== null && cart[selectedCartIndex]) {
+                                            setModalValue(cart[selectedCartIndex].quantity);
+                                            setShowQuantityModal(true);
+                                        } else {
+                                            alert('Lütfen sepetten bir ürün seçin');
+                                        }
+                                    }}
+                                    className="flex items-center justify-center p-3 bg-slate-50 border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-100 transition-all"
+                                >
+                                    <span className="text-sm font-extrabold text-slate-700">MİKTAR DÜZENLE</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (selectedCartIndex !== null && cart[selectedCartIndex]) {
+                                            setModalValue(cart[selectedCartIndex].price);
+                                            setShowPriceModal(true);
+                                        } else {
+                                            alert('Lütfen sepetten bir ürün seçin');
+                                        }
+                                    }}
+                                    className="flex items-center justify-center p-3 bg-slate-50 border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-100 transition-all"
+                                >
+                                    <span className="text-sm font-extrabold text-slate-700">FİYAT DÜZENLE</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (selectedCartIndex !== null && cart[selectedCartIndex]) {
+                                            setModalValue(cart[selectedCartIndex].discount_rate || 0);
+                                            setShowDiscountModal(true);
+                                        } else {
+                                            alert('Lütfen sepetten bir ürün seçin');
+                                        }
+                                    }}
+                                    className="flex items-center justify-center p-3 bg-slate-50 border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-100 transition-all"
+                                >
+                                    <span className="text-sm font-extrabold text-slate-700">İSKONTO DÜZENLE</span>
+                                </button>
+                                <button
+                                    onClick={() => { if (window.confirm('Sepeti temizle?')) setCart([]); }}
+                                    className="flex items-center justify-center p-3 bg-rose-50 border border-rose-200 rounded-lg hover:border-rose-400 hover:bg-rose-100 transition-all"
+                                >
+                                    <span className="text-sm font-extrabold text-rose-700">SEPETİ BOŞALT</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </aside>
@@ -1069,7 +1176,9 @@ export default function NewPOSPage() {
                             <input
                                 className="w-full px-4 py-3 rounded-xl border border-slate-200"
                                 placeholder="Müşteri ara..."
-                                onChange={(e) => {/* Implement search locally if list is long */ }}
+                                value={customerSearchQuery}
+                                onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                                autoFocus
                             />
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -1080,21 +1189,23 @@ export default function NewPOSPage() {
                                 <span className="font-bold text-slate-800">Toptan Satış (Varsayılan)</span>
                                 <span className="material-symbols-outlined text-slate-300 group-hover:text-blue-500">check_circle</span>
                             </div>
-                            {customers.map(c => (
-                                <div
-                                    key={c.id}
-                                    onClick={() => { setCustomer(c.name); setShowCustomerModal(false); }}
-                                    className="p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-500 cursor-pointer flex justify-between items-center group"
-                                >
-                                    <div>
-                                        <p className="font-bold text-slate-800">{c.name}</p>
-                                        <p className="text-xs text-slate-500">{c.phone}</p>
+                            {customers
+                                .filter(c => c.name?.toLowerCase().includes(customerSearchQuery.toLowerCase()) || c.phone?.includes(customerSearchQuery))
+                                .map(c => (
+                                    <div
+                                        key={c.id}
+                                        onClick={() => { setCustomer(c.name); setShowCustomerModal(false); }}
+                                        className="p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-500 cursor-pointer flex justify-between items-center group"
+                                    >
+                                        <div>
+                                            <p className="font-bold text-slate-800">{c.name}</p>
+                                            <p className="text-xs text-slate-500">{c.phone}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`font-bold ${c.balance > 0 ? 'text-red-500' : 'text-green-500'}`}>{c.balance?.toFixed(2)} ₺</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className={`font-bold ${c.balance > 0 ? 'text-red-500' : 'text-green-500'}`}>{c.balance?.toFixed(2)} ₺</p>
-                                    </div>
-                                </div>
-                            ))}
+                                ))}
                         </div>
                         <div className="p-4 border-t bg-gray-50 flex justify-end">
                             <button
@@ -1146,7 +1257,88 @@ export default function NewPOSPage() {
                 </div>
             )}
 
-            {/* Ask Quantity Modal (Initial Add) */}
+            {/* Price Modal */}
+            {showPriceModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white p-8 w-96 text-center rounded-2xl shadow-xl">
+                        <h3 className="text-2xl font-bold text-slate-800 mb-2">Fiyat Düzenle</h3>
+                        <input type="number" value={modalValue} onChange={(e) => setModalValue(e.target.value)} className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-xl mb-4 focus:outline-none" autoFocus />
+                        <button onClick={() => updateCartItem(selectedCartIndex, 'price', parseFloat(modalValue) || 0)} className="w-full p-4 bg-blue-600 text-white text-xl font-bold rounded-xl hover:bg-blue-700">Kaydet</button>
+                        <button onClick={() => setShowPriceModal(false)} className="w-full mt-2 p-2 text-slate-500 hover:text-slate-800">İptal</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Discount Modal */}
+            {showDiscountModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white p-8 w-96 text-center rounded-2xl shadow-xl">
+                        <h3 className="text-2xl font-bold text-slate-800 mb-2">İskonto Ekle (%)</h3>
+                        <input type="number" value={modalValue} onChange={(e) => setModalValue(e.target.value)} className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-xl mb-4 focus:outline-none" autoFocus placeholder="%" />
+                        <button onClick={() => updateCartItem(selectedCartIndex, 'discount_rate', parseFloat(modalValue) || 0)} className="w-full p-4 bg-blue-600 text-white text-xl font-bold rounded-xl hover:bg-blue-700">Kaydet</button>
+                        <button onClick={() => setShowDiscountModal(false)} className="w-full mt-2 p-2 text-slate-500 hover:text-slate-800">İptal</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Waitlist Modal - Bekleme Listesi */}
+            {showWaitlistModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white w-[500px] max-h-[80vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-white">Bekleme Listesi</h3>
+                            <button onClick={() => setShowWaitlistModal(false)} className="text-white/60 hover:text-white">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                            {heldSales.length === 0 ? (
+                                <div className="text-center text-slate-400 py-10">
+                                    <span className="material-symbols-outlined text-4xl mb-2">hourglass_empty</span>
+                                    <p>Bekleyen satış yok</p>
+                                </div>
+                            ) : (
+                                heldSales.map((sale, index) => {
+                                    const saleTotal = (sale.items || []).reduce((sum, item) => {
+                                        const price = item.price * (1 - (item.discount_rate || 0) / 100);
+                                        return sum + (price * item.quantity);
+                                    }, 0);
+                                    const customerName = sale.customer_name || sale.customer || 'Toptan Satış';
+                                    return (
+                                        <div key={sale.id || index} className="bg-slate-50 border border-slate-200 rounded-lg p-3 hover:border-blue-400 transition-all flex items-center gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="font-bold text-slate-800 truncate">{customerName}</p>
+                                                    <p className="font-extrabold text-lg text-red-600">{saleTotal.toFixed(2)} ₺</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-500">
+                                                    <span className="text-sm font-bold">{new Date(sale.created_at).toLocaleDateString('tr-TR')}</span>
+                                                    <span className="text-sm font-bold">{new Date(sale.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    <span className="text-xs">• {sale.items?.length || 0} ürün</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-1 flex-shrink-0">
+                                                <button
+                                                    onClick={() => { restoreHeldSale(sale); setShowWaitlistModal(false); }}
+                                                    className="px-3 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700"
+                                                >
+                                                    Yükle
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteHeldSale(sale.id)}
+                                                    className="px-2 py-2 bg-red-100 text-red-600 font-bold rounded-lg hover:bg-red-200"
+                                                >
+                                                    <span className="material-symbols-outlined text-lg">delete</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
             {showAskQuantityModal && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
                     <div className="bg-white p-6 w-96 shadow-2xl rounded-2xl">
@@ -1243,8 +1435,10 @@ export default function NewPOSPage() {
                                                     const newCart = [...cart];
                                                     newCart[existingIndex].quantity += newProduct.quantity;
                                                     setCart(newCart);
+                                                    setSelectedCartIndex(existingIndex);
                                                 } else {
                                                     setCart([...cart, newProduct]);
+                                                    setSelectedCartIndex(cart.length);
                                                 }
 
                                                 setShowUndefinedProductModal(false);

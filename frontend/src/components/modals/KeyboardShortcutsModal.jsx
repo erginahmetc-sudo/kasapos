@@ -39,6 +39,14 @@ export default function KeyboardShortcutsModal({ onClose, onSave }) {
     };
 
     const handleSave = () => {
+        // Validate for duplicates
+        const values = Object.values(shortcuts).filter(v => v !== 'None');
+        const uniqueValues = new Set(values);
+        if (values.length !== uniqueValues.size) {
+            alert("Her tuş 1 kısayola atanabilir");
+            return;
+        }
+
         localStorage.setItem('pos_keyboard_shortcuts', JSON.stringify(shortcuts));
         if (onSave) onSave(shortcuts);
         onClose();

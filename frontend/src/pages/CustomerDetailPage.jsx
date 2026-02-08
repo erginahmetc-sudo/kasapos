@@ -9,6 +9,8 @@ export default function CustomerDetailPage() {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedSale, setSelectedSale] = useState(null);
+    const [editingPayment, setEditingPayment] = useState(null);
+    const [editAmount, setEditAmount] = useState('');
 
     const handleTransactionClick = (tx) => {
         // Only open modal for sales (where we have products or items)
@@ -36,6 +38,35 @@ export default function CustomerDetailPage() {
                 is_deleted: false // Assuming history items are valid
             };
             setSelectedSale(saleObj);
+        }
+    };
+
+    // Double-click handler for editing payments
+    const handlePaymentDoubleClick = (tx) => {
+        if (tx.transactionType.includes('Ödeme')) {
+            setEditingPayment(tx);
+            setEditAmount(tx.total.toString());
+        }
+    };
+
+    // Save edited payment
+    const handleSavePayment = async () => {
+        if (!editingPayment) return;
+
+        const newAmount = parseFloat(editAmount);
+        if (isNaN(newAmount) || newAmount <= 0) {
+            alert('Geçerli bir tutar giriniz.');
+            return;
+        }
+
+        try {
+            await customersAPI.updatePayment(editingPayment.id, customer.id, editingPayment.total, newAmount);
+            setEditingPayment(null);
+            setEditAmount('');
+            loadCustomerData();
+        } catch (error) {
+            console.error(error);
+            alert('Hata: ' + (error.message || 'Ödeme güncellenemedi'));
         }
     };
 
@@ -91,48 +122,38 @@ export default function CustomerDetailPage() {
     };
 
     // Calculate running balance and categorize transactions
+    // Each row is either Borç (Debit) OR Alacak (Credit), never both
     const processedTransactions = transactions.map((tx, index) => {
-        const total = parseFloat(tx.total) || 0;
-        const paidAmount = parseFloat(tx.paid_amount) || 0;
-
-        // Business Logic:
-        // - Nakit/Kredi Kartı: Customer pays immediately → debt and credit equal → balance unchanged
-        // - Veresiye: Customer doesn't pay → only debt → balance increases
-        // - Payment (Ödeme Al): Customer pays off existing debt → only credit → balance decreases
+        const rawAmount = parseFloat(tx.amount) || 0;
+        const total = Math.abs(rawAmount);
+        const paymentType = tx.payment_type || '';
 
         let debtAmount = 0;
         let creditAmount = 0;
+        let transactionType = 'İşlem';
 
-        if (tx.type === 'payment') {
-            // Payment transaction - customer paying off debt
+        // Negative amount or "Borç" in type = Borç (Debit) entry
+        // Positive amount = Alacak (Credit) entry
+        if (rawAmount < 0 || paymentType.toLowerCase().includes('borç')) {
+            // This is a DEBIT (Borç) - only Borç Tutarı filled
+            debtAmount = total;
+            creditAmount = 0;
+            transactionType = 'Satış (Borç)';
+        } else {
+            // This is a CREDIT (Alacak) - only Alacak Tutarı filled
             creditAmount = total;
             debtAmount = 0;
-        } else if (tx.payment_method === 'veresiye') {
-            // Veresiye sale - customer doesn't pay, full amount is debt
-            debtAmount = total;
-            creditAmount = 0; // No payment received
-        } else {
-            // Nakit or Kredi Kartı - customer pays immediately
-            // Both debt and credit are equal = balanced transaction
-            debtAmount = total;
-            creditAmount = total; // Paid in full
+            if (paymentType.toLowerCase().includes('nakit')) transactionType = 'Ödeme (Nakit)';
+            else if (paymentType.toLowerCase().includes('kredi') || paymentType.toLowerCase().includes('kart')) transactionType = 'Ödeme (K.Kartı)';
+            else transactionType = 'Ödeme';
         }
 
-        // Get transaction type
-        let transactionType = 'Fatura';
-        if (tx.type === 'payment') transactionType = 'Ödeme';
-        else if (tx.payment_method === 'nakit') transactionType = 'Nakit';
-        else if (tx.payment_method === 'kredi_karti') transactionType = 'K.Kartı';
-        else if (tx.payment_method === 'veresiye') transactionType = 'Veresiye';
-
-        // Row colors based on net effect
-        const netEffect = debtAmount - creditAmount;
-        let rowColor = 'bg-green-100'; // Balanced (nakit/kredi kartı)
-        if (netEffect > 0) rowColor = 'bg-yellow-100'; // Debt increased (veresiye)
-        else if (netEffect < 0) rowColor = 'bg-cyan-100'; // Credit (payment received)
+        // Row colors based on type
+        let rowColor = debtAmount > 0 ? 'bg-yellow-100' : 'bg-cyan-100';
 
         return {
             ...tx,
+            total,
             debtAmount,
             creditAmount,
             transactionType,
@@ -148,10 +169,10 @@ export default function CustomerDetailPage() {
 
     // Use customer.balance from database for accuracy (this is the source of truth)
     const customerBalance = parseFloat(customer?.balance) || 0;
-    // calculated balance from transactions for reference
+    // calculated balance from transactions for display consistency
     const calculatedBalance = totals.debt - totals.credit;
-    // Use the database balance as the primary balance
-    const netBalance = customerBalance;
+    // Use the CALCULATED balance for display to match the shown totals
+    const netBalance = calculatedBalance;
 
     if (loading) {
         return (
@@ -255,6 +276,7 @@ export default function CustomerDetailPage() {
                                                 key={tx.id || idx}
                                                 className={`${tx.rowColor} border-b border-gray-200 hover:opacity-80 cursor-pointer transition-colors`}
                                                 onClick={() => handleTransactionClick(tx)}
+                                                onDoubleClick={() => handlePaymentDoubleClick(tx)}
                                             >
                                                 <td className="px-3 py-2 border-r border-gray-200 font-medium">
                                                     {customer.customer_code}
@@ -350,6 +372,82 @@ export default function CustomerDetailPage() {
                         setSelectedSale(null);
                     }}
                 />
+            )}
+
+            {/* Payment Edit Modal */}
+            {editingPayment && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                            <h3 className="text-xl font-bold text-white">Ödeme Düzenle</h3>
+                            <p className="text-blue-100 text-sm mt-1">{editingPayment.description || 'Ödeme'}</p>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Mevcut Tutar</label>
+                                <div className="text-xl font-bold text-gray-400 line-through">
+                                    {editingPayment.total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Yeni Tutar (TL)</label>
+                                <input
+                                    type="number"
+                                    value={editAmount}
+                                    onChange={(e) => setEditAmount(e.target.value)}
+                                    className="w-full px-4 py-3 text-2xl font-bold text-center border-2 border-blue-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                                    autoFocus
+                                    step="0.01"
+                                    min="0"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between text-sm text-gray-500 bg-gray-50 rounded-lg px-4 py-2">
+                                <span>Tarih:</span>
+                                <span>{new Date(editingPayment.created_at).toLocaleDateString('tr-TR')}</span>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 bg-gray-50 space-y-3">
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => { setEditingPayment(null); setEditAmount(''); }}
+                                    className="flex-1 px-4 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl font-medium hover:bg-gray-100 transition-colors"
+                                >
+                                    İptal
+                                </button>
+                                <button
+                                    onClick={handleSavePayment}
+                                    className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg"
+                                >
+                                    Kaydet
+                                </button>
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    if (!confirm('Bu ödemeyi silmek müşterinin borcunu artıracaktır. Emin misiniz?')) return;
+                                    try {
+                                        await customersAPI.deletePayment(editingPayment.id, customer.id, editingPayment.total);
+                                        setEditingPayment(null);
+                                        setEditAmount('');
+                                        loadCustomerData();
+                                    } catch (error) {
+                                        console.error(error);
+                                        alert('Hata: ' + (error.message || 'Ödeme silinemedi'));
+                                    }
+                                }}
+                                className="w-full px-4 py-3 text-red-600 bg-red-50 border border-red-200 rounded-xl font-medium hover:bg-red-100 transition-colors"
+                            >
+                                Ödemeyi Sil
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

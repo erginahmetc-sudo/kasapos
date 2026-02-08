@@ -245,12 +245,38 @@ export const customersAPI = {
         const companyCode = getCurrentCompanyCode();
         if (!companyCode) return response({ success: true, customers: [] });
 
-        const { data, error } = await supabase
+        const { data: customers, error } = await supabase
             .from('customers')
             .select('*')
             .eq('company_code', companyCode)
             .order('name');
-        return response({ success: true, customers: data || [] }, error);
+
+        if (error) return response({ success: true, customers: [] }, error);
+
+        // Calculate balance from customer_payments for each customer
+        const customersWithBalance = await Promise.all((customers || []).map(async (customer) => {
+            try {
+                const { data: payments } = await supabase
+                    .from('customer_payments')
+                    .select('amount')
+                    .eq('customer_id', customer.id);
+
+                // Sum all payments: negative = debt (Borç), positive = credit (Alacak)
+                // Balance = sum of all amounts (negative amounts increase debt)
+                const calculatedBalance = (payments || []).reduce((sum, p) => {
+                    // Negative amounts are debts, positive are credits
+                    // For balance: debt increases balance, credit decreases
+                    return sum - (parseFloat(p.amount) || 0);
+                }, 0);
+
+                return { ...customer, balance: calculatedBalance };
+            } catch (e) {
+                console.warn('Balance calc error for customer', customer.id, e);
+                return customer; // Return original if calculation fails
+            }
+        }));
+
+        return response({ success: true, customers: customersWithBalance }, null);
     },
     add: async (customer) => {
         const companyCode = getCurrentCompanyCode();
@@ -281,19 +307,8 @@ export const customersAPI = {
         return response({ success: true, message: 'Müşteri silindi' }, error);
     },
     getTransactions: async (customerId) => {
-        // Fetch sales
-        const { data: sales, error: salesError } = await supabase
-            .from('sales')
-            .select('*')
-            .eq('customer_id', customerId)
-            .order('created_at', { ascending: true });
-
-        if (salesError) {
-            console.error('Sales fetch error:', salesError);
-            return response(null, salesError);
-        }
-
-        // Fetch payments - table might not exist yet
+        // For Cari Hareket Raporu, only fetch customer_payments (Borç/Alacak records)
+        // Sales table is used for storing sale items/history, not for balance display
         let payments = [];
         try {
             const { data: paymentData, error: paymentsError } = await supabase
@@ -303,7 +318,7 @@ export const customersAPI = {
                 .order('created_at', { ascending: true });
 
             if (paymentsError) {
-                console.warn('Payments fetch warning (table might not exist):', paymentsError.message);
+                console.warn('Payments fetch warning:', paymentsError.message);
             } else {
                 payments = paymentData || [];
             }
@@ -311,19 +326,17 @@ export const customersAPI = {
             console.warn('Payments fetch exception:', e);
         }
 
-        console.log('Fetched sales:', sales?.length || 0, 'payments:', payments.length);
+        console.log('Fetched customer_payments for transactions:', payments.length);
 
-        // Combine and sort by date
-        const allTransactions = [
-            ...(sales || []).map(s => ({ ...s, type: 'sale' })),
-            ...payments.map(p => ({
-                ...p,
-                type: 'payment',
-                total: p.amount,
-                paid_amount: p.amount,
-                payment_method: p.payment_type?.toLowerCase() || 'nakit'
-            }))
-        ].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        // Transform payments to transaction format
+        const allTransactions = payments.map(p => ({
+            ...p,
+            type: 'payment',
+            total: Math.abs(p.amount), // Store absolute value, sign indicates direction
+            payment_method: p.payment_type?.toLowerCase() || 'nakit',
+            // Extract sale_code from description if present (e.g., "Satış - SLS-123")
+            sale_code: p.description?.match(/SLS-\d+/)?.[0] || p.description?.match(/Alacak.*-(SLS-\d+)/)?.[1] || null
+        }));
 
         return response({ success: true, transactions: allTransactions }, null);
     },
@@ -369,6 +382,51 @@ export const customersAPI = {
 
         if (updateError) throw updateError;
         return { data: { success: true, message: 'Ödeme alındı ve bakiye güncellendi.' } };
+    },
+    // NEW: Add Sale Debit (Borç) - Increases customer balance for a sale
+    addSaleDebit: async (data) => {
+        const { customer_id, amount, sale_code } = data;
+
+        // Get current customer balance
+        const { data: customer, error: fetchError } = await supabase
+            .from('customers')
+            .select('balance')
+            .eq('id', customer_id)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        // Calculate new balance (sale INCREASES debt/balance)
+        const currentBalance = parseFloat(customer?.balance) || 0;
+        const saleAmount = parseFloat(amount) || 0;
+        const newBalance = currentBalance + saleAmount;
+
+        // Save Borç (debit) record in customer_payments
+        const { error: txError } = await supabase
+            .from('customer_payments')
+            .insert({
+                customer_id: customer_id,
+                amount: -saleAmount, // Negative to indicate DEBIT (opposite of payment)
+                payment_type: 'Borç (Satış)',
+                description: `Satış - ${sale_code}`,
+                created_at: new Date().toISOString()
+            });
+
+        if (txError) {
+            console.error('Sale debit record error:', txError);
+        }
+
+        // Update customer balance (increase)
+        const { error: updateError } = await supabase
+            .from('customers')
+            .update({
+                balance: newBalance,
+                last_transaction_date: new Date().toISOString()
+            })
+            .eq('id', customer_id);
+
+        if (updateError) throw updateError;
+        return { data: { success: true, message: 'Borç kaydı oluşturuldu.' } };
     },
     addPurchaseTransaction: async (data) => {
         // This is for processing an invoice FROM a supplier (who is recorded as a customer)
@@ -489,6 +547,46 @@ export const customersAPI = {
             // We might want to handle this better but for now logging is critical.
             return { data: { success: true, warning: 'Ödeme silindi fakat bakiye güncellenemedi.' } };
         }
+    },
+    // Update payment amount and adjust customer balance
+    updatePayment: async (paymentId, customerId, oldAmount, newAmount) => {
+        // Calculate the difference for balance adjustment
+        const difference = Math.abs(newAmount) - Math.abs(oldAmount);
+
+        // Update the payment record
+        const { error: updatePaymentError } = await supabase
+            .from('customer_payments')
+            .update({ amount: newAmount })
+            .eq('id', paymentId);
+
+        if (updatePaymentError) throw updatePaymentError;
+
+        // Adjust customer balance
+        // If new amount is higher, balance decreases more (customer paid more)
+        // If new amount is lower, balance increases (customer paid less)
+        try {
+            const { data: customer, error: fetchError } = await supabase
+                .from('customers')
+                .select('balance')
+                .eq('id', customerId)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            const newBalance = (customer.balance || 0) - difference;
+
+            const { error: balanceError } = await supabase
+                .from('customers')
+                .update({ balance: newBalance, last_transaction_date: new Date().toISOString() })
+                .eq('id', customerId);
+
+            if (balanceError) throw balanceError;
+
+            return { data: { success: true, message: 'Ödeme güncellendi.' } };
+        } catch (error) {
+            console.error('Balance adjustment error:', error);
+            return { data: { success: true, warning: 'Ödeme güncellendi fakat bakiye ayarlanamadı.' } };
+        }
     }
 };
 
@@ -562,21 +660,35 @@ export const salesAPI = {
             throw { response: { data: { message: error.message || 'Satış kaydedilemedi' } } };
         }
 
-        // AUTOMATED ACCOUNTING: "Nakit" or "POS" (Kredi Kartı) sales create a Payment (Collection) record
-        if (cleanSale.customer_id && (cleanSale.payment_method === 'Nakit' || cleanSale.payment_method === 'POS' || cleanSale.payment_method === 'Kredi Kartı')) {
+        // DOUBLE-ENTRY ACCOUNTING:
+        // Step 1: Add Borç (Debit) for ALL sales with registered customer - increases their balance
+        if (cleanSale.customer_id) {
             try {
-                await customersAPI.addPayment({
+                await customersAPI.addSaleDebit({
                     customer_id: cleanSale.customer_id,
                     amount: cleanSale.total,
-                    payment_type: cleanSale.payment_method === 'POS' ? 'Kredi Kartı' : 'Nakit', // Normalize name
-                    description: `Satış Tahsilatı - ${cleanSale.sale_code}`
+                    sale_code: cleanSale.sale_code
                 });
-                console.log('Automated payment record created for sale:', cleanSale.sale_code);
-            } catch (paymentError) {
-                console.error('Automated payment creation failed:', paymentError);
-                // We don't rollback the sale, but we should warn? 
-                // Currently suppressing error to avoid breaking the UI flow, as the sale itself is valid.
+                console.log('Borç (debit) record created for sale:', cleanSale.sale_code);
+            } catch (debitError) {
+                console.error('Borç creation failed:', debitError);
             }
+
+            // Step 2: For Nakit/POS/Kredi Kartı sales, add Alacak (Credit) - offsets the debit
+            if (cleanSale.payment_method === 'Nakit' || cleanSale.payment_method === 'POS' || cleanSale.payment_method === 'Kredi Kartı') {
+                try {
+                    await customersAPI.addPayment({
+                        customer_id: cleanSale.customer_id,
+                        amount: cleanSale.total,
+                        payment_type: cleanSale.payment_method === 'POS' ? 'Kredi Kartı' : 'Nakit',
+                        description: `Alacak (Tahsilat) - ${cleanSale.sale_code}`
+                    });
+                    console.log('Alacak (credit) record created for sale:', cleanSale.sale_code);
+                } catch (paymentError) {
+                    console.error('Alacak creation failed:', paymentError);
+                }
+            }
+            // NOTE: For Veresiye/Açık Hesap - no Alacak is added, so balance stays increased (debt)
         }
 
         return response({ success: true, message: 'Satış tamamlandı', sale_code: data?.sale_code }, error);

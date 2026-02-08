@@ -775,43 +775,8 @@ export default function NewPOSPage() {
     };
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden bg-slate-100" style={{ fontFamily: "'Manrope', sans-serif" }}>
-            {/* Header */}
-            <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-slate-200 z-50 flex-none shadow-sm">
-                <div className="flex items-center gap-3 w-1/4">
-                    <div className="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-                        <span className="material-symbols-outlined text-xl">point_of_sale</span>
-                    </div>
-                    <h1 className="text-slate-900 font-bold text-lg tracking-tight">Kasa POS</h1>
-                </div>
-                <nav className="flex items-center justify-center gap-2 flex-1">
-                    <Link to="/pos" className="flex flex-col items-center justify-center px-6 h-16 border-b-2 border-blue-600 text-blue-600 transition-all bg-blue-50/50">
-                        <span className="material-symbols-outlined">shopping_cart</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5">Satış</span>
-                    </Link>
-                    <Link to="/products" className="flex flex-col items-center justify-center px-6 h-16 border-b-2 border-transparent text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">inventory_2</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5">Ürünler</span>
-                    </Link>
-                    <Link to="/reports" className="flex flex-col items-center justify-center px-6 h-16 border-b-2 border-transparent text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">analytics</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5">Raporlar</span>
-                    </Link>
-                    <Link to="/settings" className="flex flex-col items-center justify-center px-6 h-16 border-b-2 border-transparent text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all">
-                        <span className="material-symbols-outlined">settings</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider mt-0.5">Ayarlar</span>
-                    </Link>
-                </nav>
-                <div className="flex items-center justify-end gap-4 w-1/4">
-                    <div className="text-right hidden lg:block leading-tight">
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">{new Date().toLocaleDateString('tr-TR')}</p>
-                        <p className="text-sm font-extrabold text-slate-900">{new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
-                    </div>
-                    <div className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-slate-500 cursor-pointer transition-colors">
-                        <span className="material-symbols-outlined text-xl">person</span>
-                    </div>
-                </div>
-            </header>
+        <div className="h-full flex flex-col overflow-hidden bg-slate-100" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {/* Header removed - using Global Layout Header */}
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar (Cart) */}
@@ -959,8 +924,8 @@ export default function NewPOSPage() {
                                 key={cat}
                                 onClick={() => setSelectedCategory(cat)}
                                 className={`px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === cat
-                                        ? 'bg-slate-900 text-white shadow-sm hover:bg-slate-800'
-                                        : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50'
+                                    ? 'bg-slate-900 text-white shadow-sm hover:bg-slate-800'
+                                    : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50'
                                     }`}
                             >
                                 {cat}

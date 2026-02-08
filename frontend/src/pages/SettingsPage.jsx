@@ -111,7 +111,7 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="h-[calc(100vh-64px)] overflow-y-auto p-6">
+        <div className="min-h-screen p-6">
             <h1 className="text-2xl font-bold text-gray-800 mb-6">Ayarlar</h1>
 
             {/* Firma Bilgileri Bölümü */}

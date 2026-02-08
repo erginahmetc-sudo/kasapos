@@ -280,9 +280,9 @@ export default function CustomersPage() {
     }
 
     return (
-        <div className="h-[calc(100vh-64px)] bg-gray-100 flex flex-col overflow-hidden">
+        <div className="min-h-screen bg-gray-100 flex flex-col">
             {/* Header */}
-            <header className="bg-gradient-to-r from-slate-50 via-white to-blue-50/30 px-6 py-5 shadow-sm border-b border-gray-100">
+            <header className="bg-gradient-to-r from-slate-50 via-white to-blue-50/30 px-6 py-5 shadow-sm border-b border-gray-100 sticky top-0 z-20">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent">
@@ -336,10 +336,10 @@ export default function CustomersPage() {
             </header>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-hidden p-5 flex flex-col">
-                <div className="flex gap-5 h-full">
-                    {/* Sidebar */}
-                    <div className="w-64 bg-white rounded-lg shadow-md p-5 h-full overflow-y-auto flex-shrink-0">
+            <div className="flex-1 p-5 flex flex-col">
+                <div className="flex gap-5 items-start">
+                    {/* Sidebar - Sticky */}
+                    <div className="w-64 bg-white rounded-lg shadow-md p-5 flex-shrink-0 sticky top-28">
                         <h3 className="text-lg font-semibold border-b-2 border-gray-100 pb-2 mb-4">Filtreleme</h3>
 
                         <div className="mb-5">
@@ -377,7 +377,7 @@ export default function CustomersPage() {
                     </div>
 
                     {/* Table */}
-                    <div className="flex-1 bg-white rounded-lg shadow-md p-5 overflow-auto h-full">
+                    <div className="flex-1 bg-white rounded-lg shadow-md p-5">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>

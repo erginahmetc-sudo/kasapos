@@ -789,7 +789,7 @@ export default function InvoicesPage() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-64px)] transition-all duration-300 overflow-hidden">
+        <div className="flex min-h-screen transition-all duration-300">
             {/* Preview Modal (In-App) */}
             {previewModalOpen && previewHtml && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -894,7 +894,7 @@ export default function InvoicesPage() {
 
             {/* Filter Sidebar */}
             <aside className={`
-                fixed lg:static inset-y-0 left-0 z-50
+                fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50
                 w-72 bg-white border-r border-gray-200 p-5 overflow-y-auto
                 transform transition-transform duration-300 flex flex-col
                 ${filterOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -958,7 +958,7 @@ export default function InvoicesPage() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 p-5 overflow-y-auto">
+            <main className="flex-1 p-5">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
                     <div className="flex items-center gap-3">

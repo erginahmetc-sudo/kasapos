@@ -315,7 +315,7 @@ export default function ProductsPage() {
     }
 
     return (
-        <div className="flex h-[calc(100vh-0px)] transition-all duration-300">
+        <div className="flex min-h-screen transition-all duration-300">
             {/* Sidebar Overlay (Mobile) */}
             {filterOpen && (
                 <div
@@ -326,7 +326,7 @@ export default function ProductsPage() {
 
             {/* Filter Sidebar */}
             <aside className={`
-                fixed lg:static inset-y-0 left-0 z-50
+                fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-50
                 w-72 bg-white/90 backdrop-blur-2xl border-r border-slate-200/60 p-5 overflow-y-auto
                 transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) text-slate-700
                 ${filterOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 lg:shadow-none'}
@@ -458,7 +458,7 @@ export default function ProductsPage() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 p-6 overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+            <main className="flex-1 p-6 bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
                 {/* Header Section */}
                 <div className="mb-8">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">

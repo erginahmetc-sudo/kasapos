@@ -18,7 +18,7 @@ export default function SalesPage() {
 
     // Filters
     const [filters, setFilters] = useState({
-        searchTerm: '', // General search (sale code, customer)
+        searchTerm: '',
         stockCode: '',
         productName: '',
         barcode: '',
@@ -26,15 +26,18 @@ export default function SalesPage() {
         maxPrice: ''
     });
 
+    // Modal State
+    const [selectedSale, setSelectedSale] = useState(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [editForm, setEditForm] = useState(null);
+
     useEffect(() => {
         loadSales();
-    }, []); // Initial load (could depend on dateRange if we want server-side date filtering auto-trigger)
+    }, []);
 
     const loadSales = async () => {
         setLoading(true);
         try {
-            // Fetch all sales or filter by date on server side?
-            // API supports start_date and end_date. Let's use them to not fetch ALL history.
             const params = {};
             if (dateRange.start) params.start_date = dateRange.start;
             if (dateRange.end) params.end_date = dateRange.end;
@@ -58,10 +61,81 @@ export default function SalesPage() {
         setDateRange(prev => ({ ...prev, [name]: value }));
     };
 
-    // Advanced Filtering Logic
+    // Open Modal
+    const openDetailModal = (sale) => {
+        setSelectedSale(sale);
+        // Initialize Edit Form (Deep copy to avoid direct mutation)
+        setEditForm({
+            ...sale,
+            items: sale.items ? JSON.parse(JSON.stringify(sale.items)) : []
+        });
+        setIsDetailModalOpen(true);
+    };
+
+    // Modal Actions
+    const handleEditChange = (field, value) => {
+        setEditForm(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleItemChange = (index, field, value) => {
+        setEditForm(prev => {
+            const newItems = [...prev.items];
+            newItems[index] = { ...newItems[index], [field]: value };
+            // Recalculate item amount if needed (optional, simplistic)
+            return { ...prev, items: newItems };
+        });
+    };
+
+    const handleDeleteItem = (index) => {
+        setEditForm(prev => {
+            const newItems = prev.items.filter((_, i) => i !== index);
+            return { ...prev, items: newItems };
+        });
+    };
+
+    // Recalculate Total based on items
+    const calculatedTotal = useMemo(() => {
+        if (!editForm?.items) return 0;
+        return editForm.items.reduce((sum, item) => {
+            const qty = parseFloat(item.quantity) || 0;
+            const price = parseFloat(item.price) || 0;
+            const discount = parseFloat(item.discount_rate) || 0;
+            return sum + (qty * price * (1 - discount / 100));
+        }, 0);
+    }, [editForm?.items]);
+
+    const handleSaveSale = async () => {
+        if (!window.confirm('Değişiklikleri kaydetmek istiyor musunuz?')) return;
+        try {
+            await salesAPI.update(editForm.sale_code, {
+                items: editForm.items, // Backend expects 'items' or 'products' mapped
+                total: calculatedTotal,
+                payment_method: editForm.payment_method,
+                customer_name: editForm.customer_name // Simple string update if name changed
+            });
+            alert('Satış güncellendi.');
+            setIsDetailModalOpen(false);
+            loadSales();
+        } catch (error) {
+            alert('Güncelleme hatası: ' + error.message);
+        }
+    };
+
+    const handleDeleteSale = async () => {
+        if (!window.confirm('Bu satışı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
+        try {
+            await salesAPI.delete(editForm.sale_code);
+            alert('Satış silindi.');
+            setIsDetailModalOpen(false);
+            loadSales();
+        } catch (error) {
+            alert('Silme hatası: ' + error.message);
+        }
+    };
+
+    // Filter Logic
     const filteredSales = useMemo(() => {
         return sales.filter(sale => {
-            // 1. General Search (Sale Code, Customer Name)
             const term = filters.searchTerm.toLowerCase();
             const matchesGeneral = !term ||
                 sale.sale_code?.toLowerCase().includes(term) ||
@@ -70,23 +144,14 @@ export default function SalesPage() {
 
             if (!matchesGeneral) return false;
 
-            // 2. Price Range
             const total = sale.total || 0;
             if (filters.minPrice && total < parseFloat(filters.minPrice)) return false;
             if (filters.maxPrice && total > parseFloat(filters.maxPrice)) return false;
 
-            // 3. Item Level Filters (Stock Code, Product Name, Barcode)
-            // If any of these are set, we need to check items.
-            // If items are missing (e.g. old data), strict filtering might exclude them.
-            // We'll perform specific checks if inputs are present.
-
             const hasItemFilters = filters.stockCode || filters.productName || filters.barcode;
-
             if (hasItemFilters) {
-                // Check if ANY item in the sale matches ALL active item filters
-                const items = sale.items || []; // items is an array of objects
+                const items = sale.items || [];
                 if (items.length === 0) return false;
-
                 const matchesItemCriteria = items.some(item => {
                     let match = true;
                     if (filters.stockCode && !item.stock_code?.toLowerCase().includes(filters.stockCode.toLowerCase())) match = false;
@@ -94,22 +159,18 @@ export default function SalesPage() {
                     if (filters.barcode && !item.barcode?.toLowerCase().includes(filters.barcode.toLowerCase())) match = false;
                     return match;
                 });
-
                 if (!matchesItemCriteria) return false;
             }
-
             return true;
         });
     }, [sales, filters]);
 
-    // Calculate Totals for Filtered Results
     const totalRevenue = useMemo(() => filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0), [filteredSales]);
-    const totalSalesCount = filteredSales.length;
 
     return (
-        <div className="h-screen flex flex-row overflow-hidden bg-slate-50 font-display">
-            {/* Sidebar Filters */}
-            <aside className="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-xl shadow-slate-200/50 flex-none h-full overflow-y-auto">
+        <div className="min-h-screen flex flex-row bg-slate-50 font-display">
+            {/* Fixed Sidebar */}
+            <aside className="w-80 bg-white border-r border-slate-200 fixed top-0 bottom-0 left-0 overflow-y-auto z-30 shadow-xl shadow-slate-200/50">
                 <div className="p-5 border-b border-slate-100">
                     <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <span className="material-symbols-outlined text-blue-600">filter_alt</span>
@@ -220,14 +281,13 @@ export default function SalesPage() {
                 </div>
             </aside>
 
-            {/* Main Content: Sales Table */}
-            <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-                {/* Header Stats */}
-                <header className="px-8 py-5 bg-white border-b border-slate-200 flex items-center justify-between flex-none">
+            {/* Main Content - Pushed right by sidebar width */}
+            <main className="flex-1 ml-80 flex flex-col min-h-screen">
+                <header className="px-8 py-5 bg-white border-b border-slate-200 flex items-center justify-between sticky top-0 z-10 shadow-sm/50 backdrop-blur-sm bg-white/90">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-800">Satışlar</h1>
                         <p className="text-slate-500 text-sm mt-0.5">
-                            <span className="font-bold text-slate-900">{totalSalesCount}</span> işlem bulundu
+                            <span className="font-bold text-slate-900">{filteredSales.length}</span> işlem bulundu
                         </p>
                     </div>
                     <div className="text-right">
@@ -236,28 +296,28 @@ export default function SalesPage() {
                     </div>
                 </header>
 
-                {/* Table Container */}
-                <div className="flex-1 overflow-auto p-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px]">
+                <div className="p-6">
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         {loading ? (
-                            <div className="h-96 flex items-center justify-center">
+                            <div className="p-12 flex justify-center">
                                 <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                             </div>
                         ) : filteredSales.length === 0 ? (
-                            <div className="h-96 flex flex-col items-center justify-center text-slate-400">
-                                <span className="material-symbols-outlined text-4xl mb-2 opacity-30">filter_list_off</span>
-                                <p>Filtrelere uygun satış bulunamadı.</p>
+                            <div className="p-12 text-center text-slate-500">
+                                <span className="material-symbols-outlined text-4xl mb-2 opacity-50">receipt_long</span>
+                                <p>Kayıtlı satış bulunamadı.</p>
                             </div>
                         ) : (
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                                    <tr className="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <tr>
                                         <th className="px-6 py-4">Tarih</th>
                                         <th className="px-6 py-4">Satış No</th>
                                         <th className="px-6 py-4">Müşteri</th>
                                         <th className="px-6 py-4">Ödeme Tipi</th>
                                         <th className="px-6 py-4">Ürünler</th>
                                         <th className="px-6 py-4 text-right">Tutar</th>
+                                        <th className="px-6 py-4 text-center">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -288,6 +348,14 @@ export default function SalesPage() {
                                             <td className="px-6 py-4 text-sm font-bold text-slate-900 text-right whitespace-nowrap">
                                                 ₺{sale.total?.toFixed(2)}
                                             </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <button
+                                                    onClick={() => openDetailModal(sale)}
+                                                    className="px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-bold transition-colors"
+                                                >
+                                                    Detay
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -296,6 +364,154 @@ export default function SalesPage() {
                     </div>
                 </div>
             </main>
+
+            {/* DETAIL MODAL */}
+            {isDetailModalOpen && editForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        {/* Modal Header */}
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">Satış Detayı</h3>
+                                <p className="text-sm text-slate-400 font-mono mt-0.5">{editForm.sale_code}</p>
+                            </div>
+                            <button onClick={() => setIsDetailModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+                            {/* Top Info Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Müşteri</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.customer_name || editForm.customer || ''}
+                                        onChange={(e) => handleEditChange('customer_name', e.target.value)}
+                                        className="w-full font-bold text-slate-800 border-b border-slate-200 focus:border-blue-500 outline-none py-1 bg-transparent"
+                                    />
+                                </div>
+                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Ödeme Tipi</label>
+                                    <select
+                                        value={editForm.payment_method}
+                                        onChange={(e) => handleEditChange('payment_method', e.target.value)}
+                                        className="w-full font-bold text-slate-800 border-b border-slate-200 focus:border-blue-500 outline-none py-1 bg-transparent"
+                                    >
+                                        <option value="Nakit">NAKİT</option>
+                                        <option value="POS">KREDİ KARTI</option>
+                                        <option value="Açık Hesap">VERESİYE</option>
+                                    </select>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tarih</label>
+                                    <p className="font-bold text-slate-800 py-1">
+                                        {new Date(editForm.date).toLocaleString('tr-TR')}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Items Table */}
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Ürün</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-24">Adet</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-32">Fiyat</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-right w-32">Tutar</th>
+                                            <th className="px-4 py-3 w-12"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {editForm.items.map((item, idx) => (
+                                            <tr key={idx} className="group hover:bg-slate-50">
+                                                <td className="px-4 py-3">
+                                                    <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                                                    <p className="text-xs text-slate-400 font-mono">{item.stock_code}</p>
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <input
+                                                        type="number"
+                                                        value={item.quantity}
+                                                        onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
+                                                        className="w-16 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <input
+                                                        type="number"
+                                                        value={item.price}
+                                                        onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
+                                                        className="w-20 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-bold text-slate-900">
+                                                    {(item.quantity * item.price * (1 - (item.discount_rate || 0) / 100)).toFixed(2)} ₺
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <button
+                                                        onClick={() => handleDeleteItem(idx)}
+                                                        className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                                    >
+                                                        <span className="material-symbols-outlined text-lg">delete</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {editForm.items.length === 0 && (
+                                    <div className="p-8 text-center text-slate-400 text-sm">Ürün bulunamadı</div>
+                                )}
+                            </div>
+
+                            {/* Totals */}
+                            <div className="flex justify-end">
+                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm w-72">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium text-slate-500">Tutar</span>
+                                        <span className="text-sm font-bold text-slate-800">₺{calculatedTotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="h-px bg-slate-100 my-2"></div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-base font-bold text-slate-800">GENEL TOPLAM</span>
+                                        <span className="text-xl font-black text-emerald-600">₺{calculatedTotal.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer Actions */}
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                            <button
+                                onClick={handleDeleteSale}
+                                className="px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-xl font-bold transition-all flex items-center gap-2"
+                            >
+                                <span className="material-symbols-outlined">delete_forever</span>
+                                Satışı Sil
+                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setIsDetailModalOpen(false)}
+                                    className="px-6 py-2.5 text-slate-600 hover:bg-slate-200 font-bold rounded-xl transition-colors"
+                                >
+                                    İptal
+                                </button>
+                                <button
+                                    onClick={handleSaveSale}
+                                    className="px-6 py-2.5 bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/30 rounded-xl font-bold transition-all flex items-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined">save</span>
+                                    Kaydet
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

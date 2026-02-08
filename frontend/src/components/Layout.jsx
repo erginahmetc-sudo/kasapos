@@ -20,6 +20,8 @@ export default function Layout({ children }) {
 
     // Check if we are on the POS page to remove default padding/margins
     const isPOSPage = location.pathname === '/';
+    // Sales page also needs full width but allows window scrolling
+    const isSalesPage = location.pathname === '/sales';
 
     const visibleMenuItems = menuItems.filter(item =>
         hasPermission(item.permission)
@@ -84,8 +86,16 @@ export default function Layout({ children }) {
             </header>
 
             {/* Main Content */}
-            {/* If POS page, remove padding and max-width constraints to allow full layout */}
-            <main className={`flex-1 w-full mx-auto ${isPOSPage ? 'overflow-hidden flex flex-col p-0' : 'pb-20 md:pb-6 pt-4 px-4 sm:px-6 lg:px-8 max-w-[1920px] overflow-y-auto'}`}>
+            {/* Logic:
+                - POS Page: h-screen, overflow-hidden, p-0
+                - Sales Page: full width (p-0), but window scroll (no overflow-y-auto on main, let body scroll)
+                - Other Pages: Container width, padding, window scroll (removed overflow-y-auto)
+            */}
+            <main className={`flex-1 w-full mx-auto 
+                ${isPOSPage ? 'overflow-hidden flex flex-col p-0' : ''}
+                ${isSalesPage ? 'p-0 w-full max-w-none' : ''}
+                ${!isPOSPage && !isSalesPage ? 'pb-20 md:pb-6 pt-4 px-4 sm:px-6 lg:px-8 max-w-[1920px]' : ''}
+            `}>
                 {children}
             </main>
 

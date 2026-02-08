@@ -603,6 +603,9 @@ export const salesAPI = {
         // Database uses 'items' column for products
         if (data.products) updateData.items = data.products;
         if (data.total !== undefined) updateData.total = data.total;
+        if (data.payment_method !== undefined) updateData.payment_method = data.payment_method;
+        if (data.customer_id !== undefined) updateData.customer_id = data.customer_id;
+        if (data.customer_name !== undefined) updateData.customer_name = data.customer_name;
 
         const { error } = await supabase
             .from('sales')

@@ -1021,95 +1021,96 @@ export default function InvoicesPage() {
                                 <tr>
                                     <th
                                         onClick={() => handleSort('date')}
-                                        className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                                        className="px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase cursor-pointer hover:bg-gray-100"
                                     >
                                         Tarih {getSortIcon('date')}
                                     </th>
                                     <th
                                         onClick={() => handleSort('invoice_number')}
-                                        className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                                        className="px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase cursor-pointer hover:bg-gray-100"
                                     >
                                         Fatura No {getSortIcon('invoice_number')}
                                     </th>
                                     <th
                                         onClick={() => handleSort('supplier_name')}
-                                        className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                                        className="px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase cursor-pointer hover:bg-gray-100"
                                     >
                                         Tedarikçi {getSortIcon('supplier_name')}
                                     </th>
                                     <th
                                         onClick={() => handleSort('total')}
-                                        className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                                        className="px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase cursor-pointer hover:bg-gray-100"
                                     >
                                         Tutar {getSortIcon('total')}
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
+                                    <th className="px-3 py-2 text-left text-[10px] font-bold text-gray-400 uppercase">
                                         Durum
                                     </th>
-                                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
+                                    <th className="px-3 py-2 text-right text-[10px] font-bold text-gray-400 uppercase">
                                         İşlemler
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {filteredInvoices.map((invoice) => (
-                                    <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-4 py-4 font-mono text-base text-gray-600">{formatDate(invoice.date)}</td>
-                                        <td className="px-4 py-4 font-mono text-base text-gray-800 font-bold">{invoice.invoice_number}</td>
-                                        <td className="px-4 py-4 font-medium text-gray-800 text-base truncate max-w-xs" title={invoice.supplier_name}>{invoice.supplier_name || '-'}</td>
-                                        <td className="px-4 py-4 font-bold text-gray-900 text-lg">₺{invoice.total?.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td className="px-4 py-4">
+                                    <tr key={invoice.id} className="hover:bg-gray-50 transition-colors group">
+                                        <td className="px-3 py-2 font-mono text-xs text-gray-600 whitespace-nowrap">{formatDate(invoice.date)}</td>
+                                        <td className="px-3 py-2 font-mono text-sm text-gray-800 font-bold whitespace-nowrap">{invoice.invoice_number}</td>
+                                        <td className="px-3 py-2 font-medium text-gray-800 text-sm truncate max-w-[200px]" title={invoice.supplier_name}>{invoice.supplier_name || '-'}</td>
+                                        <td className="px-3 py-2 font-bold text-gray-900 text-sm whitespace-nowrap">₺{invoice.total?.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
                                             <div className="flex items-center gap-2">
-                                                <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${invoice.status === 'Bekliyor' ? 'bg-amber-100 text-amber-600' :
-                                                    invoice.status === 'İşlendi' ? 'bg-green-100 text-green-600' :
-                                                        invoice.status === 'İşlendi ancak iptal edildi' ? 'bg-orange-100 text-orange-600' :
-                                                            invoice.status === 'İşlenmeyecek' ? 'bg-gray-100 text-gray-600' :
-                                                                'bg-gray-100 text-gray-600'
+                                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide border ${invoice.status === 'Bekliyor' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                    invoice.status === 'İşlendi' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                        invoice.status === 'İşlendi ancak iptal edildi' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                                            invoice.status === 'İşlenmeyecek' ? 'bg-gray-50 text-gray-500 border-gray-200' :
+                                                                'bg-gray-50 text-gray-600 border-gray-200'
                                                     }`}>
                                                     {invoice.status || 'Bekliyor'}
                                                 </span>
-                                                {/* İptal Et butonu - sadece İşlendi durumunda görünür */}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                                            <div className="flex items-center justify-end gap-1 opacity-100 group-hover:opacity-100 transition-opacity">
+                                                {/* Görüntüle */}
+                                                <button
+                                                    onClick={() => handleViewInvoice(invoice)}
+                                                    className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                    title="Görüntüle"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                </button>
+
+                                                {/* İşle / Detay */}
+                                                <button
+                                                    onClick={() => openDetailModal(invoice)}
+                                                    className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg text-xs font-bold transition-all"
+                                                    title="Cariye ve Stoklara İşle"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                    <span>İşle</span>
+                                                </button>
+
+                                                {/* Diğer İşlemler (Dropdown benzeri yapı yerine yan yana ikonlar - daha pratik) */}
+                                                <button
+                                                    onClick={() => { setSelectedInvoice(invoice); markAsNotProcessed(); }}
+                                                    className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                                    title="İşlenmeyecek Olarak İşaretle"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                                </button>
+
+                                                {/* İptal Et (Sadece İşlendi ise) */}
                                                 {invoice.status === 'İşlendi' && (
                                                     <button
                                                         onClick={() => handleCancelInvoice(invoice)}
                                                         disabled={processing}
-                                                        className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
-                                                        title="Fatura işlemini iptal et"
+                                                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                        title="İşlemi İptal Et (Stok ve Cariye'den düş)"
                                                     >
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                        İptal
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
                                                 )}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-2 relative z-10">
-                                                {/* Görüntüle (Modern) */}
-                                                <button
-                                                    onClick={() => handleViewInvoice(invoice)}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-600 to-gray-700 text-white rounded-xl hover:from-slate-700 hover:to-gray-800 text-sm font-semibold transition-all shadow-md hover:shadow-lg transform hover:scale-105"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                                    Görüntüle
-                                                </button>
-
-                                                {/* Cariye ve Stoklara İşle (Blue/Modern) */}
-                                                <button
-                                                    onClick={() => openDetailModal(invoice)}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 text-sm font-semibold transition-all shadow-md hover:shadow-lg transform hover:scale-105"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                                                    Cariye ve Stoklara İşle
-                                                </button>
-
-                                                {/* İşlenmeyecek (Yellow/Modern) */}
-                                                <button
-                                                    onClick={() => { setSelectedInvoice(invoice); markAsNotProcessed(); }}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 text-sm font-semibold transition-all shadow-md hover:shadow-lg transform hover:scale-105"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                    İşlenmeyecek
-                                                </button>
                                             </div>
                                         </td>
                                     </tr>

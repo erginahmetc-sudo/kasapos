@@ -7,7 +7,7 @@ const menuItems = [
     { path: '/', label: 'Satış', icon: 'shopping_cart', permission: 'can_view_pos' },
     { path: '/products', label: 'Ürünler', icon: 'inventory_2', permission: 'can_view_products' },
     { path: '/customers', label: 'Bakiyeler', icon: 'groups', permission: 'can_view_customers' },
-    { path: '/sales', label: 'Geçmiş', icon: 'receipt_long', permission: 'can_view_sales' },
+    { path: '/sales', label: 'Satışlar', icon: 'receipt_long', permission: 'can_view_sales' },
     { path: '/invoices', label: 'Faturalar', icon: 'description', permission: 'can_view_invoices' },
     { path: '/reports', label: 'Raporlar', icon: 'analytics', permission: 'can_view_sales' },
     { path: '/settings', label: 'Ayarlar', icon: 'settings', permission: 'can_view_users' },
@@ -44,8 +44,8 @@ export default function Layout({ children }) {
                             key={item.path}
                             to={item.path}
                             className={`flex flex-col items-center justify-center px-4 lg:px-6 h-16 border-b-2 transition-all ${location.pathname === item.path
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                                    : 'border-transparent text-slate-400 hover:text-slate-900 hover:bg-slate-50'
+                                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                                : 'border-transparent text-slate-400 hover:text-slate-900 hover:bg-slate-50'
                                 }`}
                         >
                             <span className="material-symbols-outlined">{item.icon}</span>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { productsAPI, salesAPI, customersAPI, shortcutsAPI, heldSalesAPI } from '../services/api';
 import { birFaturaAPI } from '../services/birFaturaService';
@@ -26,6 +26,43 @@ function useMobileRedirect() {
         // return () => window.removeEventListener('resize', checkMobile);
     }, [navigate]);
 }
+
+// Product Card Component to handle Image State separately
+const ProductCard = ({ product, onAddToCart }) => {
+    const [imgError, setImgError] = useState(false);
+
+    return (
+        <div
+            onClick={() => onAddToCart(product)}
+            className="h-48 bg-white rounded-xl border border-slate-200 p-2 shadow-sm hover:shadow-lg hover:border-blue-600/30 hover:-translate-y-0.5 transition-all group flex flex-col cursor-pointer"
+        >
+            <div className="w-full h-24 rounded-lg bg-slate-50 overflow-hidden relative flex-shrink-0 border border-slate-100 mb-2">
+                {!imgError ? (
+                    <img
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        src={product.image_url || 'https://via.placeholder.com/150'}
+                        onError={() => setImgError(true)}
+                        loading="lazy"
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
+                        <span className="material-symbols-outlined text-4xl">image</span>
+                    </div>
+                )}
+            </div>
+            <div className="flex flex-col flex-1 px-2 pb-2 pt-1 gap-1">
+                <h3 className="text-[11px] font-bold text-slate-700 leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors">{product.name}</h3>
+                <div className="flex items-center justify-between w-full mt-1">
+                    <span className="text-sm font-extrabold text-slate-900">{product.price?.toFixed(2)} ₺</span>
+                    <div className="w-6 h-6 rounded bg-slate-50 text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all flex items-center justify-center shadow-sm">
+                        <span className="material-symbols-outlined text-sm font-bold">add</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function NewPOSPage() {
     // Mobile redirect
@@ -185,8 +222,8 @@ export default function NewPOSPage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [keyboardShortcuts, cart, selectedCartIndex]);
 
-    // Filtering
-    const filteredProducts = (() => {
+    // Filtering (Memoized)
+    const filteredProducts = useMemo(() => {
         const currentGroup = selectedCategory !== 'Tümü'
             ? shortcuts.find(s => s.name === selectedCategory)
             : null;
@@ -211,7 +248,7 @@ export default function NewPOSPage() {
             });
         }
         return result;
-    })();
+    }, [products, selectedCategory, searchTerm, shortcuts]);
 
     // Handlers
     const addToCart = (product) => {
@@ -996,29 +1033,11 @@ export default function NewPOSPage() {
                     <div className="flex-1 overflow-x-auto custom-scrollbar p-6 bg-slate-50/50 border-b border-slate-200 shadow-inner h-auto">
                         <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
                             {filteredProducts.map(product => (
-                                <div
+                                <ProductCard
                                     key={product.id || product.stock_code}
-                                    onClick={() => addToCart(product)}
-                                    className="h-48 bg-white rounded-xl border border-slate-200 p-2 shadow-sm hover:shadow-lg hover:border-blue-600/30 hover:-translate-y-0.5 transition-all group flex flex-col cursor-pointer"
-                                >
-                                    <div className="w-full h-24 rounded-lg bg-slate-50 overflow-hidden relative flex-shrink-0 border border-slate-100 mb-2">
-                                        <img
-                                            alt={product.name}
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                            src={product.image_url || 'https://via.placeholder.com/150'}
-                                            onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=IMG'; }}
-                                        />
-                                    </div>
-                                    <div className="flex flex-col flex-1 px-2 pb-2 pt-1 gap-1">
-                                        <h3 className="text-[11px] font-bold text-slate-700 leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors">{product.name}</h3>
-                                        <div className="flex items-center justify-between w-full mt-1">
-                                            <span className="text-sm font-extrabold text-slate-900">{product.price?.toFixed(2)} ₺</span>
-                                            <div className="w-6 h-6 rounded bg-slate-50 text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all flex items-center justify-center shadow-sm">
-                                                <span className="material-symbols-outlined text-sm font-bold">add</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                    product={product}
+                                    onAddToCart={addToCart}
+                                />
                             ))}
                         </div>
                     </div>

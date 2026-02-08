@@ -7,7 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import EmailSuccessPage from './pages/EmailSuccessPage';
 
-import POSPage from './pages/POSPage';
+import NewPOSPage from './pages/NewPOSPage';
 import MobilePOSPage from './pages/MobilePOSPage';
 import MobileProductsPage from './pages/MobileProductsPage';
 import MobileCustomersPage from './pages/MobileCustomersPage';
@@ -38,7 +38,7 @@ function App() {
             element={
               <ProtectedRoute permission="can_view_pos">
                 <Layout>
-                  <POSPage />
+                  <NewPOSPage />
                 </Layout>
               </ProtectedRoute>
             }

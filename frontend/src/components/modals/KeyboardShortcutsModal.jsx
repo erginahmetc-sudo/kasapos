@@ -9,7 +9,8 @@ export default function KeyboardShortcutsModal({ onClose, onSave }) {
         'nakit_odeme': 'F8',
         'pos_odeme': 'F9',
         'musteri_sec': 'F10',
-        'search_focus': 'F1'
+        'search_focus': 'F1',
+        'tanimsiz_urun': 'Insert'
     };
 
     const [shortcuts, setShortcuts] = useState(defaultShortcuts);
@@ -45,6 +46,7 @@ export default function KeyboardShortcutsModal({ onClose, onSave }) {
 
     const actions = [
         { id: 'search_focus', label: 'Ürün Arama', icon: '🔍' },
+        { id: 'tanimsiz_urun', label: 'Tanımsız Ürün Ekle', icon: '➕' },
         { id: 'miktar_duzenle', label: 'Miktar Düzenle', icon: '🔢' },
         { id: 'iskonto_ekle', label: 'İskonto Ekle', icon: '🏷️' },
         { id: 'fiyat_duzenle', label: 'Fiyat Düzenle', icon: '💵' },

@@ -76,6 +76,14 @@ export default function NewPOSPage() {
     // Cart Settings (Simplified for new design - mostly unused but keeping for compatibility)
     const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0 });
 
+    // Undefined Product Logic
+    const [showUndefinedProductModal, setShowUndefinedProductModal] = useState(false);
+    const [undefinedProductStep, setUndefinedProductStep] = useState(0); // 0: Name, 1: Qty, 2: Price
+    const [undefinedProductData, setUndefinedProductData] = useState({ name: '', quantity: 1, price: '' });
+    const undefinedNameRef = useRef(null);
+    const undefinedQtyRef = useRef(null);
+    const undefinedPriceRef = useRef(null);
+
     // Load Data
     useEffect(() => {
         loadProducts();
@@ -164,6 +172,12 @@ export default function NewPOSPage() {
                     }
                     break;
                 case 'musteri_sec': setShowCustomerModal(true); break;
+                case 'tanimsiz_urun':
+                    setUndefinedProductData({ name: '', quantity: 1, price: '' });
+                    setUndefinedProductStep(0);
+                    setShowUndefinedProductModal(true);
+                    setTimeout(() => undefinedNameRef.current?.focus(), 100);
+                    break;
                 default: break;
             }
         };
@@ -780,23 +794,46 @@ export default function NewPOSPage() {
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar (Cart) */}
-                <aside className="w-[420px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-xl shadow-slate-200/50">
-                    <div className="p-4 bg-slate-50 border-b border-slate-200">
-                        {/* Customer Display */}
-                        <div
-                            className="bg-white border border-slate-200 rounded-xl p-3 mb-3 flex items-center justify-between cursor-pointer hover:border-blue-400 transition-colors shadow-sm"
-                            onClick={() => setShowCustomerModal(true)}
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                <aside className="w-[500px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-xl shadow-slate-200/50">
+                    <div className="p-3 bg-white border-b border-slate-200 shadow-sm z-20">
+                        <div className="grid grid-cols-4 gap-2">
+                            {/* Customer Button (Takes 2 cols) */}
+                            <button
+                                className="col-span-2 bg-slate-50 border border-slate-200 rounded-lg p-2 flex items-center gap-2 hover:border-blue-400 transition-all text-left group"
+                                onClick={() => setShowCustomerModal(true)}
+                                title="Müşteri Seç"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                     <span className="material-symbols-outlined text-lg">person</span>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-slate-400 font-bold uppercase">Müşteri</p>
-                                    <p className="text-sm font-bold text-slate-800">{customer}</p>
+                                <div className="min-w-0 overflow-hidden">
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase leading-none mb-0.5">Müşteri</p>
+                                    <p className="text-[11px] font-bold text-slate-800 truncate leading-none">{customer}</p>
                                 </div>
-                            </div>
-                            <span className="material-symbols-outlined text-slate-400">expand_more</span>
+                            </button>
+
+                            {/* Hold Button (1 col) */}
+                            <button
+                                onClick={holdSale}
+                                className="col-span-1 bg-orange-50 border border-orange-100 rounded-lg flex flex-col items-center justify-center hover:bg-orange-100 hover:border-orange-300 transition-all"
+                                title="Satışı Beklemeye Al"
+                            >
+                                <span className="material-symbols-outlined text-orange-600 text-lg mb-0.5">pause</span>
+                                <span className="text-[9px] font-bold text-orange-700 leading-none">Beklet</span>
+                            </button>
+
+                            {/* Waitlist Button (1 col) */}
+                            <button
+                                onClick={() => setShowWaitlistModal(true)}
+                                className="col-span-1 bg-slate-50 border border-slate-200 rounded-lg flex flex-col items-center justify-center hover:bg-slate-100 hover:border-slate-300 transition-all relative"
+                                title="Bekleyen Satışlar"
+                            >
+                                {heldSales.length > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm">{heldSales.length}</span>
+                                )}
+                                <span className="material-symbols-outlined text-slate-600 text-lg mb-0.5">list</span>
+                                <span className="text-[9px] font-bold text-slate-700 leading-none">Liste</span>
+                            </button>
                         </div>
 
                         {/* Barcode Input */}
@@ -844,7 +881,14 @@ export default function NewPOSPage() {
                                     </div>
                                     <div className="flex-1 min-w-0 pl-1">
                                         <h4 className="text-xs font-bold text-slate-800 truncate">{item.name}</h4>
-                                        <p className="text-[10px] text-slate-500">{item.price?.toFixed(2)} ₺ /adet</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-lg font-bold text-blue-600">{item.price?.toFixed(2)} ₺</p>
+                                            {item.discount_rate > 0 && (
+                                                <span className="text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
+                                                    %{item.discount_rate} İsk.
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="w-16 flex items-center justify-center">
                                         <div
@@ -965,10 +1009,10 @@ export default function NewPOSPage() {
                                             onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=IMG'; }}
                                         />
                                     </div>
-                                    <div className="flex flex-col flex-1 px-0.5 relative">
-                                        <h3 className="text-[10px] font-bold text-slate-700 leading-snug line-clamp-2 mb-auto group-hover:text-blue-600 transition-colors">{product.name}</h3>
-                                        <div className="flex items-center justify-between mt-auto pt-1 w-full">
-                                            <span className="text-xs font-extrabold text-slate-900">{product.price?.toFixed(2)} ₺</span>
+                                    <div className="flex flex-col flex-1 px-2 pb-2 pt-1 gap-1">
+                                        <h3 className="text-[11px] font-bold text-slate-700 leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors">{product.name}</h3>
+                                        <div className="flex items-center justify-between w-full mt-1">
+                                            <span className="text-sm font-extrabold text-slate-900">{product.price?.toFixed(2)} ₺</span>
                                             <div className="w-6 h-6 rounded bg-slate-50 text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all flex items-center justify-center shadow-sm">
                                                 <span className="material-symbols-outlined text-sm font-bold">add</span>
                                             </div>
@@ -981,21 +1025,10 @@ export default function NewPOSPage() {
 
                     {/* Stats / Actions (Bottom Right) */}
                     <div className="flex-none p-4 bg-white flex items-center justify-center gap-4 border-t border-slate-200">
-                        {/* Action Buttons */}
-                        <button
-                            onClick={holdSale}
-                            className="px-4 py-2 border border-orange-200 text-orange-600 rounded-lg hover:bg-orange-50 font-bold text-xs flex items-center gap-2"
-                        >
-                            <span className="material-symbols-outlined text-lg">pause</span>
-                            Beklemeye Al
-                        </button>
-                        <button
-                            onClick={() => setShowWaitlistModal(true)}
-                            className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-bold text-xs flex items-center gap-2"
-                        >
-                            <span className="material-symbols-outlined text-lg">list</span>
-                            Bekleyenler ({heldSales.length})
-                        </button>
+                        {/* Product Count Info or other small footer stats if needed, or empty */}
+                        <p className="text-xs text-slate-400 font-medium">
+                            {filteredProducts.length} ürün listeleniyor
+                        </p>
                     </div>
                 </main>
             </div>
@@ -1105,42 +1138,135 @@ export default function NewPOSPage() {
                 </div>
             )}
 
-            {/* Waitlist Modal */}
-            {showWaitlistModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50 p-4">
-                    <div className="bg-white w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl rounded-2xl">
-                        <div className="bg-orange-500 px-6 py-5 flex justify-between items-center text-white">
-                            <h3 className="text-2xl font-bold">Bekleme Listesi</h3>
-                            <button onClick={() => setShowWaitlistModal(false)}><span className="material-symbols-outlined">close</span></button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                            {heldSales.length === 0 ? <p className="text-center text-slate-500 py-10">Bekleyen satış yok.</p> :
-                                heldSales.map((sale, i) => (
-                                    <div key={sale.id} className="p-4 border rounded-xl flex justify-between items-center bg-white shadow-sm">
-                                        <div>
-                                            <p className="font-bold">#{i + 1} - {sale.customer_name || 'Genel'}</p>
-                                            <p className="text-xs text-slate-500">{sale.items.length} ürün</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => restoreHeldSale(sale)} className="px-3 py-1 bg-green-100 text-green-700 rounded-lg font-bold text-sm">Geri Yükle</button>
-                                            <button onClick={() => deleteHeldSale(sale.id)} className="px-3 py-1 bg-red-100 text-red-700 rounded-lg font-bold text-sm">Sil</button>
-                                        </div>
-                                    </div>
-                                ))
-                            }
+
+
+            {/* Undefined Product Modal */}
+            {
+                showUndefinedProductModal && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[70] p-4">
+                        <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in duration-200">
+                            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-6 py-4 flex justify-between items-center text-white">
+                                <h3 className="text-xl font-bold flex items-center gap-2">
+                                    <span className="material-symbols-outlined">add_circle</span>
+                                    Hızlı Ürün Ekle
+                                </h3>
+                                <button onClick={() => setShowUndefinedProductModal(false)} className="hover:bg-white/20 rounded-full p-1 transition-colors">
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                {/* Step 1: Name */}
+                                <div className={`space-y-2 transition-all duration-300 ${undefinedProductStep === 0 ? 'opacity-100 scale-100' : 'opacity-50 scale-95 grayscale'}`}>
+                                    <label className="block text-sm font-bold text-slate-700">1. Ürün İsmi</label>
+                                    <input
+                                        ref={undefinedNameRef}
+                                        disabled={undefinedProductStep !== 0}
+                                        value={undefinedProductData.name}
+                                        onChange={(e) => setUndefinedProductData({ ...undefinedProductData, name: e.target.value })}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && undefinedProductData.name.trim()) {
+                                                setUndefinedProductStep(1);
+                                                setTimeout(() => undefinedQtyRef.current?.focus(), 100);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-violet-500 focus:bg-white outline-none font-bold text-lg disabled:opacity-60"
+                                        placeholder="Örn: Çay"
+                                    />
+                                </div>
+
+                                {/* Step 2: Quantity */}
+                                <div className={`space-y-2 transition-all duration-300 ${undefinedProductStep === 1 ? 'opacity-100 scale-100' : 'opacity-50 scale-95 grayscale'}`}>
+                                    <label className="block text-sm font-bold text-slate-700">2. Adet</label>
+                                    <input
+                                        ref={undefinedQtyRef}
+                                        type="number"
+                                        disabled={undefinedProductStep !== 1}
+                                        value={undefinedProductData.quantity}
+                                        onChange={(e) => setUndefinedProductData({ ...undefinedProductData, quantity: e.target.value })}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && undefinedProductData.quantity) {
+                                                setUndefinedProductStep(2);
+                                                setTimeout(() => undefinedPriceRef.current?.focus(), 100);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-violet-500 focus:bg-white outline-none font-bold text-lg disabled:opacity-60"
+                                        placeholder="1"
+                                    />
+                                </div>
+
+                                {/* Step 3: Price */}
+                                <div className={`space-y-2 transition-all duration-300 ${undefinedProductStep === 2 ? 'opacity-100 scale-100' : 'opacity-50 scale-95 grayscale'}`}>
+                                    <label className="block text-sm font-bold text-slate-700">3. Fiyat (TL)</label>
+                                    <input
+                                        ref={undefinedPriceRef}
+                                        type="number"
+                                        disabled={undefinedProductStep !== 2}
+                                        value={undefinedProductData.price}
+                                        onChange={(e) => setUndefinedProductData({ ...undefinedProductData, price: e.target.value })}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && undefinedProductData.price) {
+                                                const newProduct = {
+                                                    id: `TEMP-${Date.now()}`,
+                                                    stock_code: 'TANIMSIZ',
+                                                    name: undefinedProductData.name,
+                                                    price: parseFloat(undefinedProductData.price),
+                                                    quantity: parseFloat(undefinedProductData.quantity),
+                                                    discount_rate: 0
+                                                };
+
+                                                // Add to cart
+                                                const existingIndex = cart.findIndex(item => item.name === newProduct.name && item.price === newProduct.price);
+                                                if (existingIndex >= 0) {
+                                                    const newCart = [...cart];
+                                                    newCart[existingIndex].quantity += newProduct.quantity;
+                                                    setCart(newCart);
+                                                } else {
+                                                    setCart([...cart, newProduct]);
+                                                }
+
+                                                setShowUndefinedProductModal(false);
+                                                setUndefinedProductData({ name: '', quantity: 1, price: '' });
+                                                setUndefinedProductStep(0);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-violet-500 focus:bg-white outline-none font-bold text-lg disabled:opacity-60"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setShowUndefinedProductModal(false)}
+                                    className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-200 rounded-lg"
+                                >
+                                    İptal
+                                </button>
+                                {undefinedProductStep > 0 && (
+                                    <button
+                                        onClick={() => setUndefinedProductStep(prev => prev - 1)}
+                                        className="px-4 py-2 text-violet-600 font-bold hover:bg-violet-50 rounded-lg"
+                                    >
+                                        Geri
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Success Message Toaster */}
-            {successMessage && (
-                <div className="fixed bottom-10 right-10 z-50 bg-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl text-lg font-bold animate-pulse flex items-center gap-2">
-                    <span className="material-symbols-outlined">check_circle</span>
-                    {successMessage}
-                </div>
-            )}
+            {
+                successMessage && (
+                    <div className="fixed bottom-10 right-10 z-50 bg-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl text-lg font-bold animate-pulse flex items-center gap-2">
+                        <span className="material-symbols-outlined">check_circle</span>
+                        {successMessage}
+                    </div>
+                )
+            }
 
-        </div>
+        </div >
     );
 }

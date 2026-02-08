@@ -351,7 +351,7 @@ export default function NewPOSPage() {
                 customer_name: !selectedCustomer ? cleanCustomerName : undefined,
                 payment_method: paymentMethod,
                 items: cart.map(item => ({
-                    id: item.id, stock_code: item.stock_code, name: item.name,
+                    id: item.id, stock_code: item.stock_code, barcode: item.barcode, name: item.name,
                     quantity: item.quantity, price: item.price, discount_rate: item.discount_rate || 0,
                     amount: item.quantity
                 })),

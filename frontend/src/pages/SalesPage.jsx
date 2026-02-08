@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { salesAPI } from '../services/api';
+import { salesAPI, productsAPI } from '../services/api';
 
 export default function SalesPage() {
     const [sales, setSales] = useState([]);
@@ -30,6 +30,14 @@ export default function SalesPage() {
     const [selectedSale, setSelectedSale] = useState(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [editForm, setEditForm] = useState(null);
+
+    // Product Search Modal State
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [allProducts, setAllProducts] = useState([]); // Lazy load
+    const [productSearchTerm, setProductSearchTerm] = useState('');
+    const [productModalLoading, setProductModalLoading] = useState(false);
+    const [tempQty, setTempQty] = useState(1);
+    const [selectedProductToAdd, setSelectedProductToAdd] = useState(null);
 
     useEffect(() => {
         loadSales();
@@ -65,9 +73,17 @@ export default function SalesPage() {
     const openDetailModal = (sale) => {
         setSelectedSale(sale);
         // Initialize Edit Form (Deep copy to avoid direct mutation)
+        // Ensure items have vat_rate and UI flags
+        const items = sale.items ? JSON.parse(JSON.stringify(sale.items)) : [];
+        const enrichedItems = items.map(item => ({
+            ...item,
+            vat_rate: item.vat_rate !== undefined ? item.vat_rate : 20, // Default to 20% if missing
+            is_vat_inc: true // Default UI toggle to "Included"
+        }));
+
         setEditForm({
             ...sale,
-            items: sale.items ? JSON.parse(JSON.stringify(sale.items)) : []
+            items: enrichedItems
         });
         setIsDetailModalOpen(true);
     };
@@ -93,15 +109,97 @@ export default function SalesPage() {
         });
     };
 
-    // Recalculate Total based on items
-    const calculatedTotal = useMemo(() => {
-        if (!editForm?.items) return 0;
-        return editForm.items.reduce((sum, item) => {
+    // Product Modal Helpers
+    const openProductModal = async () => {
+        setIsProductModalOpen(true);
+        setProductSearchTerm('');
+        setSelectedProductToAdd(null);
+        setTempQty(1);
+
+        if (allProducts.length === 0) {
+            setProductModalLoading(true);
+            try {
+                const res = await productsAPI.getAll();
+                setAllProducts(res.data?.products || []);
+            } catch (error) {
+                console.error("Ürünler yüklenirken hata:", error);
+            } finally {
+                setProductModalLoading(false);
+            }
+        }
+    };
+
+    const handleAddProductToSale = () => {
+        if (!selectedProductToAdd) return;
+
+        const newItem = {
+            id: selectedProductToAdd.id,
+            stock_code: selectedProductToAdd.stock_code,
+            name: selectedProductToAdd.name,
+            quantity: parseFloat(tempQty) || 1,
+            price: parseFloat(selectedProductToAdd.price) || 0, // Default is Gross
+            vat_rate: selectedProductToAdd.vat_rate !== undefined ? selectedProductToAdd.vat_rate : 20, // Default 20
+            is_vat_inc: true // Default Included
+        };
+
+        setEditForm(prev => ({
+            ...prev,
+            items: [...prev.items, newItem]
+        }));
+
+        setIsProductModalOpen(false);
+    };
+
+    const filteredProductsForModal = useMemo(() => {
+        if (!productSearchTerm) return allProducts;
+        const lowerTerm = productSearchTerm.toLowerCase();
+        return allProducts.filter(p =>
+            p.name?.toLowerCase().includes(lowerTerm) ||
+            p.stock_code?.toLowerCase().includes(lowerTerm) ||
+            p.barcode?.toLowerCase().includes(lowerTerm)
+        ).slice(0, 20); // Limit results
+    }, [allProducts, productSearchTerm]);
+
+    // Recalculate Total based on items (with VAT logic)
+    const totals = useMemo(() => {
+        if (!editForm?.items) return { net: 0, vat: 0, grand: 0, breakdown: {} };
+
+        let netTotal = 0;
+        let vatTotal = 0;
+        const breakdown = {};
+
+        editForm.items.forEach(item => {
             const qty = parseFloat(item.quantity) || 0;
-            const price = parseFloat(item.price) || 0;
+            const rawPrice = parseFloat(item.price) || 0;
             const discount = parseFloat(item.discount_rate) || 0;
-            return sum + (qty * price * (1 - discount / 100));
-        }, 0);
+            const rate = parseFloat(item.vat_rate) || 0;
+
+            let unitGross, unitNet;
+            if (item.is_vat_inc) {
+                unitGross = rawPrice;
+                unitNet = unitGross / (1 + rate / 100);
+            } else {
+                unitNet = rawPrice;
+                unitGross = unitNet * (1 + rate / 100);
+            }
+
+            const lineGross = unitGross * qty * (1 - discount / 100);
+            const lineNet = unitNet * qty * (1 - discount / 100);
+            const lineVat = lineGross - lineNet;
+
+            netTotal += lineNet;
+            vatTotal += lineVat;
+
+            if (!breakdown[rate]) breakdown[rate] = 0;
+            breakdown[rate] += lineVat;
+        });
+
+        return {
+            net: netTotal,
+            vat: vatTotal,
+            grand: netTotal + vatTotal,
+            breakdown
+        };
     }, [editForm?.items]);
 
     const handleSaveSale = async () => {
@@ -109,7 +207,7 @@ export default function SalesPage() {
         try {
             await salesAPI.update(editForm.sale_code, {
                 items: editForm.items, // Backend expects 'items' or 'products' mapped
-                total: calculatedTotal,
+                total: totals.grand,
                 payment_method: editForm.payment_method,
                 customer_name: editForm.customer_name // Simple string update if name changed
             });
@@ -334,8 +432,8 @@ export default function SalesPage() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sale.payment_method === 'Nakit' ? 'bg-emerald-100 text-emerald-800' :
-                                                        (sale.payment_method === 'Kredi Kartı' || sale.payment_method === 'POS') ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-slate-100 text-slate-800'
+                                                    (sale.payment_method === 'Kredi Kartı' || sale.payment_method === 'POS') ? 'bg-blue-100 text-blue-800' :
+                                                        'bg-slate-100 text-slate-800'
                                                     }`}>
                                                     {sale.payment_method === 'POS' ? 'Kredi Kartı' : sale.payment_method}
                                                 </span>
@@ -393,17 +491,11 @@ export default function SalesPage() {
                                         className="w-full font-bold text-slate-800 border-b border-slate-200 focus:border-blue-500 outline-none py-1 bg-transparent"
                                     />
                                 </div>
-                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Ödeme Tipi</label>
-                                    <select
-                                        value={editForm.payment_method}
-                                        onChange={(e) => handleEditChange('payment_method', e.target.value)}
-                                        className="w-full font-bold text-slate-800 border-b border-slate-200 focus:border-blue-500 outline-none py-1 bg-transparent"
-                                    >
-                                        <option value="Nakit">NAKİT</option>
-                                        <option value="POS">KREDİ KARTI</option>
-                                        <option value="Açık Hesap">VERESİYE</option>
-                                    </select>
+                                    <div className="font-bold text-slate-600 py-1">
+                                        {editForm.payment_method === 'POS' ? 'KREDİ KARTI' : editForm.payment_method}
+                                    </div>
                                 </div>
                                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tarih</label>
@@ -419,48 +511,89 @@ export default function SalesPage() {
                                     <thead className="bg-slate-50 border-b border-slate-200">
                                         <tr>
                                             <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">Ürün</th>
-                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-24">Adet</th>
-                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-32">Fiyat</th>
-                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-right w-32">Tutar</th>
-                                            <th className="px-4 py-3 w-12"></th>
+                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-20">Adet</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-24">KDV %</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-28">KDV Dahil?</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center w-28">Birim Fiyat</th>
+                                            <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-right w-28">Tutar</th>
+                                            <th className="px-4 py-3 w-10"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {editForm.items.map((item, idx) => (
-                                            <tr key={idx} className="group hover:bg-slate-50">
-                                                <td className="px-4 py-3">
-                                                    <p className="font-bold text-slate-800 text-sm">{item.name}</p>
-                                                    <p className="text-xs text-slate-400 font-mono">{item.stock_code}</p>
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <input
-                                                        type="number"
-                                                        value={item.quantity}
-                                                        onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                                                        className="w-16 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <input
-                                                        type="number"
-                                                        value={item.price}
-                                                        onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
-                                                        className="w-20 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-bold text-slate-900">
-                                                    {(item.quantity * item.price * (1 - (item.discount_rate || 0) / 100)).toFixed(2)} ₺
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <button
-                                                        onClick={() => handleDeleteItem(idx)}
-                                                        className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                                                    >
-                                                        <span className="material-symbols-outlined text-lg">delete</span>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {editForm.items.map((item, idx) => {
+                                            const itemVatRate = parseFloat(item.vat_rate) || 0;
+                                            const itemPrice = parseFloat(item.price) || 0;
+                                            // Handle display price based on toggle
+                                            // If Included: Show itemPrice (Gross)
+                                            // If Excluded: Show itemPrice / (1+rate) (Net)
+                                            const displayPrice = item.is_vat_inc
+                                                ? itemPrice
+                                                : (itemPrice / (1 + itemVatRate / 100));
+
+                                            return (
+                                                <tr key={idx} className="group hover:bg-slate-50">
+                                                    <td className="px-4 py-3">
+                                                        <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                                                        <p className="text-xs text-slate-400 font-mono">{item.stock_code}</p>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <input
+                                                            type="number"
+                                                            value={item.quantity}
+                                                            onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
+                                                            className="w-16 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <input
+                                                            type="number"
+                                                            value={item.vat_rate}
+                                                            onChange={(e) => handleItemChange(idx, 'vat_rate', e.target.value)}
+                                                            className="w-16 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <button
+                                                            onClick={() => handleItemChange(idx, 'is_vat_inc', !item.is_vat_inc)}
+                                                            className={`px-2 py-1 rounded text-xs font-bold transition-colors ${item.is_vat_inc ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
+                                                        >
+                                                            {item.is_vat_inc ? 'EVET' : 'HAYIR'}
+                                                        </button>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <input
+                                                            type="number"
+                                                            value={Number(displayPrice).toFixed(2)} // Use toFixed for display stability or loose? toFixed makes it string. better to keep input type number but might need managing focus.
+                                                            // Actually, for editing, user expects to type.
+                                                            // If I modify value on render, editing can be jumpy.
+                                                            // But here we just toggled.
+                                                            // Let's use simple number input.
+                                                            onChange={(e) => {
+                                                                const val = parseFloat(e.target.value) || 0;
+                                                                let newGrossPrice = val;
+                                                                if (!item.is_vat_inc) {
+                                                                    // User entered Net, convert to Gross for storage
+                                                                    newGrossPrice = val * (1 + itemVatRate / 100);
+                                                                }
+                                                                handleItemChange(idx, 'price', newGrossPrice);
+                                                            }}
+                                                            className="w-24 text-center border rounded py-1 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-bold text-slate-900">
+                                                        {(item.quantity * item.price * (1 - (item.discount_rate || 0) / 100)).toFixed(2)} ₺
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <button
+                                                            onClick={() => handleDeleteItem(idx)}
+                                                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                                        >
+                                                            <span className="material-symbols-outlined text-lg">delete</span>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                                 {editForm.items.length === 0 && (
@@ -469,16 +602,30 @@ export default function SalesPage() {
                             </div>
 
                             {/* Totals */}
-                            <div className="flex justify-end">
-                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm w-72">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-sm font-medium text-slate-500">Tutar</span>
-                                        <span className="text-sm font-bold text-slate-800">₺{calculatedTotal.toFixed(2)}</span>
+                            {/* Totals with VAT Breakdown */}
+                            <div className="flex justify-end gap-6 items-start">
+                                {/* VAT Breakdown */}
+                                <div className="text-right space-y-1.5 py-2">
+                                    <div className="text-xs text-slate-400">
+                                        Toplam KDV: <span className="font-bold text-slate-600">₺{totals.vat.toFixed(2)}</span>
                                     </div>
-                                    <div className="h-px bg-slate-100 my-2"></div>
+                                    <div className="text-xs text-slate-400">
+                                        KDV'siz Toplam: <span className="font-bold text-slate-600">₺{totals.net.toFixed(2)}</span>
+                                    </div>
+                                    {Object.entries(totals.breakdown).map(([rate, amount]) => (
+                                        amount > 0 && (
+                                            <div key={rate} className="text-[10px] text-slate-400">
+                                                %{rate} KDV: <span className="text-slate-500">₺{amount.toFixed(2)}</span>
+                                            </div>
+                                        )
+                                    ))}
+                                </div>
+
+                                {/* Grand Total Box */}
+                                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm w-72">
                                     <div className="flex justify-between items-center">
                                         <span className="text-base font-bold text-slate-800">GENEL TOPLAM</span>
-                                        <span className="text-xl font-black text-emerald-600">₺{calculatedTotal.toFixed(2)}</span>
+                                        <span className="text-2xl font-black text-emerald-600">₺{totals.grand.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -486,13 +633,22 @@ export default function SalesPage() {
 
                         {/* Modal Footer Actions */}
                         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-                            <button
-                                onClick={handleDeleteSale}
-                                className="px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-xl font-bold transition-all flex items-center gap-2"
-                            >
-                                <span className="material-symbols-outlined">delete_forever</span>
-                                Satışı Sil
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleDeleteSale}
+                                    className="px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-xl font-bold transition-all flex items-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined">delete_forever</span>
+                                    Satışı Sil
+                                </button>
+                                <button
+                                    onClick={openProductModal}
+                                    className="px-4 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-xl font-bold transition-all flex items-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined">add_shopping_cart</span>
+                                    Yeni Ürün Ekle
+                                </button>
+                            </div>
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => setIsDetailModalOpen(false)}
@@ -506,6 +662,89 @@ export default function SalesPage() {
                                 >
                                     <span className="material-symbols-outlined">save</span>
                                     Kaydet
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* PRODUCT SEARCH MODAL */}
+            {isProductModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-slate-800">Ürün Ara & Ekle</h3>
+                            <button onClick={() => setIsProductModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            {/* Search Input */}
+                            <div className="relative">
+                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                                <input
+                                    type="text"
+                                    value={productSearchTerm}
+                                    onChange={(e) => setProductSearchTerm(e.target.value)}
+                                    placeholder="Ürün adı, barkod veya stok kodu..."
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                                    autoFocus
+                                />
+                            </div>
+
+                            {/* Product List */}
+                            <div className="h-64 overflow-y-auto border border-slate-100 rounded-xl">
+                                {productModalLoading ? (
+                                    <div className="flex justify-center items-center h-full">
+                                        <div className="spinner"></div>
+                                    </div>
+                                ) : filteredProductsForModal.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                                        <span className="material-symbols-outlined text-3xl mb-2">inventory_2</span>
+                                        <p>Ürün bulunamadı</p>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-slate-100">
+                                        {filteredProductsForModal.map(product => (
+                                            <div
+                                                key={product.stock_code}
+                                                onClick={() => setSelectedProductToAdd(product)}
+                                                className={`p-3 flex items-center justify-between cursor-pointer hover:bg-blue-50 transition-colors ${selectedProductToAdd?.stock_code === product.stock_code ? 'bg-blue-50 ring-1 ring-blue-500' : ''}`}
+                                            >
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-sm">{product.name}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+                                                        <span>{product.stock_code}</span>
+                                                        {product.barcode && <span>• {product.barcode}</span>}
+                                                    </div>
+                                                </div>
+                                                <div className="font-bold text-slate-800">
+                                                    ₺{parseFloat(product.price).toFixed(2)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Quantity & Action */}
+                            <div className="flex items-end gap-4 pt-2">
+                                <div className="w-24">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">Miktar</label>
+                                    <input
+                                        type="number"
+                                        value={tempQty}
+                                        onChange={(e) => setTempQty(e.target.value)}
+                                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                                        min="1"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleAddProductToSale}
+                                    disabled={!selectedProductToAdd}
+                                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30"
+                                >
+                                    Listeye Ekle
                                 </button>
                             </div>
                         </div>

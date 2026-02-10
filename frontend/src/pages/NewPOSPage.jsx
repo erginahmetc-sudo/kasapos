@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { productsAPI, salesAPI, customersAPI, shortcutsAPI, heldSalesAPI } from '../services/api';
+import { productsAPI, salesAPI, customersAPI, shortcutsAPI, heldSalesAPI, settingsAPI } from '../services/api';
 import { birFaturaAPI } from '../services/birFaturaService';
 import { useAuth } from '../context/AuthContext';
 import defaultTemplate from '../data/default_receipt_template.json';
@@ -28,7 +28,7 @@ function useMobileRedirect() {
 }
 
 // Product Card Component to handle Image State separately
-const ProductCard = ({ product, onAddToCart }) => {
+const ProductCard = memo(({ product, onAddToCart }) => {
     const [imgError, setImgError] = useState(false);
 
     return (
@@ -61,7 +61,7 @@ const ProductCard = ({ product, onAddToCart }) => {
             </div>
         </div>
     );
-};
+});
 
 export default function NewPOSPage() {
     // Mobile redirect
@@ -74,6 +74,7 @@ export default function NewPOSPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [barcodeInput, setBarcodeInput] = useState('');
     const [cart, setCart] = useState([]);
+    const cartRef = useRef(cart); // Ref to hold latest cart
     const [selectedCartIndex, setSelectedCartIndex] = useState(null);
     const [customer, setCustomer] = useState('Toptan Satış');
     const [customers, setCustomers] = useState([]);
@@ -121,12 +122,18 @@ export default function NewPOSPage() {
     const undefinedQtyRef = useRef(null);
     const undefinedPriceRef = useRef(null);
 
+    // Sync cartRef with cart state
+    useEffect(() => {
+        cartRef.current = cart;
+    }, [cart]);
+
     // Load Data
     useEffect(() => {
         loadProducts();
         loadCustomers();
         loadHeldSales();
         loadShortcuts();
+        loadSettings();
 
         // Load Shortcuts
         const defaultShortcuts = {
@@ -140,6 +147,22 @@ export default function NewPOSPage() {
             'tanimsiz_urun': 'Insert'
         };
 
+        // Listen for shortcut updates
+        const handleShortcutUpdate = () => {
+            const saved = localStorage.getItem('pos_keyboard_shortcuts');
+            if (saved) {
+                try {
+                    setKeyboardShortcuts({ ...defaultShortcuts, ...JSON.parse(saved) });
+                } catch (e) {
+                    console.error("Shortcuts parse error", e);
+                }
+            } else {
+                setKeyboardShortcuts(defaultShortcuts);
+            }
+        };
+
+        window.addEventListener('shortcutsUpdated', handleShortcutUpdate);
+
         const saved = localStorage.getItem('pos_keyboard_shortcuts');
         if (saved) {
             try {
@@ -151,6 +174,10 @@ export default function NewPOSPage() {
         } else {
             setKeyboardShortcuts(defaultShortcuts);
         }
+
+        return () => {
+            window.removeEventListener('shortcutsUpdated', handleShortcutUpdate);
+        };
     }, []);
 
     // Helper Functions
@@ -190,6 +217,18 @@ export default function NewPOSPage() {
             setCategories(['Tümü', ...list.map(s => s.name)]);
         } catch (err) {
             console.error('Kısayollar yüklenirken hata:', err);
+        }
+    };
+
+    const loadSettings = async () => {
+        try {
+            const { data } = await settingsAPI.getAll();
+            if (data && data.pos_settings_ask_quantity !== undefined) {
+                // Update localStorage so addToCart can use it synchronously
+                localStorage.setItem('pos_settings_ask_quantity', data.pos_settings_ask_quantity);
+            }
+        } catch (error) {
+            console.error('Ayarlar yüklenirken hata:', error);
         }
     };
 
@@ -290,7 +329,7 @@ export default function NewPOSPage() {
     }, [products, selectedCategory, searchTerm, shortcuts]);
 
     // Handlers
-    const addToCart = (product) => {
+    const addToCart = useCallback((product) => {
         const askQty = localStorage.getItem('pos_settings_ask_quantity') === 'true';
         if (askQty) {
             setProductToAdd(product);
@@ -299,17 +338,22 @@ export default function NewPOSPage() {
             return;
         }
 
-        const existingIndex = cart.findIndex(item => item.stock_code === product.stock_code);
+        const currentCart = cartRef.current;
+        const existingIndex = currentCart.findIndex(item => item.stock_code === product.stock_code);
+
         if (existingIndex >= 0) {
-            const newCart = [...cart];
-            newCart[existingIndex].quantity += 1;
+            const newCart = [...currentCart];
+            newCart[existingIndex] = {
+                ...newCart[existingIndex],
+                quantity: newCart[existingIndex].quantity + 1
+            };
             setCart(newCart);
             setSelectedCartIndex(existingIndex);
         } else {
-            setCart([...cart, { ...product, quantity: 1, discount_rate: 0 }]);
-            setSelectedCartIndex(cart.length);
+            setCart([...currentCart, { ...product, quantity: 1, discount_rate: 0 }]);
+            setSelectedCartIndex(currentCart.length);
         }
-    };
+    }, []); // Empty dependency array = Stable Reference!
 
     const confirmAddQuantity = (e) => {
         e.preventDefault();
@@ -1001,6 +1045,7 @@ export default function NewPOSPage() {
                                                 setModalValue(item.quantity);
                                                 setSelectedCartIndex(index);
                                                 setShowQuantityModal(true);
+                                                // Focus and select is handled in the modal's input autoFocus + onFocus
                                             }}
                                         >
                                             {item.quantity}
@@ -1247,36 +1292,199 @@ export default function NewPOSPage() {
 
             {/* Quantity Modal */}
             {showQuantityModal && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white p-8 w-96 text-center rounded-2xl shadow-xl">
-                        <h3 className="text-2xl font-bold text-slate-800 mb-2">Miktar Düzenle</h3>
-                        <input type="number" value={modalValue} onChange={(e) => setModalValue(e.target.value)} className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-xl mb-4 focus:outline-none" autoFocus />
-                        <button onClick={() => updateCartItem(selectedCartIndex, 'quantity', parseInt(modalValue) || 1)} className="w-full p-4 bg-blue-600 text-white text-xl font-bold rounded-xl hover:bg-blue-700">Kaydet</button>
-                        <button onClick={() => setShowQuantityModal(false)} className="w-full mt-2 p-2 text-slate-500 hover:text-slate-800">İptal</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-[2px]">
+                    <div className="w-full max-w-[340px] bg-white rounded-[2.5rem] shadow-2xl transform transition-all animate-in fade-in zoom-in duration-300 overflow-hidden border border-white/20">
+                        <div className="p-8 flex flex-col items-center text-center">
+                            <button
+                                onClick={() => setShowQuantityModal(false)}
+                                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-2xl">close</span>
+                            </button>
+                            <div className="space-y-2 mb-8">
+                                <h2 className="text-[22px] font-bold text-slate-900 leading-tight tracking-tight">
+                                    Miktar Düzenle
+                                </h2>
+                                <p className="text-[13px] font-medium text-slate-400 uppercase tracking-wider">
+                                    {cart[selectedCartIndex]?.name}
+                                </p>
+                            </div>
+                            <div className="w-full">
+                                <div className="flex items-center justify-between w-full mb-10 px-2">
+                                    <button
+                                        onClick={() => setModalValue(prev => Math.max(1, (parseFloat(prev) || 0) - 1).toString())}
+                                        className="w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-600 border border-slate-100 active:scale-90 transition-transform"
+                                    >
+                                        <span className="material-symbols-outlined text-3xl">remove</span>
+                                    </button>
+                                    <div className="flex-1 flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            value={modalValue}
+                                            onChange={(e) => setModalValue(e.target.value)}
+                                            onFocus={(e) => e.target.select()}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    updateCartItem(selectedCartIndex, 'quantity', parseInt(modalValue) || 1);
+                                                }
+                                            }}
+                                            className="w-full text-center text-4xl font-bold bg-transparent border-none focus:ring-0 text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none outline-none"
+                                            autoFocus
+                                        />
+                                        <div className="h-1 w-8 bg-blue-500 rounded-full mt-1 opacity-20"></div>
+                                    </div>
+                                    <button
+                                        onClick={() => setModalValue(prev => ((parseFloat(prev) || 0) + 1).toString())}
+                                        className="w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-600 border border-slate-100 active:scale-90 transition-transform"
+                                    >
+                                        <span className="material-symbols-outlined text-3xl">add</span>
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => updateCartItem(selectedCartIndex, 'quantity', parseInt(modalValue) || 1)}
+                                    className="w-full h-16 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-lg rounded-[1.25rem] shadow-[0_10px_20px_-5px_rgba(37,99,235,0.4)] transition-all flex items-center justify-center group"
+                                >
+                                    <span>Kaydet</span>
+                                    <span className="material-symbols-outlined ml-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">check</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="pb-2 flex justify-center opacity-10">
+                            <div className="w-12 h-1 bg-slate-900 rounded-full"></div>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Price Modal */}
             {showPriceModal && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white p-8 w-96 text-center rounded-2xl shadow-xl">
-                        <h3 className="text-2xl font-bold text-slate-800 mb-2">Fiyat Düzenle</h3>
-                        <input type="number" value={modalValue} onChange={(e) => setModalValue(e.target.value)} className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-xl mb-4 focus:outline-none" autoFocus />
-                        <button onClick={() => updateCartItem(selectedCartIndex, 'price', parseFloat(modalValue) || 0)} className="w-full p-4 bg-blue-600 text-white text-xl font-bold rounded-xl hover:bg-blue-700">Kaydet</button>
-                        <button onClick={() => setShowPriceModal(false)} className="w-full mt-2 p-2 text-slate-500 hover:text-slate-800">İptal</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-[2px]">
+                    <div className="w-full max-w-[340px] bg-white rounded-[2.5rem] shadow-2xl transform transition-all animate-in fade-in zoom-in duration-300 overflow-hidden border border-white/20">
+                        <div className="p-8 flex flex-col items-center text-center">
+                            <button
+                                onClick={() => setShowPriceModal(false)}
+                                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-2xl">close</span>
+                            </button>
+                            <div className="space-y-2 mb-8">
+                                <h2 className="text-[22px] font-bold text-slate-900 leading-tight tracking-tight">
+                                    Fiyat Düzenle
+                                </h2>
+                                <p className="text-[13px] font-medium text-slate-400 uppercase tracking-wider">
+                                    {cart[selectedCartIndex]?.name}
+                                </p>
+                            </div>
+                            <div className="w-full">
+                                <div className="flex items-center justify-between w-full mb-10 px-2">
+                                    <button
+                                        onClick={() => setModalValue(prev => Math.max(0, (parseFloat(prev) || 0) - 1).toString())}
+                                        className="w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-600 border border-slate-100 active:scale-90 transition-transform"
+                                    >
+                                        <span className="material-symbols-outlined text-3xl">remove</span>
+                                    </button>
+                                    <div className="flex-1 flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            value={modalValue}
+                                            onChange={(e) => setModalValue(e.target.value)}
+                                            onFocus={(e) => e.target.select()}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    updateCartItem(selectedCartIndex, 'price', parseFloat(modalValue) || 0);
+                                                }
+                                            }}
+                                            className="w-full text-center text-4xl font-bold bg-transparent border-none focus:ring-0 text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none outline-none"
+                                            autoFocus
+                                        />
+                                        <div className="h-1 w-8 bg-blue-500 rounded-full mt-1 opacity-20"></div>
+                                    </div>
+                                    <button
+                                        onClick={() => setModalValue(prev => ((parseFloat(prev) || 0) + 1).toString())}
+                                        className="w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-600 border border-slate-100 active:scale-90 transition-transform"
+                                    >
+                                        <span className="material-symbols-outlined text-3xl">add</span>
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => updateCartItem(selectedCartIndex, 'price', parseFloat(modalValue) || 0)}
+                                    className="w-full h-16 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-lg rounded-[1.25rem] shadow-[0_10px_20px_-5px_rgba(37,99,235,0.4)] transition-all flex items-center justify-center group"
+                                >
+                                    <span>Kaydet</span>
+                                    <span className="material-symbols-outlined ml-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">check</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="pb-2 flex justify-center opacity-10">
+                            <div className="w-12 h-1 bg-slate-900 rounded-full"></div>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Discount Modal */}
             {showDiscountModal && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white p-8 w-96 text-center rounded-2xl shadow-xl">
-                        <h3 className="text-2xl font-bold text-slate-800 mb-2">İskonto Ekle (%)</h3>
-                        <input type="number" value={modalValue} onChange={(e) => setModalValue(e.target.value)} className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-xl mb-4 focus:outline-none" autoFocus placeholder="%" />
-                        <button onClick={() => updateCartItem(selectedCartIndex, 'discount_rate', parseFloat(modalValue) || 0)} className="w-full p-4 bg-blue-600 text-white text-xl font-bold rounded-xl hover:bg-blue-700">Kaydet</button>
-                        <button onClick={() => setShowDiscountModal(false)} className="w-full mt-2 p-2 text-slate-500 hover:text-slate-800">İptal</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-[2px]">
+                    <div className="w-full max-w-[340px] bg-white rounded-[2.5rem] shadow-2xl transform transition-all animate-in fade-in zoom-in duration-300 overflow-hidden border border-white/20">
+                        <div className="p-8 flex flex-col items-center text-center">
+                            <button
+                                onClick={() => setShowDiscountModal(false)}
+                                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-2xl">close</span>
+                            </button>
+                            <div className="space-y-2 mb-8">
+                                <h2 className="text-[22px] font-bold text-slate-900 leading-tight tracking-tight">
+                                    İskonto Ekle (%)
+                                </h2>
+                                <p className="text-[13px] font-medium text-slate-400 uppercase tracking-wider">
+                                    {cart[selectedCartIndex]?.name}
+                                </p>
+                            </div>
+                            <div className="w-full">
+                                <div className="flex items-center justify-between w-full mb-10 px-2">
+                                    <button
+                                        onClick={() => setModalValue(prev => Math.max(0, (parseFloat(prev) || 0) - 1).toString())}
+                                        className="w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-600 border border-slate-100 active:scale-90 transition-transform"
+                                    >
+                                        <span className="material-symbols-outlined text-3xl">remove</span>
+                                    </button>
+                                    <div className="flex-1 flex flex-col items-center">
+                                        <input
+                                            type="number"
+                                            value={modalValue}
+                                            onChange={(e) => setModalValue(e.target.value)}
+                                            onFocus={(e) => e.target.select()}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    updateCartItem(selectedCartIndex, 'discount_rate', parseFloat(modalValue) || 0);
+                                                }
+                                            }}
+                                            className="w-full text-center text-4xl font-bold bg-transparent border-none focus:ring-0 text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none outline-none"
+                                            autoFocus
+                                            placeholder="%"
+                                        />
+                                        <div className="h-1 w-8 bg-orange-500 rounded-full mt-1 opacity-20"></div>
+                                    </div>
+                                    <button
+                                        onClick={() => setModalValue(prev => Math.min(100, (parseFloat(prev) || 0) + 1).toString())}
+                                        className="w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-600 border border-slate-100 active:scale-90 transition-transform"
+                                    >
+                                        <span className="material-symbols-outlined text-3xl">add</span>
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => updateCartItem(selectedCartIndex, 'discount_rate', parseFloat(modalValue) || 0)}
+                                    className="w-full h-16 bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-bold text-lg rounded-[1.25rem] shadow-[0_10px_20px_-5px_rgba(249,115,22,0.4)] transition-all flex items-center justify-center group"
+                                >
+                                    <span>Kaydet</span>
+                                    <span className="material-symbols-outlined ml-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">check</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="pb-2 flex justify-center opacity-10">
+                            <div className="w-12 h-1 bg-slate-900 rounded-full"></div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1340,14 +1548,63 @@ export default function NewPOSPage() {
                 </div>
             )}
             {showAskQuantityModal && (
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white p-6 w-96 shadow-2xl rounded-2xl">
-                        <h3 className="text-xl font-bold text-center mb-4">Miktar Giriniz</h3>
-                        <p className="text-center text-slate-500 mb-4">{productToAdd?.name}</p>
-                        <form onSubmit={confirmAddQuantity}>
-                            <input type="number" value={askQuantityValue} onChange={(e) => setAskQuantityValue(e.target.value)} className="w-full p-4 text-3xl text-center border-2 border-blue-500 rounded-xl mb-4 focus:outline-none" autoFocus />
-                            <button type="submit" className="w-full p-4 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600">Ekle</button>
-                        </form>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-[2px]">
+                    <div className="w-full max-w-[340px] bg-white rounded-[2.5rem] shadow-2xl transform transition-all animate-in fade-in zoom-in duration-300 overflow-hidden border border-white/20">
+                        <div className="p-8 flex flex-col items-center text-center">
+                            <button
+                                onClick={() => setShowAskQuantityModal(false)}
+                                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-2xl">close</span>
+                            </button>
+                            <div className="space-y-2 mb-8">
+                                <h2 className="text-[22px] font-bold text-slate-900 leading-tight tracking-tight">
+                                    Miktar Giriniz
+                                </h2>
+                                <p className="text-[13px] font-medium text-slate-400 uppercase tracking-wider">
+                                    {productToAdd?.name}
+                                </p>
+                            </div>
+                            <form onSubmit={confirmAddQuantity} className="w-full">
+                                <div className="flex items-center justify-between w-full mb-10 px-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setAskQuantityValue(prev => Math.max(1, (parseFloat(prev) || 0) - 1).toString())}
+                                        className="w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-600 border border-slate-100 active:scale-90 transition-transform"
+                                    >
+                                        <span className="material-symbols-outlined text-3xl">remove</span>
+                                    </button>
+                                    <div className="flex-1 flex flex-col items-center">
+                                        <input
+                                            className="w-full text-center text-4xl font-bold bg-transparent border-none focus:ring-0 text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none outline-none"
+                                            type="number"
+                                            value={askQuantityValue}
+                                            onChange={(e) => setAskQuantityValue(e.target.value)}
+                                            autoFocus
+                                            onFocus={(e) => e.target.select()}
+                                        />
+                                        <div className="h-1 w-8 bg-emerald-500 rounded-full mt-1 opacity-20"></div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAskQuantityValue(prev => ((parseFloat(prev) || 0) + 1).toString())}
+                                        className="w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-600 border border-slate-100 active:scale-90 transition-transform"
+                                    >
+                                        <span className="material-symbols-outlined text-3xl">add</span>
+                                    </button>
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="w-full h-16 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-bold text-lg rounded-[1.25rem] shadow-[0_10px_20px_-5px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center group"
+                                >
+                                    <span>Ekle</span>
+                                    <span className="material-symbols-outlined ml-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">chevron_right</span>
+                                </button>
+                            </form>
+                        </div>
+                        <div className="pb-2 flex justify-center opacity-10">
+                            <div className="w-12 h-1 bg-slate-900 rounded-full"></div>
+                        </div>
                     </div>
                 </div>
             )}

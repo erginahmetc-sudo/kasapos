@@ -48,6 +48,7 @@ export default function KeyboardShortcutsModal({ onClose, onSave }) {
         }
 
         localStorage.setItem('pos_keyboard_shortcuts', JSON.stringify(shortcuts));
+        window.dispatchEvent(new Event('shortcutsUpdated'));
         if (onSave) onSave(shortcuts);
         onClose();
     };

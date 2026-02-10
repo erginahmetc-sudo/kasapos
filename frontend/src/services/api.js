@@ -428,6 +428,51 @@ export const customersAPI = {
         if (updateError) throw updateError;
         return { data: { success: true, message: 'Borç kaydı oluşturuldu.' } };
     },
+    // NEW: Manual Debit (Borç Ekleme) - Increases customer debts without a sale
+    addManualDebit: async (data) => {
+        const { customer_id, amount, description } = data;
+
+        // Get current customer balance
+        const { data: customer, error: fetchError } = await supabase
+            .from('customers')
+            .select('balance')
+            .eq('id', customer_id)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        // Calculate new balance (Manual Debit INCREASES debt/balance)
+        const currentBalance = parseFloat(customer?.balance) || 0;
+        const debitAmount = parseFloat(amount) || 0;
+        const newBalance = currentBalance + debitAmount;
+
+        // Save Borç (debit) record in customer_payments
+        const { error: txError } = await supabase
+            .from('customer_payments')
+            .insert({
+                customer_id: customer_id,
+                amount: -debitAmount, // Negative to indicate DEBIT (increases balance/debt)
+                payment_type: 'Borç (Manuel)',
+                description: description || 'Manuel Borç Ekleme',
+                created_at: new Date().toISOString()
+            });
+
+        if (txError) {
+            console.error('Manual debit record error:', txError);
+        }
+
+        // Update customer balance (increase)
+        const { error: updateError } = await supabase
+            .from('customers')
+            .update({
+                balance: newBalance,
+                last_transaction_date: new Date().toISOString()
+            })
+            .eq('id', customer_id);
+
+        if (updateError) throw updateError;
+        return { data: { success: true, message: 'Borç kaydı işlendi.' } };
+    },
     addPurchaseTransaction: async (data) => {
         // This is for processing an invoice FROM a supplier (who is recorded as a customer)
         const { customer_id, amount, description } = data;
@@ -696,6 +741,38 @@ export const salesAPI = {
     // Alias for backward compatibility if needed
     add: async (sale) => { return salesAPI.complete(sale); },
     delete: async (saleCode) => {
+        const companyCode = getCurrentCompanyCode();
+
+        // 1. Get Sale Details to find Customer
+        const { data: sale, error: fetchError } = await supabase
+            .from('sales')
+            .select('customer_id')
+            .eq('sale_code', saleCode)
+            .eq('company_code', companyCode) // Ensure fetch respects company code
+            .single();
+
+        if (fetchError) {
+            console.error('Sale fetch error during delete:', fetchError);
+        } else if (sale && sale.customer_id) {
+            // 2. Remove Financial Records (Double-Entry) from Customer Ledger
+            // We need to delete BOTH the Debit (Borç) and Credit (Alacak) records associated with this sale.
+            // Patterns used in creation:
+            // Debit: `Satış - ${saleCode}`
+            // Credit: `Alacak (Tahsilat) - ${saleCode}` (for Nakit/POS)
+
+            // We can delete both by matching the sale code in the description
+            const { error: ledgerError } = await supabase
+                .from('customer_payments')
+                .delete()
+                .eq('customer_id', sale.customer_id)
+                .ilike('description', `%${saleCode}%`); // Match any record containing the sale code
+
+            if (ledgerError) {
+                console.error('Error deleting associated ledger records:', ledgerError);
+            }
+        }
+
+        // 3. Soft Delete the Sale (Standard for history)
         const { error } = await supabase
             .from('sales')
             .update({ is_deleted: true })

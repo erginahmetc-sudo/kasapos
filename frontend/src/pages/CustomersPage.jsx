@@ -31,12 +31,25 @@ export default function CustomersPage() {
 
     // Payment Modal State
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [transactionType, setTransactionType] = useState('payment'); // 'payment' (collection) or 'debt' (manual debit)
     const [paymentData, setPaymentData] = useState({
         customer_id: '',
         amount: '',
         description: 'Ödeme',
         payment_type: 'Nakit'
     });
+
+
+    // Customer Search Modal State
+    const [showCustomerSearchModal, setShowCustomerSearchModal] = useState(false);
+    const [searchCustomerTerm, setSearchCustomerTerm] = useState('');
+
+    const filteredSearchCustomers = showCustomerSearchModal ? customers.filter(c => {
+        const term = searchCustomerTerm.toLowerCase();
+        return ((c.name || '').toLowerCase().includes(term) ||
+            (c.tax_number || '').includes(term) ||
+            (c.customer_code || '').toLowerCase().includes(term));
+    }) : [];
 
     useEffect(() => {
         loadCustomers();
@@ -218,9 +231,18 @@ export default function CustomersPage() {
             return;
         }
         try {
-            const response = await customersAPI.addPayment(paymentData);
+            let response;
+            if (transactionType === 'payment') {
+                // Customer pays US (Collection) -> Reduces Balance
+                response = await customersAPI.addPayment(paymentData);
+            } else {
+                // We pay Customer / Add Debt (Debit) -> Increases Balance
+                // Note: 'Firmaya Ödeme Yap' button maps to this. User requested it adds Debt.
+                response = await customersAPI.addManualDebit(paymentData);
+            }
+
             if (response.data?.success) {
-                alert('Ödeme başarıyla alındı.');
+                alert(response.data.message);
                 setShowPaymentModal(false);
                 loadCustomers();
                 setPaymentData({ customer_id: '', amount: '', description: 'Ödeme', payment_type: 'Nakit' });
@@ -228,7 +250,7 @@ export default function CustomersPage() {
                 alert('Hata: ' + response.data?.message);
             }
         } catch (error) {
-            alert('Ödeme hatası: ' + (error.response?.data?.message || error.message));
+            alert('İşlem hatası: ' + (error.response?.data?.message || error.message));
         }
     };
 
@@ -297,13 +319,30 @@ export default function CustomersPage() {
                     </div>
                     <div className="flex flex-wrap gap-3 w-full lg:w-auto">
                         <button
-                            onClick={() => setShowPaymentModal(true)}
-                            className="flex-1 lg:flex-none min-w-fit px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl font-semibold shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30 hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap"
+                            onClick={() => {
+                                setPaymentData(prev => ({ ...prev, description: 'Ödeme' }));
+                                setTransactionType('payment'); // Customer pays US (Collection)
+                                setShowPaymentModal(true);
+                            }}
+                            className="flex-1 lg:flex-none min-w-fit px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/25 hover:shadow-xl hover:shadow-green-500/30 hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap"
                         >
                             <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            Ödeme Al
+                            Müşteriden Ödeme Al
+                        </button>
+                        <button
+                            onClick={() => {
+                                setPaymentData(prev => ({ ...prev, description: 'Firmaya Ödeme Yapıldı' }));
+                                setTransactionType('debt'); // We pay CUSTOMER (Debit / Add Debt)
+                                setShowPaymentModal(true);
+                            }}
+                            className="flex-1 lg:flex-none min-w-fit px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-semibold shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap"
+                        >
+                            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            Firmaya Ödeme Yap
                         </button>
                         <button
                             onClick={exportToExcel}
@@ -812,17 +851,26 @@ export default function CustomersPage() {
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl">
                         {/* Minimalist Dark Header */}
-                        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-10 py-8">
+                        {/* Minimalist Dark Header */}
+                        <div className={`px-10 py-8 bg-gradient-to-br ${transactionType === 'payment' ? 'from-slate-900 via-slate-800 to-slate-900' : 'from-orange-600 via-orange-500 to-amber-500'}`}>
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 bg-gradient-to-br from-violet-400 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ${transactionType === 'payment' ? 'bg-gradient-to-br from-emerald-400 to-teal-500 shadow-emerald-500/30' : 'bg-white/20 backdrop-blur-sm shadow-black/10'}`}>
                                         <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            {transactionType === 'payment' ? (
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            ) : (
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                            )}
                                         </svg>
                                     </div>
                                     <div>
-                                        <h2 className="text-3xl font-bold text-white tracking-tight">Ödeme Al</h2>
-                                        <p className="text-slate-400 text-base mt-1">Müşteriden ödeme tahsil et</p>
+                                        <h2 className={`text-3xl font-bold text-white tracking-tight ${transactionType === 'debt' ? 'animate-pulse' : ''}`}>
+                                            {transactionType === 'payment' ? 'Müşteriden Ödeme Al' : 'Firmaya Ödeme Yap'}
+                                        </h2>
+                                        <p className={`text-base mt-1 ${transactionType === 'payment' ? 'text-slate-200' : 'text-white/90'}`}>
+                                            {transactionType === 'payment' ? 'Tahsilat işlemini kaydedin' : 'Firma Carisine Borç Ekleyin'}
+                                        </p>
                                     </div>
                                 </div>
                                 <button
@@ -839,11 +887,25 @@ export default function CustomersPage() {
                         <div className="p-10 space-y-8 bg-gradient-to-b from-slate-50 to-white">
                             {/* Müşteri Seç */}
                             <div className="space-y-2">
-                                <label className="block text-base font-semibold text-slate-700">Müşteri Seç <span className="text-rose-500">*</span></label>
+                                <div className="flex justify-between items-center">
+                                    <label className="block text-base font-semibold text-slate-700">Müşteri Seç <span className="text-rose-500">*</span></label>
+                                    <button
+                                        onClick={() => {
+                                            setSearchCustomerTerm('');
+                                            setShowCustomerSearchModal(true);
+                                        }}
+                                        className={`text-sm font-bold flex items-center gap-2 transition-colors ${transactionType === 'payment' ? 'text-emerald-600 hover:text-emerald-700' : 'text-orange-600 hover:text-orange-700'}`}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        Müşteri Ara
+                                    </button>
+                                </div>
                                 <select
                                     value={paymentData.customer_id}
                                     onChange={(e) => setPaymentData({ ...paymentData, customer_id: e.target.value })}
-                                    className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                                    className={`w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 outline-none transition-all ${transactionType === 'payment' ? 'focus:ring-emerald-500/20 focus:border-emerald-500' : 'focus:ring-orange-500/20 focus:border-orange-500'}`}
                                 >
                                     <option value="">Müşteri seçiniz...</option>
                                     {customers.map(c => (
@@ -856,14 +918,14 @@ export default function CustomersPage() {
 
                             {/* Ödeme Tutarı */}
                             <div className="space-y-2">
-                                <label className="block text-base font-semibold text-slate-700">Ödeme Tutarı (₺) <span className="text-rose-500">*</span></label>
+                                <label className="block text-base font-semibold text-slate-700">Tutar (₺) <span className="text-rose-500">*</span></label>
                                 <input
                                     type="number"
                                     min="0"
                                     step="0.01"
                                     value={paymentData.amount}
                                     onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
-                                    className="w-full px-6 py-6 text-3xl font-bold rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all text-center placeholder:text-slate-300"
+                                    className={`w-full px-6 py-6 text-3xl font-bold rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 outline-none transition-all text-center placeholder:text-slate-300 ${transactionType === 'payment' ? 'focus:ring-emerald-500/20 focus:border-emerald-500' : 'focus:ring-orange-500/20 focus:border-orange-500'}`}
                                     placeholder="0.00"
                                 />
                             </div>
@@ -877,7 +939,7 @@ export default function CustomersPage() {
                                             key={method}
                                             onClick={() => setPaymentData({ ...paymentData, payment_type: method })}
                                             className={`flex-1 py-5 px-4 rounded-2xl font-bold text-lg transition-all ${paymentData.payment_type === method
-                                                ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-xl shadow-purple-500/30'
+                                                ? (transactionType === 'payment' ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/30' : 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-xl shadow-orange-500/30')
                                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                                 }`}
                                         >
@@ -894,8 +956,8 @@ export default function CustomersPage() {
                                     type="text"
                                     value={paymentData.description}
                                     onChange={(e) => setPaymentData({ ...paymentData, description: e.target.value })}
-                                    className="w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all placeholder:text-slate-400"
-                                    placeholder="Örn: Kasım ayı ödemesi"
+                                    className={`w-full px-6 py-5 text-xl rounded-2xl border-2 border-slate-200 bg-white focus:ring-4 outline-none transition-all placeholder:text-slate-400 ${transactionType === 'payment' ? 'focus:ring-emerald-500/20 focus:border-emerald-500' : 'focus:ring-orange-500/20 focus:border-orange-500'}`}
+                                    placeholder={transactionType === 'payment' ? "Örn: Kasım ayı tahsilatı" : "Örn: Firmaya Ödeme Yapıldı"}
                                 />
                             </div>
                         </div>
@@ -910,10 +972,76 @@ export default function CustomersPage() {
                             </button>
                             <button
                                 onClick={handlePaymentSubmit}
-                                className="flex-[2] py-5 text-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl hover:from-emerald-600 hover:to-teal-600 shadow-xl shadow-emerald-500/30 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                                className={`flex-[2] py-5 text-xl font-bold text-white rounded-2xl shadow-xl transition-all hover:scale-[1.01] active:scale-[0.99] ${transactionType === 'payment'
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-emerald-500/30'
+                                    : 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-orange-500/30 animate-pulse'
+                                    }`}
                             >
-                                ✓ Ödemeyi Onayla
+                                {transactionType === 'payment' ? '✓ Ödemeyi Onayla' : '✓ Borcu Onayla'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Customer Search Modal */}
+            {showCustomerSearchModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+                    <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+                        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-lg font-bold text-gray-800">Müşteri Ara</h3>
+                            <button
+                                onClick={() => setShowCustomerSearchModal(false)}
+                                className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-300 transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-5 border-b border-gray-100">
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Müşteri adı, vergi no veya kod..."
+                                value={searchCustomerTerm}
+                                onChange={(e) => setSearchCustomerTerm(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-lg"
+                            />
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50/50">
+                            {filteredSearchCustomers.length === 0 ? (
+                                <div className="text-center py-10 text-gray-400">
+                                    <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <p>Müşteri bulunamadı.</p>
+                                </div>
+                            ) : (
+                                filteredSearchCustomers.map(customer => (
+                                    <button
+                                        key={customer.id}
+                                        onClick={() => {
+                                            setPaymentData({ ...paymentData, customer_id: customer.id });
+                                            setShowCustomerSearchModal(false);
+                                        }}
+                                        className="w-full text-left p-4 bg-white hover:bg-blue-50 border border-gray-100 rounded-xl transition-all shadow-sm hover:shadow-md flex justify-between items-center group"
+                                    >
+                                        <div>
+                                            <div className="font-bold text-gray-800 group-hover:text-blue-700">{customer.name}</div>
+                                            <div className="text-sm text-gray-500 flex gap-3 mt-1">
+                                                <span>{customer.customer_code}</span>
+                                                {customer.tax_number && (
+                                                    <span className="bg-gray-100 px-2 rounded text-xs flex items-center">VN: {customer.tax_number}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`font-bold ${parseFloat(customer.balance) < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                {parseFloat(customer.balance || 0).toFixed(2)} ₺
+                                            </div>
+                                            <div className="text-xs text-gray-400">Bakiye</div>
+                                        </div>
+                                    </button>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>

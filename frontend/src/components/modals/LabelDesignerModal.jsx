@@ -213,6 +213,14 @@ export default function LabelDesignerModal({ isOpen, onClose, initialPaperSize, 
             items: [...prev.items, newItem]
         }));
         setSelectedItem(newItem.id);
+        setSelectedItem(newItem.id);
+    };
+
+    const handleCopyConfig = () => {
+        const config = JSON.stringify(template, null, 2);
+        navigator.clipboard.writeText(config).then(() => {
+            alert("Tasarım ayarları kopyalandı! Lütfen bu kodu sohbet penceresine yapıştırın.");
+        });
     };
 
     const handleAddVariable = (variableKey) => {
@@ -477,6 +485,12 @@ export default function LabelDesignerModal({ isOpen, onClose, initialPaperSize, 
                                 className="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl font-medium hover:bg-slate-200 transition-all"
                             >
                                 Varsayılana Dön
+                            </button>
+                            <button
+                                onClick={handleCopyConfig}
+                                className="w-full py-2 bg-slate-50 text-slate-400 rounded-xl font-medium text-xs hover:bg-slate-100 transition-all border border-slate-200"
+                            >
+                                Yapılandırmayı Kopyala (Destek İçin)
                             </button>
                         </div>
                     </div>

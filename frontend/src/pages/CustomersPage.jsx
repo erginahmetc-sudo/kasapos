@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { customersAPI } from '../services/api';
+import * as XLSX from 'xlsx';
 
 export default function CustomersPage() {
     const [customers, setCustomers] = useState([]);
@@ -43,6 +44,13 @@ export default function CustomersPage() {
     // Customer Search Modal State
     const [showCustomerSearchModal, setShowCustomerSearchModal] = useState(false);
     const [searchCustomerTerm, setSearchCustomerTerm] = useState('');
+
+    // Excel Import Modal State
+    const [showExcelModal, setShowExcelModal] = useState(false);
+    const [excelFile, setExcelFile] = useState(null);
+    const [excelImporting, setExcelImporting] = useState(false);
+    const [excelPreview, setExcelPreview] = useState([]);
+    const [importResult, setImportResult] = useState({ show: false, success: 0, error: 0 });
 
     const filteredSearchCustomers = showCustomerSearchModal ? customers.filter(c => {
         const term = searchCustomerTerm.toLowerCase();
@@ -211,8 +219,26 @@ export default function CustomersPage() {
     };
 
     const handleDelete = async (id) => {
-        // Password check removed for easier access
-        // const password = prompt('Silme işlemini onaylamak için şifre girin:'); ...
+        // Check if customer has any transactions
+        const customer = customers.find(c => c.id === id);
+        const hasTransactions = customer && ((parseFloat(customer.total_debt) || 0) > 0 || (parseFloat(customer.total_credit) || 0) > 0);
+
+        if (hasTransactions) {
+            const setPasif = confirm(
+                'Bu müşterinin satış veya ödeme işlemleri bulunduğu için silinemez.\n\n' +
+                'Müşteriyi "Pasif" konuma getirmek ister misiniz?'
+            );
+            if (setPasif) {
+                try {
+                    await customersAPI.update(id, { is_active: false });
+                    alert('Müşteri pasif konuma getirildi.');
+                    loadCustomers();
+                } catch (error) {
+                    alert('Güncelleme hatası: ' + (error.response?.data?.message || error.message));
+                }
+            }
+            return;
+        }
 
         if (!confirm('Kalıcı olarak silmek istediğinize emin misiniz?')) return;
 
@@ -363,12 +389,13 @@ export default function CustomersPage() {
                             Yeni Müşteri
                         </button>
                         <button
+                            onClick={() => setShowExcelModal(true)}
                             className="flex-1 lg:flex-none min-w-fit px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-semibold shadow-lg shadow-green-500/25 hover:shadow-xl hover:shadow-green-500/30 hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap"
                         >
                             <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                             </svg>
-                            Excel Yükle
+                            Excel İle Cari Yükle
                         </button>
                     </div>
                 </div>
@@ -426,6 +453,8 @@ export default function CustomersPage() {
                                     <th className="border border-gray-200 p-2 text-left bg-gray-50 font-semibold">Durum</th>
                                     <th onClick={() => handleSort('balance')} className="border border-gray-200 p-2 text-left bg-gray-50 cursor-pointer hover:bg-gray-100 font-semibold">Bakiye</th>
                                     <th className="border border-gray-200 p-2 text-left bg-gray-50 font-semibold">Bakiye Durumu</th>
+                                    <th className="border border-gray-200 p-2 text-right bg-gray-50 font-semibold">Toplam Borç</th>
+                                    <th className="border border-gray-200 p-2 text-right bg-gray-50 font-semibold">Toplam Alacak</th>
                                     <th className="border border-gray-200 p-2 text-left bg-gray-50 font-semibold">Son İşlem Tarihi</th>
                                     <th className="border border-gray-200 p-2 text-left bg-gray-50 font-semibold">İşlemler</th>
                                 </tr>
@@ -433,7 +462,7 @@ export default function CustomersPage() {
                             <tbody>
                                 {filteredCustomers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="border border-gray-200 p-4 text-center text-gray-500">
+                                        <td colSpan={10} className="border border-gray-200 p-4 text-center text-gray-500">
                                             Kriterlere uygun kayıt bulunamadı.
                                         </td>
                                     </tr>
@@ -457,6 +486,12 @@ export default function CustomersPage() {
                                                 </td>
                                                 <td className={`border border-gray-200 p-2 ${balance > 0 ? 'text-red-500' : balance < 0 ? 'text-green-500' : ''}`}>
                                                     {balance > 0 ? 'Borçlu' : balance < 0 ? 'Alacaklı' : 'Nötr'}
+                                                </td>
+                                                <td className="border border-gray-200 p-2 text-right font-bold text-red-500">
+                                                    {(parseFloat(customer.total_debt) || 0).toFixed(2)} TL
+                                                </td>
+                                                <td className="border border-gray-200 p-2 text-right font-bold text-green-500">
+                                                    {(parseFloat(customer.total_credit) || 0).toFixed(2)} TL
                                                 </td>
                                                 <td className="border border-gray-200 p-2">{formatDate(customer.last_transaction_date)}</td>
                                                 <td className="border border-gray-200 p-2">
@@ -1042,6 +1077,277 @@ export default function CustomersPage() {
                                     </button>
                                 ))
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Excel Import Modal */}
+            {showExcelModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl">
+                        {/* Header */}
+                        <div className="bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600 px-8 py-6">
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-white">Excel İle Cari Yükle</h2>
+                                        <p className="text-emerald-100 text-sm mt-0.5">Excel dosyasından toplu müşteri aktarımı</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => { setShowExcelModal(false); setExcelFile(null); setExcelPreview([]); }}
+                                    className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                                >
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            {/* Step 1: Download Sample */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <span className="text-blue-600 font-bold text-lg">1</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-blue-900">Örnek Excel Dosyasını İndirin</h3>
+                                        <p className="text-blue-700 text-sm mt-1">Aşağıdaki örnek dosyayı indirip, müşteri bilgilerinizi doldurun.</p>
+                                        <button
+                                            onClick={() => {
+                                                const headers = ['Müşteri Kodu', 'Müşteri Adı', 'Firma', 'Grubu', 'Durum', 'Adres', 'İl', 'İlçe', 'Vergi Dairesi', 'Vergi No', 'Bakiye (Borç: +, Alacak: -)'];
+                                                const sampleRow = ['M0001', 'Ahmet Yılmaz', 'Yılmaz Ticaret', 'Cari', 'Aktif', 'Örnek Mah. Test Cad. No:1', 'İstanbul', 'Kadıköy', 'Kadıköy VD', '1234567890', 1500.50];
+
+                                                const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+                                                const wb = XLSX.utils.book_new();
+                                                XLSX.utils.book_append_sheet(wb, ws, "Müşteriler");
+                                                XLSX.writeFile(wb, "Ornek_Cari_Listesi.xlsx");
+                                            }}
+                                            className="mt-3 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors flex items-center gap-2 w-fit"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                            Örnek Excel İndir (.xlsx)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Step 2: Upload File */}
+                            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-10 h-10 bg-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <span className="text-gray-600 font-bold text-lg">2</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-gray-900">Doldurulmuş Dosyayı Yükleyin</h3>
+                                        <p className="text-gray-600 text-sm mt-1">Excel (.xlsx veya .xls) formatındaki dosyanızı seçin.</p>
+                                        <input
+                                            type="file"
+                                            accept=".xlsx, .xls"
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (!file) return;
+                                                setExcelFile(file);
+
+                                                const reader = new FileReader();
+                                                reader.onload = (ev) => {
+                                                    try {
+                                                        const data = new Uint8Array(ev.target.result);
+                                                        const workbook = XLSX.read(data, { type: 'array' });
+                                                        const sheetName = workbook.SheetNames[0];
+                                                        const worksheet = workbook.Sheets[sheetName];
+                                                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 }); // Array of arrays
+
+                                                        if (json.length < 2) { setExcelPreview([]); return; }
+
+                                                        // Assuming fixed column order from template
+                                                        const rows = json.slice(1).map(row => {
+                                                            return {
+                                                                customer_code: row[0] ? String(row[0]).trim() : '',
+                                                                name: row[1] ? String(row[1]).trim() : '',
+                                                                company: row[2] ? String(row[2]).trim() : '',
+                                                                group: row[3] ? String(row[3]).trim() : 'Cari',
+                                                                is_active: (String(row[4]) || 'Aktif').toLowerCase() !== 'pasif',
+                                                                address: row[5] ? String(row[5]).trim() : '',
+                                                                city: row[6] ? String(row[6]).trim() : '',
+                                                                district: row[7] ? String(row[7]).trim() : '',
+                                                                tax_office: row[8] ? String(row[8]).trim() : '',
+                                                                tax_number: row[9] ? String(row[9]).trim() : '',
+                                                                initial_balance: row[10] ? parseFloat(String(row[10]).replace(',', '.')) : 0
+                                                            };
+                                                        }).filter(r => r.name);
+
+                                                        setExcelPreview(rows);
+                                                    } catch (error) {
+                                                        console.error("Excel parse error:", error);
+                                                        alert("Dosya okunamadı. Lütfen geçerli bir Excel dosyası yükleyin.");
+                                                        setExcelPreview([]);
+                                                    }
+                                                };
+                                                reader.readAsArrayBuffer(file);
+                                            }}
+                                            className="mt-3 block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Preview */}
+                            {excelPreview.length > 0 && (
+                                <div className="border border-gray-200 rounded-2xl overflow-hidden">
+                                    <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">
+                                        <span className="font-bold text-gray-700">{excelPreview.length} müşteri yüklenecek</span>
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-50 sticky top-0">
+                                                <tr>
+                                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500">Kod</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500">Ad</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500">Firma</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500">Grup</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500">İl</th>
+                                                    <th className="px-4 py-2 text-right text-xs font-bold text-gray-500">Açılış Bakiyesi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {excelPreview.map((row, i) => (
+                                                    <tr key={i}>
+                                                        <td className="px-4 py-2 font-mono text-xs">{row.customer_code}</td>
+                                                        <td className="px-4 py-2 font-medium">{row.name}</td>
+                                                        <td className="px-4 py-2 text-gray-600">{row.company}</td>
+                                                        <td className="px-4 py-2 text-gray-600">{row.group}</td>
+                                                        <td className="px-4 py-2 text-gray-600">{row.city}</td>
+                                                        <td className={`px-4 py-2 text-right font-mono ${row.initial_balance > 0 ? 'text-red-600' : row.initial_balance < 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                                                            {row.initial_balance ? `${row.initial_balance} TL` : '-'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="bg-gray-50 px-8 py-5 border-t border-gray-100 flex gap-4">
+                            <button
+                                onClick={() => { setShowExcelModal(false); setExcelFile(null); setExcelPreview([]); }}
+                                className="flex-1 py-4 text-lg font-bold text-gray-600 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-all"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                disabled={excelPreview.length === 0 || excelImporting}
+                                onClick={async () => {
+                                    setExcelImporting(true);
+                                    let successCount = 0;
+                                    let errorCount = 0;
+
+                                    // Calculate initial next code number
+                                    const existingCodes = customers
+                                        .map(c => c.customer_code)
+                                        .filter(code => code && /^M\d+$/.test(code))
+                                        .map(code => parseInt(code.substring(1), 10));
+                                    let nextNum = existingCodes.length > 0 ? Math.max(...existingCodes) : 0;
+
+                                    for (const row of excelPreview) {
+                                        try {
+                                            let codeToUse = row.customer_code;
+
+                                            // If manual code provided, check if it updates our high water mark
+                                            if (codeToUse && /^M\d+$/.test(codeToUse)) {
+                                                const num = parseInt(codeToUse.substring(1), 10);
+                                                if (num > nextNum) {
+                                                    nextNum = num;
+                                                }
+                                            }
+
+                                            if (!codeToUse) {
+                                                nextNum++;
+                                                codeToUse = `M${nextNum.toString().padStart(4, '0')}`;
+                                            }
+
+                                            // Check if code already exists in db (basic check against loaded customers)
+                                            // Note: concurrency validation should ideally happen on backend
+                                            const exists = customers.some(c => c.customer_code === codeToUse);
+                                            if (exists && row.customer_code) {
+                                                // If code was provided in Excel but exists, maybe let it fail or log
+                                            }
+
+                                            await customersAPI.add({ ...row, customer_code: codeToUse });
+
+                                            successCount++;
+                                        } catch (err) {
+                                            errorCount++;
+                                            console.error('Import error:', err);
+                                        }
+                                    }
+                                    setExcelImporting(false);
+
+                                    // Close import modal and show result modal
+                                    setShowExcelModal(false);
+                                    setExcelFile(null);
+                                    setExcelPreview([]);
+                                    setImportResult({ show: true, success: successCount, error: errorCount });
+                                    loadCustomers();
+                                }}
+                                className={`flex-[2] py-4 text-lg font-bold text-white rounded-2xl transition-all ${excelPreview.length === 0 || excelImporting
+                                        ? 'bg-gray-300 cursor-not-allowed'
+                                        : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-xl shadow-emerald-500/30 hover:scale-[1.01]'
+                                    }`}
+                            >
+                                {excelImporting ? 'Yükleniyor...' : `✓ ${excelPreview.length} Müşteri Yükle`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Import Result Modal */}
+            {importResult.show && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+                    <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl transform transition-all scale-100 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+
+                        <div className="text-center">
+                            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-emerald-100 mb-6 animate-bounce-short">
+                                <svg className="h-10 w-10 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">İçe Aktarma Tamamlandı!</h3>
+                            <p className="text-gray-500 mb-8">Excel dosyanızdaki müşteri kayıtları başarıyla işlendi.</p>
+
+                            <div className="grid grid-cols-2 gap-4 mb-8">
+                                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                                    <div className="text-3xl font-bold text-emerald-600 mb-1">{importResult.success}</div>
+                                    <div className="text-sm font-medium text-emerald-800">Başarılı</div>
+                                </div>
+                                <div className={`p-4 rounded-2xl border ${importResult.error > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                                    <div className={`text-3xl font-bold mb-1 ${importResult.error > 0 ? 'text-red-600' : 'text-gray-400'}`}>{importResult.error}</div>
+                                    <div className={`text-sm font-medium ${importResult.error > 0 ? 'text-red-800' : 'text-gray-500'}`}>Hatalı</div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setImportResult({ show: false, success: 0, error: 0 })}
+                                className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:translate-y-[-2px] transition-all duration-200"
+                            >
+                                Harika, Devam Et
+                            </button>
                         </div>
                     </div>
                 </div>

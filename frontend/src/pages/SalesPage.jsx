@@ -26,6 +26,9 @@ export default function SalesPage() {
         maxPrice: ''
     });
 
+    // Show Deleted Sales Toggle
+    const [showDeleted, setShowDeleted] = useState(false);
+
     // Modal State
     const [selectedSale, setSelectedSale] = useState(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -41,7 +44,7 @@ export default function SalesPage() {
 
     useEffect(() => {
         loadSales();
-    }, []);
+    }, [showDeleted]);
 
     const loadSales = async () => {
         setLoading(true);
@@ -49,6 +52,7 @@ export default function SalesPage() {
             const params = {};
             if (dateRange.start) params.start_date = dateRange.start;
             if (dateRange.end) params.end_date = dateRange.end;
+            if (showDeleted) params.only_deleted = true;
 
             const res = await salesAPI.getAll(params);
             setSales(res.data?.sales || []);
@@ -703,6 +707,28 @@ export default function SalesPage() {
                             />
                         </div>
                     </div>
+
+                    <div className="h-px bg-slate-100"></div>
+
+                    {/* Show Deleted Sales */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-3 cursor-pointer group">
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    checked={showDeleted}
+                                    onChange={(e) => setShowDeleted(e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-10 h-5 bg-slate-200 rounded-full peer-checked:bg-red-500 transition-colors"></div>
+                                <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-5 transition-transform"></div>
+                            </div>
+                            <div>
+                                <span className="text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">Silinen Satışları Göster</span>
+                                <p className="text-xs text-slate-400">İptal edilen satışları da listele</p>
+                            </div>
+                        </label>
+                    </div>
                 </div>
             </aside>
 
@@ -747,12 +773,17 @@ export default function SalesPage() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {filteredSales.map((sale) => (
-                                        <tr key={sale.id} className="hover:bg-slate-50 transition-colors group">
+                                        <tr key={sale.id} className={`hover:bg-slate-50 transition-colors group ${sale.is_deleted ? 'bg-red-50/70 opacity-60' : ''}`}>
                                             <td className="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
                                                 {new Date(sale.date).toLocaleString('tr-TR')}
                                             </td>
                                             <td className="px-6 py-4 text-sm font-medium text-slate-900 font-mono">
-                                                {sale.sale_code}
+                                                <span className="flex items-center gap-2">
+                                                    {sale.sale_code}
+                                                    {sale.is_deleted && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 uppercase tracking-wider">Silindi</span>
+                                                    )}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-slate-600">
                                                 {sale.customerName || sale.customer || '-'}

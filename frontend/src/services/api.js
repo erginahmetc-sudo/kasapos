@@ -81,16 +81,40 @@ export const productsAPI = {
         const companyCode = getCurrentCompanyCode();
         if (!companyCode) return { data: { products: [] } };
 
-        const { data, error } = await supabase
-            .from('products')
-            .select('*')
-            .eq('company_code', companyCode)
-            .order('name');
+        let allProducts = [];
+        let from = 0;
+        let step = 1000;
+        let more = true;
 
-        if (error) throw error;
+        try {
+            while (more) {
+                const { data, error } = await supabase
+                    .from('products')
+                    .select('*')
+                    .eq('company_code', companyCode)
+                    .order('name')
+                    .range(from, from + step - 1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    allProducts = [...allProducts, ...data];
+                    if (data.length < step) {
+                        more = false;
+                    } else {
+                        from += step;
+                    }
+                } else {
+                    more = false;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            throw error;
+        }
 
         // DB columns are now snake_case, same as frontend
-        const mappedProducts = (data || []).map(p => ({
+        const mappedProducts = allProducts.map(p => ({
             ...p,
             price: p.sale_price, // Map sale_price -> price (frontend uses price)
             group: p.category, // Map category -> group (frontend uses group)
@@ -263,13 +287,21 @@ export const customersAPI = {
 
                 // Sum all payments: negative = debt (Borç), positive = credit (Alacak)
                 // Balance = sum of all amounts (negative amounts increase debt)
-                const calculatedBalance = (payments || []).reduce((sum, p) => {
-                    // Negative amounts are debts, positive are credits
-                    // For balance: debt increases balance, credit decreases
-                    return sum - (parseFloat(p.amount) || 0);
-                }, 0);
+                let calculatedBalance = 0;
+                let totalDebt = 0;
+                let totalCredit = 0;
 
-                return { ...customer, balance: calculatedBalance };
+                (payments || []).forEach(p => {
+                    const amt = parseFloat(p.amount) || 0;
+                    calculatedBalance -= amt;
+                    if (amt < 0) {
+                        totalDebt += Math.abs(amt); // Negative amounts = Borç (debt)
+                    } else {
+                        totalCredit += amt; // Positive amounts = Alacak (credit/payment)
+                    }
+                });
+
+                return { ...customer, balance: calculatedBalance, total_debt: totalDebt, total_credit: totalCredit };
             } catch (e) {
                 console.warn('Balance calc error for customer', customer.id, e);
                 return customer; // Return original if calculation fails
@@ -280,12 +312,36 @@ export const customersAPI = {
     },
     add: async (customer) => {
         const companyCode = getCurrentCompanyCode();
-        const { id, ...cleanCustomer } = customer;
+        const { id, initial_balance, ...cleanCustomer } = customer;
+
+        // 1. Create customer
         const { data, error } = await supabase
             .from('customers')
             .insert([{ ...cleanCustomer, company_code: companyCode }])
             .select()
             .single();
+
+        if (error) return response({ success: false, message: 'Müşteri oluşturulamadı' }, error);
+
+        // 2. If there's an initial balance, add it as a payment record
+        // User Input: + (Debt/Borç), - (Credit/Alacak)
+        // System Logic in getAll: - (Debt), + (Credit)
+        // So we negate the input: +100 (Debt) becomes -100 (DB Debt). -100 (Credit) becomes +100 (DB Credit).
+        if (initial_balance && parseFloat(initial_balance) !== 0) {
+            const amount = -1 * parseFloat(initial_balance);
+            const { error: payError } = await supabase
+                .from('customer_payments')
+                .insert({
+                    customer_id: data.id,
+                    amount: amount,
+                    payment_type: 'Açılış Bakiyesi',
+                    description: 'Excel ile aktarılan açılış bakiyesi',
+                    created_at: new Date().toISOString()
+                });
+
+            if (payError) console.error('Initial balance error:', payError);
+        }
+
         return response({ success: true, message: 'Müşteri eklendi', id: data?.id }, error);
     },
     update: async (id, customerData) => {
@@ -647,7 +703,11 @@ export const salesAPI = {
         if (params?.end_date) query = query.lte('date', `${params.end_date}T23:59:59`);
         if (params?.sale_code) query = query.ilike('sale_code', `%${params.sale_code}%`);
         if (params?.customer_id) query = query.eq('customer_id', params.customer_id);
-        if (!params?.show_deleted) query = query.eq('is_deleted', false);
+        if (params?.only_deleted) {
+            query = query.eq('is_deleted', true);
+        } else if (!params?.show_deleted) {
+            query = query.eq('is_deleted', false);
+        }
 
         const { data, error } = await query.order('date', { ascending: false });
 

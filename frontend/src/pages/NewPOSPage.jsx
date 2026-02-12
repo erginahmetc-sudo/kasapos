@@ -87,6 +87,7 @@ export default function NewPOSPage() {
     const [showDiscountModal, setShowDiscountModal] = useState(false);
     const [showPriceModal, setShowPriceModal] = useState(false);
     const [showWaitlistModal, setShowWaitlistModal] = useState(false);
+    const [displayLimit, setDisplayLimit] = useState(() => localStorage.getItem('pos_display_limit') || '100');
 
     const [heldSales, setHeldSales] = useState([]);
     const [shortcuts, setShortcuts] = useState([]);
@@ -370,6 +371,17 @@ export default function NewPOSPage() {
         }
         return result;
     }, [products, selectedCategory, searchTerm, shortcuts]);
+
+    const displayedProducts = useMemo(() => {
+        if (displayLimit === 'Hepsi') return filteredProducts;
+        return filteredProducts.slice(0, parseInt(displayLimit));
+    }, [filteredProducts, displayLimit]);
+
+    const handleLimitChange = (e) => {
+        const val = e.target.value;
+        setDisplayLimit(val);
+        localStorage.setItem('pos_display_limit', val);
+    };
 
     // Handlers
     const addToCart = useCallback((product) => {
@@ -1222,30 +1234,33 @@ export default function NewPOSPage() {
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar (Cart) */}
                 <aside className="w-[500px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-xl shadow-slate-200/50">
-                    <div className="p-3 bg-white border-b border-slate-200 shadow-sm z-20">
+                    <div className="px-3 py-2 bg-white border-b border-slate-200 shadow-sm z-20">
                         <div className="grid grid-cols-4 gap-2">
-                            {/* Customer Button (Takes 2 cols) */}
+                            {/* 1. Customer Select (1 col) */}
                             <button
-                                className={`col-span-2 border rounded-lg p-2 flex items-center gap-2 transition-all text-left group ${customer !== 'Toptan Satış'
-                                    ? 'bg-yellow-100 border-yellow-400 hover:border-yellow-500'
-                                    : 'bg-slate-50 border-slate-200 hover:border-blue-400'
-                                    }`}
+                                className="col-span-1 border rounded-lg p-1 flex flex-col items-center justify-center gap-1 transition-all group bg-blue-50 border-blue-200 hover:border-blue-500 hover:bg-blue-100"
                                 onClick={() => setShowCustomerModal(true)}
                                 title="Müşteri Seç"
                             >
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${customer !== 'Toptan Satış'
-                                    ? 'bg-yellow-400 text-yellow-800'
-                                    : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
-                                    }`}>
-                                    <span className="material-symbols-outlined text-lg">person</span>
+                                <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                    <span className="material-symbols-outlined text-sm">person_add</span>
                                 </div>
-                                <div className="min-w-0 overflow-hidden">
-                                    <p className="text-[9px] text-slate-400 font-bold uppercase leading-none mb-0.5">Müşteri</p>
-                                    <p className={`truncate leading-none ${customer !== 'Toptan Satış' ? 'text-sm font-extrabold text-black' : 'text-[11px] font-bold text-slate-800'}`}>{customer}</p>
-                                </div>
+                                <span className="text-[10px] font-extrabold text-blue-700 text-center leading-tight">MÜŞTERİ<br />SEÇ</span>
                             </button>
 
-                            {/* Hold Button (1 col) */}
+                            {/* 2. Customer Name Display (1 col) */}
+                            <div className={`col-span-1 border rounded-lg flex flex-col items-center p-0 overflow-hidden transition-all duration-300 ${customer !== 'Toptan Satış'
+                                ? 'bg-yellow-50 border-[#062206] shadow-[0_0_15px_#062206] animate-[pulse_1s_cubic-bezier(0.4,0,0.6,1)_infinite]'
+                                : 'bg-slate-50 border-slate-200'}`}>
+                                <span className="w-full text-center text-[9px] text-slate-400 font-bold uppercase leading-none pt-1.5 pb-0.5 border-b border-black/5 bg-black/5">MÜŞTERİ</span>
+                                <div className="flex-1 w-full flex items-center justify-center px-1">
+                                    <span className={`text-[13px] font-extrabold text-center leading-tight line-clamp-2 break-words ${customer !== 'Toptan Satış' ? 'text-[#062206]' : 'text-slate-700'}`}>
+                                        {customer}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* 3. Hold Button (1 col) */}
                             <button
                                 onClick={holdSale}
                                 className="col-span-1 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-center p-2 hover:bg-orange-100 hover:border-orange-400 transition-all"
@@ -1254,7 +1269,7 @@ export default function NewPOSPage() {
                                 <span className="text-xs font-extrabold text-orange-700 text-center leading-tight">BEKLEMEYE<br />AL</span>
                             </button>
 
-                            {/* Waitlist Button (1 col) */}
+                            {/* 4. Waitlist Button (1 col) */}
                             <button
                                 onClick={() => setShowWaitlistModal(true)}
                                 className="col-span-1 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center p-2 hover:bg-slate-100 hover:border-slate-400 transition-all relative"
@@ -1268,7 +1283,7 @@ export default function NewPOSPage() {
                         </div>
 
                         {/* Barcode Input */}
-                        <div className="relative group">
+                        <div className="relative group mt-2">
                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">barcode_scanner</span>
                             <input
                                 className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all outline-none shadow-sm placeholder:text-slate-400"
@@ -1490,7 +1505,7 @@ export default function NewPOSPage() {
                     {/* Products Grid */}
                     <div className="flex-1 overflow-x-auto custom-scrollbar p-6 bg-slate-50/50 border-b border-slate-200 shadow-inner h-auto">
                         <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
-                            {filteredProducts.map(product => (
+                            {displayedProducts.map(product => (
                                 <ProductCard
                                     key={product.id || product.stock_code}
                                     product={product}
@@ -1501,11 +1516,25 @@ export default function NewPOSPage() {
                     </div>
 
                     {/* Stats / Actions (Bottom Right) */}
-                    <div className="flex-none p-4 bg-white flex items-center justify-center gap-4 border-t border-slate-200">
-                        {/* Product Count Info or other small footer stats if needed, or empty */}
-                        <p className="text-xs text-slate-400 font-medium">
-                            {filteredProducts.length} ürün listeleniyor
-                        </p>
+                    <div className="flex-none p-2 bg-white flex items-center justify-end gap-4 border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 relative">
+                        {/* Product Count Info */}
+                        <div className="flex items-center gap-3 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 shadow-sm">
+                            <span className="text-orange-800 font-bold text-xs">Görüntüle:</span>
+                            <select
+                                value={displayLimit}
+                                onChange={handleLimitChange}
+                                className="bg-white border-2 border-orange-200 rounded-md px-2 py-1 text-orange-900 font-bold outline-none focus:border-orange-500 cursor-pointer shadow-sm hover:border-orange-400 transition-colors text-xs"
+                            >
+                                <option value="100">100 Ürün</option>
+                                <option value="200">200 Ürün</option>
+                                <option value="500">500 Ürün</option>
+                                <option value="1000">1000 Ürün</option>
+                                <option value="Hepsi">Hepsi</option>
+                            </select>
+                            <span className="text-orange-600 text-xs font-extrabold ml-1">
+                                (Toplam: {filteredProducts.length} Ürün)
+                            </span>
+                        </div>
                     </div>
                 </main>
             </div>

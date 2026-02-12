@@ -165,8 +165,8 @@ export default function ReceiptDesignerModal({ isOpen, onClose }) {
                     <tr>
                         <td class="font-medium text-black">
                             <div class="flex items-center gap-2 min-w-0">
-                                <div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center text-black">
-                                    <span class="material-symbols-outlined text-[16px]">image</span>
+                                <div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center overflow-hidden">
+                                    <img src="https://via.placeholder.com/150" class="w-full h-full object-contain" alt="Preview" />
                                 </div>
                                 <span class="truncate block">{'Örnek Ürün - Matkap Ucu'.substring(0, 36)}</span>
                             </div>
@@ -178,8 +178,8 @@ export default function ReceiptDesignerModal({ isOpen, onClose }) {
                     <tr>
                         <td class="font-medium text-black">
                              <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center text-black">
-                                    <span class="material-symbols-outlined text-[16px]">image</span>
+                                <div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center overflow-hidden">
+                                    <img src="https://via.placeholder.com/150" class="w-full h-full object-contain" alt="Preview" />
                                 </div>
                                 <span>Örnek Ürün - Boya</span>
                             </div>

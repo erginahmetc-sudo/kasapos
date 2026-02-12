@@ -7,6 +7,11 @@ import defaultTemplate from '../data/default_receipt_template.json';
 import template80mm from '../data/receipt_template_80mm.json';
 import template58mm from '../data/receipt_template_58mm.json';
 import DebtLimitAlert from '../components/modals/DebtLimitAlert';
+import ProductFormModal from '../components/modals/ProductFormModal';
+import CustomerFormModal from '../components/modals/CustomerFormModal';
+import PaymentFormModal from '../components/modals/PaymentFormModal';
+import ProductSelectionModal from '../components/modals/ProductSelectionModal';
+import StatusModal from '../components/modals/StatusModal';
 
 // Mobile detection hook
 function useMobileRedirect() {
@@ -38,19 +43,21 @@ const ProductCard = memo(({ product, onAddToCart }) => {
             className="h-full bg-white rounded-xl border border-slate-200 p-2 shadow-sm hover:shadow-lg hover:border-blue-600/30 hover:-translate-y-0.5 transition-all group flex flex-col cursor-pointer"
         >
             <div className="w-full h-24 rounded-lg bg-slate-50 overflow-hidden relative flex-shrink-0 border border-slate-100 mb-1">
-                {!imgError ? (
+                {/* Placeholder / Skeleton */}
+                <div className={`absolute inset-0 flex items-center justify-center bg-slate-100 text-slate-300 transition-opacity duration-300 ${imgError ? 'opacity-100' : 'opacity-0'}`}>
+                    <span className="material-symbols-outlined text-3xl">image</span>
+                </div>
+
+                {/* Actual Image */}
+                {!imgError && (
                     <img
                         alt={product.name}
-                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                        className="w-full h-full object-contain hover:scale-110 transition-all duration-500 opacity-0 data-[loaded=true]:opacity-100"
                         src={product.image_url || 'https://via.placeholder.com/150'}
                         onError={() => setImgError(true)}
+                        onLoad={(e) => e.target.setAttribute('data-loaded', 'true')}
                         loading="lazy"
                     />
-                ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 text-slate-400">
-                        <span className="material-symbols-outlined text-3xl">image</span>
-                        <span className="text-[10px] font-medium">Görsel Yok</span>
-                    </div>
                 )}
             </div>
             <div className="flex flex-col flex-1 px-1">
@@ -88,6 +95,7 @@ export default function NewPOSPage() {
     const [showPriceModal, setShowPriceModal] = useState(false);
     const [showWaitlistModal, setShowWaitlistModal] = useState(false);
     const [displayLimit, setDisplayLimit] = useState(() => localStorage.getItem('pos_display_limit') || '100');
+    const [currentPage, setCurrentPage] = useState(1);
 
     const [heldSales, setHeldSales] = useState([]);
     const [shortcuts, setShortcuts] = useState([]);
@@ -104,6 +112,22 @@ export default function NewPOSPage() {
     const [debtLimits, setDebtLimits] = useState({});
     const [showDebtLimitAlert, setShowDebtLimitAlert] = useState(false);
     const [debtLimitAlertData, setDebtLimitAlertData] = useState(null);
+
+    // New Action Modals
+    const [showNewProductModal, setShowNewProductModal] = useState(false);
+    const [newProductInitialValues, setNewProductInitialValues] = useState(null);
+
+    const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentTransactionType, setPaymentTransactionType] = useState('payment');
+
+    // Multiple Matches Logic
+    const [showProductSelectionModal, setShowProductSelectionModal] = useState(false);
+    const [productMatches, setProductMatches] = useState([]);
+
+    // Status Modal (Modern Alert)
+    const [statusModal, setStatusModal] = useState({ isOpen: false, title: '', message: '', type: 'error', details: null });
+
 
     useEffect(() => {
         const loadCompanySettings = async () => {
@@ -382,8 +406,15 @@ export default function NewPOSPage() {
 
     const displayedProducts = useMemo(() => {
         if (displayLimit === 'Hepsi') return filteredProducts;
-        return filteredProducts.slice(0, parseInt(displayLimit));
-    }, [filteredProducts, displayLimit]);
+        const limit = parseInt(displayLimit);
+        const startIndex = (currentPage - 1) * limit;
+        return filteredProducts.slice(startIndex, startIndex + limit);
+    }, [filteredProducts, displayLimit, currentPage]);
+
+    // Reset page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedCategory, searchTerm]);
 
     const handleLimitChange = (e) => {
         const val = e.target.value;
@@ -439,15 +470,70 @@ export default function NewPOSPage() {
 
     const handleBarcodeInput = (e) => {
         if (e.key === 'Enter' && barcodeInput.trim()) {
-            const product = products.find(p =>
-                p.barcode === barcodeInput.trim() ||
-                p.stock_code?.toLowerCase() === barcodeInput.trim().toLowerCase()
-            );
-            if (product) {
-                addToCart(product);
+            const searchTerm = barcodeInput.trim().toLocaleLowerCase('tr-TR');
+            const matches = products.filter(p => {
+                const barcode = p.barcode ? String(p.barcode).trim() : '';
+                const stockCode = p.stock_code ? String(p.stock_code).trim().toLocaleLowerCase('tr-TR') : '';
+
+                // Check for exact barcode match OR stock code match
+                // We use the raw input for barcode (case sensitive usually, but here likely numeric)
+                // But for stock code we definitely want case insensitivity
+                return barcode === barcodeInput.trim() || stockCode === searchTerm;
+            });
+
+            if (matches.length === 1) {
+                addToCart(matches[0]);
+                setBarcodeInput('');
+            } else if (matches.length > 1) {
+                setProductMatches(matches);
+                setShowProductSelectionModal(true);
+                // Don't clear input yet, maybe user wants to see what they typed? 
+                // Or clear it? Let's clear it to be clean.
                 setBarcodeInput('');
             } else {
-                alert('Ürün bulunamadı: ' + barcodeInput);
+                // Determine error details
+                let title = 'Ürün Bulunamadı';
+                let msg = `"${barcodeInput}" kriterine uygun ürün bulunamadı.`;
+                let details = `Aranan: "${searchTerm}"`;
+                let type = 'error';
+
+                if (products.length === 0) {
+                    title = 'Veri Yüklenmedi';
+                    msg = 'Sistemde hiç ürün yüklü görünmüyor veya ürünler henüz yüklenmedi.';
+                    details = 'Lütfen sayfayı yenileyin veya ürünlerinizin tanımlı olduğundan emin olun.\n(Toplam Ürün: 0)';
+                    type = 'warning';
+
+                    // Auto-retry loading if empty
+                    console.log('Products empty, auto-retrying load...');
+                    loadProducts();
+                }
+
+                // Status Modal Button Action
+                const actionButton = {
+                    label: 'Yeni Ürün Olarak Ekle',
+                    className: 'border-emerald-200 text-emerald-700 hover:bg-emerald-50',
+                    onClick: () => {
+                        // User requested: Always fill 'Barcode' field with the input, regardless of content (text/number).
+                        // Stock code will be auto-generated by the modal.
+                        setNewProductInitialValues({
+                            barcode: barcodeInput.trim(),
+                            stock_code: ''
+                        });
+
+                        setStatusModal(prev => ({ ...prev, isOpen: false }));
+                        setShowNewProductModal(true);
+                    }
+                };
+
+                setStatusModal({
+                    isOpen: true,
+                    title,
+                    message: msg,
+                    type,
+                    details,
+                    actionButton
+                });
+                setBarcodeInput('');
             }
         }
     };
@@ -866,7 +952,7 @@ export default function NewPOSPage() {
                 <td class="font-medium text-black">
                      <div class="flex items-center gap-2 min-w-0">
                         ${item.image_url
-                ? `<div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center overflow-hidden"><img src="${item.image_url}" class="w-full h-full object-cover" /></div>`
+                ? `<div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center overflow-hidden"><img src="${item.image_url}" class="w-full h-full object-contain" /></div>`
                 : `<div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center text-black">
                                 <span class="material-symbols-outlined text-[16px]">image</span>
                            </div>`
@@ -1295,7 +1381,7 @@ export default function NewPOSPage() {
                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">barcode_scanner</span>
                             <input
                                 className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all outline-none shadow-sm placeholder:text-slate-400"
-                                placeholder="Barkod okutun..."
+                                placeholder="Barkod Okutun veya Stok Kodu Yazın"
                                 type="text"
                                 value={barcodeInput}
                                 onChange={(e) => setBarcodeInput(e.target.value)}
@@ -1331,7 +1417,7 @@ export default function NewPOSPage() {
                                             <img
                                                 alt={item.name}
                                                 loading="lazy"
-                                                className="w-full h-full object-cover"
+                                                className="w-full h-full object-contain"
                                                 src={item.image_url}
                                                 onError={(e) => {
                                                     e.target.style.display = 'none';
@@ -1480,14 +1566,14 @@ export default function NewPOSPage() {
                 <main className="flex-1 flex flex-col bg-slate-50 overflow-hidden relative">
 
                     {/* Categories */}
-                    <div className="px-6 py-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-200 bg-white flex-none z-10">
+                    <div className="px-6 py-2 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-200 bg-white flex-none z-10">
                         {categories.map(cat => (
                             <button
                                 key={cat}
                                 onClick={() => setSelectedCategory(cat)}
-                                className={`px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${selectedCategory === cat
-                                    ? 'bg-slate-900 text-white shadow-sm hover:bg-slate-800'
-                                    : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50'
+                                className={`px-6 py-4 rounded-2xl text-sm font-bold whitespace-nowrap transition-all shadow-sm active:scale-95 ${selectedCategory === cat
+                                    ? 'bg-slate-900 text-white shadow-md hover:bg-slate-800 ring-2 ring-slate-900 ring-offset-2'
+                                    : 'bg-white border-2 border-slate-200 text-slate-600 hover:border-blue-600 hover:text-blue-600 hover:bg-blue-50'
                                     }`}
                             >
                                 {cat}
@@ -1496,7 +1582,7 @@ export default function NewPOSPage() {
                     </div>
 
                     {/* Search Bar (Main) */}
-                    <div className="mt-4 px-6">
+                    <div className="mt-2 px-6">
                         <div className="relative group">
                             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">search</span>
                             <input
@@ -1524,24 +1610,80 @@ export default function NewPOSPage() {
                     </div>
 
                     {/* Stats / Actions (Bottom Right) */}
-                    <div className="flex-none p-2 bg-white flex items-center justify-end gap-4 border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 relative">
-                        {/* Product Count Info */}
-                        <div className="flex items-center gap-3 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 shadow-sm">
-                            <span className="text-orange-800 font-bold text-xs">Görüntüle:</span>
-                            <select
-                                value={displayLimit}
-                                onChange={handleLimitChange}
-                                className="bg-white border-2 border-orange-200 rounded-md px-2 py-1 text-orange-900 font-bold outline-none focus:border-orange-500 cursor-pointer shadow-sm hover:border-orange-400 transition-colors text-xs"
+                    <div className="flex-none p-2 bg-white flex items-center justify-between gap-4 border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 relative">
+                        {/* New Left Actions */}
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowNewProductModal(true)}
+                                className="px-3 py-2 bg-gray-900 text-white rounded-lg font-bold text-xs hover:bg-gray-800 transition-all shadow-sm flex items-center gap-1.5"
                             >
-                                <option value="100">100 Ürün</option>
-                                <option value="200">200 Ürün</option>
-                                <option value="500">500 Ürün</option>
-                                <option value="1000">1000 Ürün</option>
-                                <option value="Hepsi">Hepsi</option>
-                            </select>
-                            <span className="text-orange-600 text-xs font-extrabold ml-1">
-                                (Toplam: {filteredProducts.length} Ürün)
-                            </span>
+                                <span className="material-symbols-outlined text-[16px]">add_box</span>
+                                Yeni Ürün
+                            </button>
+                            <button
+                                onClick={() => setShowNewCustomerModal(true)}
+                                className="px-3 py-2 bg-gray-900 text-white rounded-lg font-bold text-xs hover:bg-gray-800 transition-all shadow-sm flex items-center gap-1.5"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">person_add</span>
+                                Yeni Müşteri
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setPaymentTransactionType('payment');
+                                    setShowPaymentModal(true);
+                                }}
+                                className="px-3 py-2 bg-gray-900 text-white rounded-lg font-bold text-xs hover:bg-gray-800 transition-all shadow-sm flex items-center gap-1.5"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">payments</span>
+                                Müşteriden Ödeme Al
+                            </button>
+                        </div>
+
+                        {/* Right Side: Pagination + Count Info */}
+                        <div className="flex items-center gap-2">
+                            {/* Pagination Controls */}
+                            {displayLimit !== 'Hepsi' && filteredProducts.length > parseInt(displayLimit) && (
+                                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="p-1 rounded-md hover:bg-white text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                        title="Önceki Sayfa"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">chevron_left</span>
+                                    </button>
+                                    <span className="text-xs font-black text-slate-700 w-16 text-center">
+                                        Sayfa {currentPage} / {Math.ceil(filteredProducts.length / parseInt(displayLimit))}
+                                    </span>
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredProducts.length / parseInt(displayLimit)), p + 1))}
+                                        disabled={currentPage >= Math.ceil(filteredProducts.length / parseInt(displayLimit))}
+                                        className="p-1 rounded-md hover:bg-white text-slate-600 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                        title="Sonraki Sayfa"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">chevron_right</span>
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Product Count Info */}
+                            <div className="flex items-center gap-3 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-100 shadow-sm">
+                                <span className="text-orange-800 font-bold text-xs">Görüntüle:</span>
+                                <select
+                                    value={displayLimit}
+                                    onChange={handleLimitChange}
+                                    className="bg-white border-2 border-orange-200 rounded-md px-2 py-1 text-orange-900 font-bold outline-none focus:border-orange-500 cursor-pointer shadow-sm hover:border-orange-400 transition-colors text-xs"
+                                >
+                                    <option value="100">100 Ürün</option>
+                                    <option value="200">200 Ürün</option>
+                                    <option value="500">500 Ürün</option>
+                                    <option value="1000">1000 Ürün</option>
+                                    <option value="Hepsi">Hepsi</option>
+                                </select>
+                                <span className="text-orange-600 text-xs font-extrabold ml-1">
+                                    (Toplam: {filteredProducts.length} Ürün)
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </main>
@@ -1889,11 +2031,11 @@ export default function NewPOSPage() {
             )}
             {showAskQuantityModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-[2px]">
-                    <div className="w-full max-w-[340px] bg-white rounded-[2.5rem] shadow-2xl transform transition-all animate-in fade-in zoom-in duration-300 overflow-hidden border border-white/20">
+                    <div className="w-full max-w-[340px] bg-white rounded-[2.5rem] shadow-2xl transform transition-all animate-in fade-in zoom-in duration-300 overflow-hidden border border-white/20 relative">
                         <div className="p-8 flex flex-col items-center text-center">
                             <button
                                 onClick={() => setShowAskQuantityModal(false)}
-                                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors"
+                                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors bg-transparent border-none p-1 z-10"
                             >
                                 <span className="material-symbols-outlined text-2xl">close</span>
                             </button>
@@ -1922,6 +2064,11 @@ export default function NewPOSPage() {
                                             onChange={(e) => setAskQuantityValue(e.target.value)}
                                             autoFocus
                                             onFocus={(e) => e.target.select()}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Escape') {
+                                                    setShowAskQuantityModal(false);
+                                                }
+                                            }}
                                         />
                                         <div className="h-1 w-8 bg-emerald-500 rounded-full mt-1 opacity-20"></div>
                                     </div>
@@ -2079,6 +2226,47 @@ export default function NewPOSPage() {
                     </div>
                 )
             }
+
+            <ProductFormModal
+                isOpen={showNewProductModal}
+                onClose={() => setShowNewProductModal(false)}
+                onSuccess={loadProducts}
+                initialValues={newProductInitialValues}
+            />
+
+            <CustomerFormModal
+                isOpen={showNewCustomerModal}
+                onClose={() => setShowNewCustomerModal(false)}
+                onSuccess={loadCustomers}
+            />
+
+            <PaymentFormModal
+                isOpen={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                onSuccess={loadCustomers}
+                transactionType={paymentTransactionType}
+                customers={customers}
+            />
+
+            <ProductSelectionModal
+                isOpen={showProductSelectionModal}
+                products={productMatches}
+                onClose={() => setShowProductSelectionModal(false)}
+                onSelect={(product) => {
+                    addToCart(product);
+                    setShowProductSelectionModal(false);
+                }}
+            />
+
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+                title={statusModal.title}
+                message={statusModal.message}
+                type={statusModal.type}
+                details={statusModal.details}
+                actionButton={statusModal.actionButton}
+            />
 
             {/* Debt Limit Alert Modal */}
             <DebtLimitAlert

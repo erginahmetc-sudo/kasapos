@@ -219,6 +219,333 @@ export default function SalesPage() {
         }
     };
 
+    const printReceipt = (saleData) => {
+        const paperSize = localStorage.getItem('receipt_paper_size') || 'Termal 80mm';
+
+        // Check for Custom A5 HTML Design (Flag or Config Type)
+        const templateType = localStorage.getItem('receipt_template_type');
+        let useCustomA5 = templateType === 'custom_html_a5';
+
+        // Fallback: Check inside config if flag is missing
+        if (!useCustomA5) {
+            try {
+                const config = JSON.parse(localStorage.getItem('receipt_design_config'));
+                if (config && config.type === 'custom_html_a5') {
+                    useCustomA5 = true;
+                }
+            } catch (e) { }
+        }
+
+        if (useCustomA5) {
+            printCustomA5Receipt(saleData, paperSize);
+            return;
+        }
+
+        // Fallback to generic receipt
+        printA5Receipt(saleData, paperSize);
+    };
+
+    // Custom A5 HTML Receipt
+    const printCustomA5Receipt = (saleData, paperSize) => {
+        const savedConfig = localStorage.getItem('receipt_design_config');
+        let companyInfo = {
+            name: 'ERCAN YAPI MARKET',
+            address: 'Fatih Mh. Mücahitler Cd. 151/C Seyhan/Adana',
+            phone: '0553 878 58 85',
+            logo_text: 'E',
+            showWatermark: true
+        };
+
+        if (savedConfig) {
+            try {
+                companyInfo = { ...companyInfo, ...JSON.parse(savedConfig) };
+            } catch (e) {
+                console.error("Error loading receipt config", e);
+            }
+        }
+
+        const dateObj = saleData.created_at ? new Date(saleData.created_at) : new Date();
+        const dateStr = dateObj.toLocaleDateString('tr-TR');
+        const timeStr = dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+        const previousBalance = saleData.customerData?.balance || 0;
+        const newBalance = previousBalance + (saleData.total || 0);
+
+        // Generate Rows
+        const itemsHtml = (saleData.items || []).map(item => {
+            const qty = parseFloat(item.quantity) || 1;
+            const price = parseFloat(item.price) || 0;
+            const discount = parseFloat(item.discount_rate) || 0;
+            const lineTotal = price * qty * (1 - discount / 100);
+
+            // Check for image_url
+            // Note: SalesPage items might have different structure, check if image_url exists
+            const imageHtml = item.image_url
+                ? `<img src="${item.image_url}" class="w-8 h-8 object-cover rounded bg-white border border-slate-200" style="object-fit: cover;" />`
+                : `<div class="w-8 h-8 bg-slate-200 rounded flex items-center justify-center text-slate-400"><span class="material-symbols-outlined text-[16px]">image</span></div>`;
+
+
+            return `
+            <tr>
+                <td class="font-medium text-slate-800">
+                    <div class="flex items-center gap-2 min-w-0">
+                        ${imageHtml}
+                        <span class="truncate block">${item.name.substring(0, 36)}</span>
+                    </div>
+                </td>
+                <td class="text-center text-slate-600">${qty} Ad.</td>
+                <td class="text-right text-slate-600">${price.toFixed(2)} TL</td>
+                <td class="text-right font-bold text-slate-800">${lineTotal.toFixed(2)} TL</td>
+            </tr>
+        `;
+        }).join('');
+
+        const receiptContent = `
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Satis Fisi</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <style type="text/tailwindcss">
+        :root {
+            --primary-color: #f97316;
+            --print-width: 148mm;
+            --print-height: 210mm;
+        }
+        @media print {
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+             @page {
+                size: A5;
+                margin: 0;
+            }
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .a5-container {
+            width: 148mm;
+            min-height: 210mm;
+            background-color: white;
+            position: relative;
+            overflow: hidden;
+            padding: 5mm 5mm;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+        }
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 180px;
+            color: rgba(249, 115, 22, 0.03);
+            pointer-events: none;
+            user-select: none;
+            z-index: 0;
+            display: ${companyInfo.showWatermark ? 'block' : 'none'};
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .receipt-table th {
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            letter-spacing: 0.05em;
+            color: #000000;
+            border: 1px solid #000000;
+            padding: 4px 4px;
+        }
+        .receipt-table td {
+            padding: 4px 4px;
+            border-bottom: 1px solid #000000;
+            border-top: 1px solid #000000;
+        }
+        .receipt-table td:first-child {
+            border-left: 1px solid #000000;
+        }
+        .receipt-table td:last-child {
+            border-right: 1px solid #000000;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="a5-container relative flex flex-col shadow-lg">
+        <div class="watermark">
+            <span class="material-symbols-outlined text-[300px]">construction</span>
+        </div>
+        <header class="relative z-10 flex justify-between items-start mb-2 px-2 pt-0">
+            <!-- Left: Date/Time -->
+            <div class="w-[15%] text-left">
+                <div class="flex flex-col items-center w-fit">
+                    <div class="text-lg font-bold text-black tracking-tighter leading-none">${dateStr}</div>
+                    <div class="text-lg font-bold text-black tracking-tighter leading-none">${timeStr}</div>
+                </div>
+            </div>
+
+            <!-- Center: Logo & Company Info -->
+            <div class="w-[70%] flex flex-col items-center text-center">
+                ${companyInfo.logo_url
+                ? `<div class="mb-1 h-9 flex items-center justify-center overflow-hidden"><img src="${companyInfo.logo_url}" class="h-full object-contain" /></div>`
+                : `<div class="mb-1 bg-[var(--primary-color)] text-white p-1 rounded-lg font-extrabold text-base flex items-center justify-center w-9 h-9 shadow-sm">${companyInfo.logo_text}</div>`
+            }
+                <h1 class="font-black text-base tracking-tight leading-none text-black uppercase mb-0">${companyInfo.name}</h1>
+                <p class="text-xs text-black font-bold uppercase tracking-normal leading-tight whitespace-nowrap mt-1">
+                    ${companyInfo.address}<br/>
+                    İletişim: ${companyInfo.phone}
+                </p>
+            </div>
+
+            <!-- Right: Customer Info -->
+            <div class="w-[15%] text-right flex flex-col items-end">
+                ${!saleData.customer || saleData.customer === 'Misafir' || saleData.customer === 'Misafir Müşteri' || saleData.customer === 'Toptan Satış' ? '' : `
+                <div class="border-2 border-black p-2 font-bold text-black text-sm uppercase whitespace-nowrap overflow-hidden">
+                    ${saleData.customer.slice(0, 12)}
+                </div>
+                `}
+            </div>
+        </header>
+
+        <main class="relative z-10 mb-1">
+            <table class="w-full receipt-table text-left">
+                <thead>
+                    <tr>
+                        <th class="w-1/2 text-center">Ürün Adı</th>
+                        <th class="text-center">Miktar</th>
+                        <th class="text-right">Birim Fiyat</th>
+                        <th class="text-right">Toplam</th>
+                    </tr>
+                </thead>
+                <tbody class="text-xs">
+                    ${itemsHtml}
+                </tbody>
+            </table>
+        </main>
+
+        <footer class="relative z-10 pt-2 border-t border-slate-100">
+            <div class="flex justify-end items-end">
+                <div class="bg-slate-50 rounded-xl p-2 border border-slate-100 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <span class="text-xs text-black font-bold uppercase tracking-wider">GENEL TOPLAM</span>
+                        <span class="text-2xl font-black text-black">${saleData.total.toFixed(2)} TL</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <script>
+        // Auto print when loaded
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 1000); // Give time for Tailwind/Fonts to load
+        }
+    </script>
+</body>
+</html>
+        `;
+
+        const printWindow = window.open('', '_blank', 'width=800,height=1000');
+        if (printWindow) {
+            printWindow.document.write(receiptContent);
+            printWindow.document.close();
+        }
+    };
+
+    const printA5Receipt = (saleData, paperSize) => {
+        const isA4 = paperSize === 'A4 (210x297mm)';
+        const companyName = localStorage.getItem('receipt_company_name') || 'FIRMA ADI';
+        const companyAddress = localStorage.getItem('receipt_company_address') || 'Adres Bilgisi';
+        const companyPhone = localStorage.getItem('receipt_company_phone') || 'Tel: 0XXX XXX XX XX';
+
+        const dateObj = saleData.created_at ? new Date(saleData.created_at) : new Date();
+
+        const receiptContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Satış Fişi</title>
+    <style>
+        @page {
+            size: ${isA4 ? 'A4' : 'A5'};
+            margin: 10mm;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { 
+            width: 100%; font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+            font-size: ${isA4 ? '11px' : '10px'}; color: #333;
+        }
+        .receipt-container { width: 100%; padding: 0; }
+        .receipt-header { text-align: center; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 8px; }
+        .receipt-header h1 { font-size: ${isA4 ? '18px' : '14px'}; font-weight: bold; margin-bottom: 2px; }
+        .info-line { display: table; width: 100%; margin-bottom: 6px; border-bottom: 1px solid #ddd; }
+        .info-line .left { display: table-cell; text-align: left; width: 50%; }
+        .info-line .right { display: table-cell; text-align: right; width: 50%; font-weight: bold; }
+        table.items { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        table.items th { border-bottom: 1px solid #333; padding: 4px 2px; text-align: left; }
+        table.items td { padding: 3px 2px; vertical-align: top; }
+        .total-section { margin-top: 15px; text-align: center; font-weight: bold; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="receipt-header">
+            <h1>${companyName}</h1>
+            <div>${companyAddress}<br>${companyPhone}</div>
+        </div>
+        <div class="info-line">
+            <span class="left">${dateObj.toLocaleDateString('tr-TR')} ${dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span class="right">${saleData.customer || 'Müşteri'}</span>
+        </div>
+        <table class="items">
+            <thead>
+                <tr>
+                    <th>URUN</th>
+                    <th>ADET</th>
+                    <th>FIYAT</th>
+                    <th>TUTAR</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${(saleData.items || []).map(item => `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>${item.quantity}</td>
+                        <td>${item.price.toFixed(2)}</td>
+                        <td>${(item.price * item.quantity).toFixed(2)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <div class="total-section">
+            TOPLAM: ${(saleData.total || 0).toFixed(2)} TL
+        </div>
+    </div>
+    <script>
+        setTimeout(() => { window.print(); window.close(); }, 500);
+    </script>
+</body>
+</html>`;
+
+        const printWindow = window.open('', '_blank', `width=${isA4 ? 800 : 600},height=${isA4 ? 1000 : 800}`);
+        if (printWindow) {
+            printWindow.document.write(receiptContent);
+            printWindow.document.close();
+        }
+    };
+
     const handleDeleteSale = async () => {
         if (!window.confirm('Bu satışı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!')) return;
         try {
@@ -643,6 +970,13 @@ export default function SalesPage() {
                                 >
                                     <span className="material-symbols-outlined">add_shopping_cart</span>
                                     Yeni Ürün Ekle
+                                </button>
+                                <button
+                                    onClick={() => printReceipt(selectedSale)}
+                                    className="px-4 py-2.5 bg-violet-50 text-violet-600 hover:bg-violet-100 hover:text-violet-700 rounded-xl font-bold transition-all flex items-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined">print</span>
+                                    Fiş Yazdır
                                 </button>
                             </div>
                             <div className="flex items-center gap-3">

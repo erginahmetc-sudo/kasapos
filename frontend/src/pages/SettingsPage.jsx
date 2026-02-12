@@ -4,6 +4,7 @@ import ReceiptDesignerModal from '../components/modals/ReceiptDesignerModal';
 import IntegrationSettingsModal from '../components/modals/IntegrationSettingsModal';
 import SecretTokenModal from '../components/modals/SecretTokenModal';
 import CompanyInfoModal from '../components/modals/CompanyInfoModal';
+import DebtLimitModal from '../components/modals/DebtLimitModal';
 import { settingsAPI, productsAPI } from '../services/api';
 
 export default function SettingsPage() {
@@ -18,6 +19,7 @@ export default function SettingsPage() {
     const [showInvoiceTotal, setShowInvoiceTotal] = useState(true);
     const [sendSalesToBirFatura, setSendSalesToBirFatura] = useState(false);
     const [autoPrintReceipt, setAutoPrintReceipt] = useState(false);
+
     const [receiptPaperSize, setReceiptPaperSize] = useState('Termal 80mm');
     const [secretToken, setSecretToken] = useState('...');
 
@@ -27,6 +29,7 @@ export default function SettingsPage() {
     const [showIntegrationModal, setShowIntegrationModal] = useState(false);
     const [showSecretTokenModal, setShowSecretTokenModal] = useState(false);
     const [showCompanyInfoModal, setShowCompanyInfoModal] = useState(false);
+    const [showDebtLimitModal, setShowDebtLimitModal] = useState(false);
 
     useEffect(() => {
         loadSettings();
@@ -46,6 +49,7 @@ export default function SettingsPage() {
                 if (data['integration_send_sales_to_birfatura'] !== undefined) setSendSalesToBirFatura(data['integration_send_sales_to_birfatura']);
                 if (data['receipt_auto_print'] !== undefined) setAutoPrintReceipt(data['receipt_auto_print']);
                 if (data['receipt_paper_size']) setReceiptPaperSize(data['receipt_paper_size']);
+
                 if (data['secret_token']) setSecretToken(data['secret_token']);
             }
         } catch (error) {
@@ -139,8 +143,31 @@ export default function SettingsPage() {
                             Firma Bilgileri
                         </button>
                     </div>
+
+                    {/* Debt Limit Section */}
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-rose-50 to-pink-50 rounded-lg border border-rose-200">
+                        <div>
+                            <h3 className="font-semibold text-gray-800">Veresiye Limitleri</h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Müşteri gruplarına veya kişilere özel borç limiti tanımlayın.
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={() => setShowDebtLimitModal(true)}
+                            className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-lg hover:from-rose-700 hover:to-pink-700 font-semibold text-sm transition-all shadow-lg shadow-rose-500/25 hover:shadow-xl hover:shadow-rose-500/30 flex items-center gap-2"
+                        >
+                            <span className="material-symbols-outlined text-[20px]">credit_score</span>
+                            Borç Limitleri
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            <DebtLimitModal
+                isOpen={showDebtLimitModal}
+                onClose={() => setShowDebtLimitModal(false)}
+            />
 
             <div className="bg-white rounded-xl shadow-md p-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
@@ -356,6 +383,8 @@ export default function SettingsPage() {
                             Tasarımcıyı Aç
                         </button>
                     </div>
+
+
                 </div>
             </div>
 

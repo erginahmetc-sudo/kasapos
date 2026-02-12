@@ -5,6 +5,7 @@ export default function CompanyInfoModal({ isOpen, onClose }) {
     const [companyName, setCompanyName] = useState('');
     const [companyAddress, setCompanyAddress] = useState('');
     const [companyPhone, setCompanyPhone] = useState('');
+    const [companyLogo, setCompanyLogo] = useState(null); // Base64 string
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -20,14 +21,43 @@ export default function CompanyInfoModal({ isOpen, onClose }) {
             const nameRes = await settingsAPI.get('company_name');
             const addressRes = await settingsAPI.get('company_address');
             const phoneRes = await settingsAPI.get('company_phone');
+            const logoRes = await settingsAPI.get('company_logo');
 
             setCompanyName(nameRes.data || '');
             setCompanyAddress(addressRes.data || '');
             setCompanyPhone(phoneRes.data || '');
+            setCompanyLogo(logoRes.data || null);
+
+            // Also check receipt config for logo if not in settingsAPI (migration/fallback)
+            if (!logoRes.data) {
+                try {
+                    const savedConfig = localStorage.getItem('receipt_design_config');
+                    if (savedConfig) {
+                        const parsed = JSON.parse(savedConfig);
+                        if (parsed.logo_url) setCompanyLogo(parsed.logo_url);
+                    }
+                } catch (e) { }
+            }
+
         } catch (e) {
             console.error("Error loading company settings", e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleLogoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 500000) { // 500KB limit
+                alert("Logo boyutu 500KB'dan küçük olmalıdır.");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setCompanyLogo(reader.result);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -37,8 +67,35 @@ export default function CompanyInfoModal({ isOpen, onClose }) {
             await settingsAPI.set('company_name', companyName.trim());
             await settingsAPI.set('company_address', companyAddress.trim());
             await settingsAPI.set('company_phone', companyPhone.trim());
+            if (companyLogo) {
+                await settingsAPI.set('company_logo', companyLogo);
+            }
 
-            alert("Firma bilgileri başarıyla kaydedildi.");
+            // Sync with Receipt Designer Config in localStorage
+            try {
+                const savedConfigStr = localStorage.getItem('receipt_design_config');
+                let config = savedConfigStr ? JSON.parse(savedConfigStr) : {};
+
+                // Update fields
+                config.name = companyName.trim();
+                config.address = companyAddress.trim();
+                config.phone = companyPhone.trim();
+                if (companyLogo) {
+                    config.logo_url = companyLogo;
+                }
+
+                // If config was empty, set some defaults to avoid breaking
+                if (!config.type) config.type = 'custom_html_a5';
+                if (!config.logo_text) config.logo_text = companyName.trim().charAt(0).toUpperCase() || 'A';
+                if (config.showWatermark === undefined) config.showWatermark = true;
+
+                localStorage.setItem('receipt_design_config', JSON.stringify(config));
+
+            } catch (err) {
+                console.error("Error syncing with receipt config", err);
+            }
+
+            alert("Firma bilgileri ve logo başarıyla kaydedildi.");
             onClose();
         } catch (e) {
             console.error("Error saving company settings", e);
@@ -52,7 +109,7 @@ export default function CompanyInfoModal({ isOpen, onClose }) {
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 font-sans">
-            <div 
+            <div
                 className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
                 style={{
                     animation: 'modalSlideIn 0.3s ease-out'
@@ -65,7 +122,7 @@ export default function CompanyInfoModal({ isOpen, onClose }) {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2"></div>
                         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full translate-y-1/2 -translate-x-1/2"></div>
                     </div>
-                    
+
                     <div className="relative flex justify-between items-start">
                         <div className="flex items-center gap-4">
                             <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
@@ -156,6 +213,40 @@ export default function CompanyInfoModal({ isOpen, onClose }) {
                                 />
                             </div>
 
+                            {/* Company Logo Field */}
+                            <div className="group">
+                                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                                    <span className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </span>
+                                    Firma Logosu
+                                </label>
+                                <div className="flex items-center gap-4">
+                                    {companyLogo && (
+                                        <div className="w-16 h-16 rounded-lg border border-gray-200 overflow-hidden bg-white p-1">
+                                            <img src={companyLogo} alt="Logo" className="w-full h-full object-contain" />
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleLogoChange}
+                                        className="w-full px-5 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-4 focus:ring-pink-500/20 focus:border-pink-500 outline-none transition-all text-gray-800 text-base file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
+                                    />
+                                    {companyLogo && (
+                                        <button
+                                            onClick={() => setCompanyLogo(null)}
+                                            className="text-red-500 hover:text-red-700 text-sm font-medium"
+                                        >
+                                            Kaldır
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">Fişlerde kullanılacak logo. (Önerilen: Kare format, Max 500KB)</p>
+                            </div>
+
                             {/* Info Box */}
                             <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-5 rounded-2xl border border-amber-200/50">
                                 <div className="flex items-start gap-3">
@@ -166,7 +257,7 @@ export default function CompanyInfoModal({ isOpen, onClose }) {
                                     </div>
                                     <div>
                                         <p className="text-amber-800 font-medium">Bilgi</p>
-                                        <p className="text-amber-700 text-sm mt-1">Bu bilgiler fişlerde ve raporlarınızda kullanılacaktır.</p>
+                                        <p className="text-amber-700 text-sm mt-1">Bu bilgiler ve logo fişlerde/raporlarda otomatik olarak kullanılacaktır.</p>
                                     </div>
                                 </div>
                             </div>

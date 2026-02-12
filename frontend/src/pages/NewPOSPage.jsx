@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import defaultTemplate from '../data/default_receipt_template.json';
 import template80mm from '../data/receipt_template_80mm.json';
 import template58mm from '../data/receipt_template_58mm.json';
+import DebtLimitAlert from '../components/modals/DebtLimitAlert';
 
 // Mobile detection hook
 function useMobileRedirect() {
@@ -40,7 +41,7 @@ const ProductCard = memo(({ product, onAddToCart }) => {
                 {!imgError ? (
                     <img
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
                         src={product.image_url || 'https://via.placeholder.com/150'}
                         onError={() => setImgError(true)}
                         loading="lazy"
@@ -91,6 +92,48 @@ export default function NewPOSPage() {
     const [shortcuts, setShortcuts] = useState([]);
     const searchInputRef = useRef(null);
     const [keyboardShortcuts, setKeyboardShortcuts] = useState({});
+
+    const [companySettings, setCompanySettings] = useState({
+        name: 'ERCAN YAPI MARKET',
+        address: 'Fatih Mh. Mücahitler Cd. 151/C Seyhan/Adana',
+        phone: '0553 878 58 85',
+        logo_url: null,
+        logo_text: 'E'
+    });
+    const [debtLimits, setDebtLimits] = useState({});
+    const [showDebtLimitAlert, setShowDebtLimitAlert] = useState(false);
+    const [debtLimitAlertData, setDebtLimitAlertData] = useState(null);
+
+    useEffect(() => {
+        const loadCompanySettings = async () => {
+            try {
+                // Fetch Company Settings
+                const nameRes = await settingsAPI.get('company_name');
+                const addressRes = await settingsAPI.get('company_address');
+                const phoneRes = await settingsAPI.get('company_phone');
+                const logoRes = await settingsAPI.get('company_logo');
+
+                setCompanySettings(prev => ({
+                    ...prev,
+                    name: nameRes.data || prev.name,
+                    address: addressRes.data || prev.address,
+                    phone: phoneRes.data || prev.phone,
+                    logo_url: logoRes.data || prev.logo_url,
+                    logo_text: (nameRes.data || prev.name).charAt(0).toUpperCase()
+                }));
+
+                // Fetch Debt Limits
+                const limitsRes = await settingsAPI.get('customer_debt_limits');
+                if (limitsRes.data) {
+                    setDebtLimits(limitsRes.data);
+                }
+
+            } catch (error) {
+                console.error("Error loading settings", error);
+            }
+        };
+        loadCompanySettings();
+    }, []);
 
     // Retail Customer Logic
     const [showRetailCustomerModal, setShowRetailCustomerModal] = useState(false);
@@ -427,6 +470,31 @@ export default function NewPOSPage() {
 
     const completeSale = async (paymentMethod) => {
         if (cart.length === 0) return alert('Sepet boş!');
+
+        // Debt Limit Check
+        if (paymentMethod === 'Açık Hesap' || paymentMethod === 'Veresiye') {
+            const selectedCustomer = customers.find(c => c.name === customer);
+            if (selectedCustomer) {
+                const limit = parseFloat(debtLimits[selectedCustomer.id]);
+                if (limit > 0) {
+                    const currentBalance = parseFloat(selectedCustomer.balance) || 0;
+                    const cartTotal = calculateTotal();
+                    const projectedBalance = currentBalance + cartTotal;
+
+                    if (projectedBalance > limit) {
+                        setDebtLimitAlertData({
+                            currentBalance,
+                            transactionAmount: cartTotal,
+                            newBalance: projectedBalance,
+                            limit
+                        });
+                        setShowDebtLimitAlert(true);
+                        return;
+                    }
+                }
+            }
+        }
+
         try {
             const saleCode = 'SLS-' + Date.now();
             const selectedCustomer = customers.find(c => c.name === customer);
@@ -513,6 +581,24 @@ export default function NewPOSPage() {
         // Get selected paper size
         const paperSize = localStorage.getItem('receipt_paper_size') || 'Termal 80mm';
 
+        // Check for Custom A5 HTML Design (Flag or Config Type)
+        const templateType = localStorage.getItem('receipt_template_type');
+        let useCustomA5 = templateType === 'custom_html_a5';
+
+        // Fallback: Check inside config if flag is missing
+        if (!useCustomA5) {
+            try {
+                const config = JSON.parse(localStorage.getItem('receipt_design_config'));
+                if (config && config.type === 'custom_html_a5') {
+                    useCustomA5 = true;
+                }
+            } catch (e) { }
+        }
+
+        if (useCustomA5) {
+            printCustomA5Receipt(saleData, paperSize);
+            return;
+        }
         // Use dynamic template for ALL paper sizes
         const savedKey = `receipt_design_template_${paperSize}`;
         const savedTemplate = localStorage.getItem(savedKey);
@@ -737,6 +823,223 @@ export default function NewPOSPage() {
                 printWindow.print();
                 printWindow.close();
             }, 100);
+        }
+    };
+
+    // Custom A5 HTML Receipt
+    const printCustomA5Receipt = (saleData) => {
+        // Use companySettings from state (fetched from DB)
+        const companyInfo = companySettings;
+
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('tr-TR');
+        const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+        // Use saleData items directly as they are usually properly formatted in this component
+        // But for safety, map them to ensure quantities are numbers
+        const totalQuantity = saleData.items.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0), 0);
+
+        // Format items HTML
+        // Note: Truncating product name to single line with CSS (truncate class)
+        const itemsHtml = saleData.items.map(item => `
+            <tr>
+                <td class="font-medium text-black">
+                     <div class="flex items-center gap-2 min-w-0">
+                        ${item.image_url
+                ? `<div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center overflow-hidden"><img src="${item.image_url}" class="w-full h-full object-cover" /></div>`
+                : `<div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center text-black">
+                                <span class="material-symbols-outlined text-[16px]">image</span>
+                           </div>`
+            }
+                        <span class="truncate block min-w-0" style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name.substring(0, 36)}</span>
+                    </div>
+                </td>
+                <td class="text-center text-black">${item.quantity} ${item.unit || 'Ad.'}</td>
+                <td class="text-right text-black">${item.price?.toFixed(2)} TL</td>
+                <td class="text-right font-bold text-black">${(item.price * item.quantity).toFixed(2)} TL</td>
+            </tr>
+        `).join('');
+
+        // Check if we should show customer balance
+        const showBalanceSetting = localStorage.getItem('receipt_show_customer_balance') === 'true';
+        const hasCustomer = saleData.customer_id || (saleData.customer && saleData.customer !== 'Misafir Müşteri');
+        const showBalance = showBalanceSetting && hasCustomer;
+
+        const balanceRows = showBalance ? `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Eski Bakiye</span>
+                        <span class="text-xs font-semibold text-slate-700">${previousBalance.toFixed(2)} TL</span>
+                    </div>
+        ` : '';
+
+        const newBalanceRow = showBalance ? `
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Yeni Bakiye</span>
+                        <span class="text-xs font-bold text-slate-900 underline underline-offset-4">${newBalance.toFixed(2)} TL</span>
+                    </div>
+        ` : '';
+
+        const receiptContent = `
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Satis Fisi</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <style type="text/tailwindcss">
+        :root {
+            --primary-color: #f97316;
+            --print-width: 148mm;
+            --print-height: 210mm;
+        }
+        @media print {
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+             @page {
+                size: A5;
+                margin: 0;
+            }
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .a5-container {
+            width: 148mm;
+            min-height: 210mm;
+            background-color: white;
+            position: relative;
+            overflow: hidden;
+            padding: 5mm 5mm;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+        }
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 180px;
+            color: rgba(249, 115, 22, 0.03);
+            pointer-events: none;
+            user-select: none;
+            z-index: 0;
+            display: ${companyInfo.showWatermark ? 'block' : 'none'};
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .receipt-table th {
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            letter-spacing: 0.05em;
+            color: #000000;
+            border: 1px solid #000000;
+            padding: 4px 4px;
+        }
+        .receipt-table td {
+            padding: 4px 4px;
+            border-bottom: 1px solid #000000;
+            border-top: 1px solid #000000;
+        }
+        .receipt-table td:first-child {
+            border-left: 1px solid #000000;
+        }
+        .receipt-table td:last-child {
+            border-right: 1px solid #000000;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="a5-container relative flex flex-col shadow-lg">
+        <div class="watermark">
+            <span class="material-symbols-outlined text-[300px]">construction</span>
+        </div>
+        <header class="relative z-10 flex justify-between items-start mb-2 px-2 pt-0">
+            <!-- Left: Date/Time -->
+            <div class="w-[15%] text-left">
+                <div class="flex flex-col items-center w-fit">
+                    <div class="text-lg font-bold text-black tracking-tighter leading-none">${dateStr}</div>
+                    <div class="text-lg font-bold text-black tracking-tighter leading-none">${timeStr}</div>
+                </div>
+            </div>
+
+            <!-- Center: Logo & Company Info -->
+            <div class="w-[70%] flex flex-col items-center text-center">
+                ${companyInfo.logo_url
+                ? `<div class="mb-1 h-9 flex items-center justify-center overflow-hidden"><img src="${companyInfo.logo_url}" class="h-full object-contain" /></div>`
+                : `<div class="mb-1 bg-[var(--primary-color)] text-white p-1 rounded-lg font-extrabold text-base flex items-center justify-center w-9 h-9 shadow-sm">${companyInfo.logo_text}</div>`
+            }
+                <h1 class="font-black text-base tracking-tight leading-none text-black uppercase mb-0">${companyInfo.name}</h1>
+                <p class="text-xs text-black font-bold uppercase tracking-normal leading-tight whitespace-nowrap mt-1">
+                    ${companyInfo.address}<br/>
+                    İletişim: ${companyInfo.phone}
+                </p>
+            </div>
+
+            <!-- Right: Customer Info -->
+            <div class="w-[15%] text-right flex flex-col items-end">
+                ${!saleData.customer || saleData.customer === 'Misafir' || saleData.customer === 'Misafir Müşteri' || saleData.customer === 'Toptan Satış' ? '' : `
+                <div class="border-2 border-black p-2 font-bold text-black text-sm uppercase whitespace-nowrap overflow-hidden">
+                    ${saleData.customer.slice(0, 12)}
+                </div>
+                `}
+            </div>
+        </header>
+
+        <main class="relative z-10 mb-1">
+            <table class="w-full receipt-table text-left">
+                <thead>
+                    <tr>
+                        <th class="w-1/2 text-center">Ürün Adı</th>
+                        <th class="text-center">Miktar</th>
+                        <th class="text-right">Birim Fiyat</th>
+                        <th class="text-right">Toplam</th>
+                    </tr>
+                </thead>
+                <tbody class="text-xs">
+                    ${itemsHtml}
+                </tbody>
+            </table>
+        </main>
+
+        <footer class="relative z-10 pt-2 border-t border-slate-100">
+            <div class="flex justify-end items-end">
+                <div class="bg-slate-50 rounded-xl p-2 border border-slate-100 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <span class="text-xs text-black font-bold uppercase tracking-wider">GENEL TOPLAM</span>
+                        <span class="text-2xl font-black text-black">${saleData.total.toFixed(2)} TL</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <script>
+        // Auto print when loaded
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 1000); // Give time for Tailwind/Fonts to load
+        }
+    </script>
+</body>
+</html>
+        `;
+
+        const printWindow = window.open('', '_blank', 'width=800,height=1000');
+        if (printWindow) {
+            printWindow.document.write(receiptContent);
+            printWindow.document.close();
         }
     };
 
@@ -1740,6 +2043,13 @@ export default function NewPOSPage() {
                 )
             }
 
-        </div >
+            {/* Debt Limit Alert Modal */}
+            <DebtLimitAlert
+                isOpen={showDebtLimitAlert}
+                onClose={() => setShowDebtLimitAlert(false)}
+                data={debtLimitAlertData}
+            />
+
+        </div>
     );
 }

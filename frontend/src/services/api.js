@@ -646,6 +646,7 @@ export const salesAPI = {
         if (params?.start_date) query = query.gte('date', `${params.start_date}T00:00:00`);
         if (params?.end_date) query = query.lte('date', `${params.end_date}T23:59:59`);
         if (params?.sale_code) query = query.ilike('sale_code', `%${params.sale_code}%`);
+        if (params?.customer_id) query = query.eq('customer_id', params.customer_id);
         if (!params?.show_deleted) query = query.eq('is_deleted', false);
 
         const { data, error } = await query.order('date', { ascending: false });
@@ -788,6 +789,18 @@ export const salesAPI = {
         return response(data, error);
     },
     update: async (saleCode, data) => {
+        const companyCode = getCurrentCompanyCode();
+
+        // 1. Fetch existing sale for customer_id validation and total check
+        const { data: existingSale, error: fetchError } = await supabase
+            .from('sales')
+            .select('customer_id, total')
+            .eq('sale_code', saleCode)
+            .eq('company_code', companyCode)
+            .single();
+
+        if (fetchError || !existingSale) throw fetchError || new Error("Satış bulunamadı");
+
         const updateData = {};
         // Database uses 'items' column for products
         if (data.products) updateData.items = data.products;
@@ -796,11 +809,73 @@ export const salesAPI = {
         if (data.customer_id !== undefined) updateData.customer_id = data.customer_id;
         if (data.customer_name !== undefined) updateData.customer_name = data.customer_name;
 
+        // 2. Update Sales Table
         const { error } = await supabase
             .from('sales')
             .update(updateData)
-            .eq('sale_code', saleCode);
-        return response({ success: true, message: 'Satış güncellendi' }, error);
+            .eq('sale_code', saleCode)
+            .eq('company_code', companyCode);
+
+        if (error) throw error;
+
+        // 3. Sync Customer Ledger (Only if total changed and customer exists)
+        // We use the existing customer_id from the sale (or the new one if updated)
+        const targetCustomerId = data.customer_id || existingSale.customer_id;
+
+        if (targetCustomerId && data.total !== undefined && parseFloat(data.total) !== parseFloat(existingSale.total)) {
+            const newTotal = parseFloat(data.total);
+
+            // Update DEBIT (Borç) - identified by negative amount and description containing sale code
+            // Note: Description format involves "Satış - SALE-123" or similar
+            const { error: debitError } = await supabase
+                .from('customer_payments')
+                .update({ amount: -newTotal }) // Debit is negative (increases debt)
+                .eq('customer_id', targetCustomerId)
+                .ilike('description', `%${saleCode}%`)
+                .lt('amount', 0); // Ensure we target the debt record
+
+            if (debitError) console.error("Error updating ledger debit:", debitError);
+
+            // Update CREDIT (Alacak/Tahsilat) - identified by positive amount and description containing sale code
+            // Only if it exists (e.g. was Nakit/Card payment). If it was Veresiye, this record won't exist.
+            const { error: creditError } = await supabase
+                .from('customer_payments')
+                .update({ amount: newTotal }) // Credit is positive (decreases debt)
+                .eq('customer_id', targetCustomerId)
+                .ilike('description', `%${saleCode}%`)
+                .gt('amount', 0); // Ensure we target the payment record
+
+            if (creditError) console.error("Error updating ledger credit:", creditError);
+
+            // 4. Update Customer Balance (Recalculate to be safe)
+            try {
+                const { data: allPayments } = await supabase
+                    .from('customer_payments')
+                    .select('amount')
+                    .eq('customer_id', targetCustomerId);
+
+                // Debt is negative, Credit is positive.
+                // Balance = SUM(Debts) - SUM(Credits) ... Wait, existing calculation was:
+                // reduce((sum, p) => sum - (parseFloat(p.amount) || 0), 0);
+                // So if amount is -100 (Debt), sum - (-100) = sum + 100.
+                // If amount is +100 (Credit), sum - (+100) = sum - 100.
+                // This matches "Balance = Total Debt - Total Credit".
+
+                const calculatedBalance = (allPayments || []).reduce((sum, p) => sum - (parseFloat(p.amount) || 0), 0);
+
+                await supabase
+                    .from('customers')
+                    .update({
+                        balance: calculatedBalance,
+                        last_transaction_date: new Date().toISOString()
+                    })
+                    .eq('id', targetCustomerId);
+            } catch (balanceError) {
+                console.error("Error recalculating balance:", balanceError);
+            }
+        }
+
+        return response({ success: true, message: 'Satış ve cari hesap güncellendi' }, null);
     }
 };
 

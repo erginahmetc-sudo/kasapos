@@ -276,26 +276,38 @@ export default function ProductsPage() {
         }
     };
 
+    const [loadingModal, setLoadingModal] = useState({ show: false, message: '' });
+
     const handleImageUpload = async () => {
         if (!selectedImage) {
-            alert("⚠️ Lütfen önce bir resim seçiniz! (Dosya algılanmadı)");
+            setErrorModal({ show: true, title: 'Uyarı', message: '⚠️ Lütfen önce bir resim seçiniz! (Dosya algılanmadı)' });
             return;
         }
 
-        alert("Resim yükleniyor... Lütfen bekleyin."); // Debug
+        setLoadingModal({ show: true, message: 'Resim yükleniyor...' });
 
         const formData = new FormData();
         formData.append('product_image', selectedImage);
 
         try {
             await productsAPI.updateImage(editingProduct.stock_code, formData);
-            alert("Resim başarıyla güncellendi!");
+            // Artificial delay to let user see the loading state (optional but good for UX)
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            setLoadingModal({ show: false, message: '' });
             setShowImageModal(false);
             setSelectedImage(null); // Reset
             loadProducts();
+
+            // Optional: Show quick success toast if needed, but the modal closing is often enough
         } catch (error) {
             console.error(error);
-            alert('Resim yükleme hatası: ' + (error.response?.data?.message || error.message));
+            setLoadingModal({ show: false, message: '' });
+            setErrorModal({
+                show: true,
+                title: 'Yükleme Hatası',
+                message: 'Resim yüklenirken bir hata oluştu: ' + (error.response?.data?.message || error.message)
+            });
         }
     };
 
@@ -880,6 +892,17 @@ export default function ProductsPage() {
                                 Tamam
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modern Loading Modal */}
+            {loadingModal.show && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full flex flex-col items-center animate-in zoom-in-95 duration-300">
+                        <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">Lütfen Bekleyin</h3>
+                        <p className="text-gray-500 font-medium text-center animate-pulse">{loadingModal.message}</p>
                     </div>
                 </div>
             )}

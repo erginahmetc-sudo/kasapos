@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { customersAPI } from '../services/api';
+import XLSX from 'xlsx-js-style';
+import { customersAPI, salesAPI } from '../services/api';
 import SaleDetailModal from '../components/modals/SaleDetailModal';
 
 export default function CustomerDetailPage() {
@@ -11,6 +12,7 @@ export default function CustomerDetailPage() {
     const [selectedSale, setSelectedSale] = useState(null);
     const [editingPayment, setEditingPayment] = useState(null);
     const [editAmount, setEditAmount] = useState('');
+    const [reportFilters, setReportFilters] = useState({ productName: '', stockCode: '', barcode: '' });
 
     const handleTransactionClick = (tx) => {
         // Only open modal for sales (where we have products or items)
@@ -41,9 +43,23 @@ export default function CustomerDetailPage() {
         }
     };
 
-    // Double-click handler for editing payments
-    const handlePaymentDoubleClick = (tx) => {
-        if (tx.transactionType.includes('Ödeme')) {
+    // Double-click handler for both Sales and Payments
+    const handleRowDoubleClick = (tx) => {
+        // If it's a SALE (has items or sale_code)
+        if (tx.items?.length > 0 || (tx.transactionType && (tx.transactionType.includes('Satış') || tx.transactionType === 'Fatura'))) {
+            const saleObj = {
+                sale_code: tx.sale_code || tx.id, // Fallback
+                customer: customer.name,
+                payment_method: tx.payment_method || 'Nakit', // Default to Nakit if missing
+                date: tx.created_at,
+                total: tx.total,
+                items: tx.items || tx.products || [],
+                is_deleted: false
+            };
+            setSelectedSale(saleObj);
+        }
+        // If it's a PAYMENT
+        else if (tx.transactionType.includes('Ödeme')) {
             setEditingPayment(tx);
             setEditAmount(tx.total.toString());
         }
@@ -101,7 +117,27 @@ export default function CustomerDetailPage() {
 
                 // Get transactions for this customer
                 const { data: txData } = await customersAPI.getTransactions(foundCustomer.id);
-                setTransactions(txData?.transactions || []);
+                const transactions = txData?.transactions || [];
+
+                // Get sales to enrich transactions with product details
+                const { data: salesData } = await salesAPI.getAll({ customer_id: foundCustomer.id });
+                const salesMap = (salesData?.sales || []).reduce((acc, sale) => {
+                    acc[sale.sale_code] = sale;
+                    return acc;
+                }, {});
+
+                // Merge items into transactions
+                const enrichedTransactions = transactions.map(tx => {
+                    if (tx.sale_code && salesMap[tx.sale_code]) {
+                        return {
+                            ...tx,
+                            items: salesMap[tx.sale_code].items || salesMap[tx.sale_code].products || []
+                        };
+                    }
+                    return tx;
+                });
+
+                setTransactions(enrichedTransactions);
             }
         } catch (error) {
             console.error('Müşteri verileri yüklenirken hata:', error);
@@ -174,6 +210,22 @@ export default function CustomerDetailPage() {
     // Use the CALCULATED balance for display to match the shown totals
     const netBalance = calculatedBalance;
 
+    // Filter Logic
+    const filteredTransactions = processedTransactions.filter(tx => {
+        if (!reportFilters.productName && !reportFilters.stockCode && !reportFilters.barcode) return true;
+
+        // Only sales have items to filter by
+        const items = tx.items || tx.products || [];
+        if (items.length === 0) return false;
+
+        return items.some(item => {
+            const nameMatch = !reportFilters.productName || item.name?.toLocaleLowerCase('tr-TR').includes(reportFilters.productName.toLocaleLowerCase('tr-TR'));
+            const stockMatch = !reportFilters.stockCode || item.stock_code?.toLowerCase().includes(reportFilters.stockCode.toLowerCase());
+            const barcodeMatch = !reportFilters.barcode || item.barcode?.toLowerCase().includes(reportFilters.barcode.toLowerCase());
+            return nameMatch && stockMatch && barcodeMatch;
+        });
+    });
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -239,9 +291,127 @@ export default function CustomerDetailPage() {
 
             {/* Table */}
             <div className="p-4">
+                {/* Search Filters */}
+                <div className="bg-white p-4 rounded-lg shadow-sm mb-4 flex gap-4 items-end">
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Ürün Adı</label>
+                        <input
+                            type="text"
+                            value={reportFilters.productName}
+                            onChange={(e) => setReportFilters({ ...reportFilters, productName: e.target.value })}
+                            placeholder="Ürün adı ara..."
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Stok Kodu</label>
+                        <input
+                            type="text"
+                            value={reportFilters.stockCode}
+                            onChange={(e) => setReportFilters({ ...reportFilters, stockCode: e.target.value })}
+                            placeholder="Stok kodu ara..."
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Barkod</label>
+                        <input
+                            type="text"
+                            value={reportFilters.barcode}
+                            onChange={(e) => setReportFilters({ ...reportFilters, barcode: e.target.value })}
+                            placeholder="Barkod ara..."
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setReportFilters({ productName: '', stockCode: '', barcode: '' })}
+                            className="px-3 py-1 bg-gray-100 text-gray-600 rounded text-xs font-bold hover:bg-gray-200 transition-colors h-full"
+                        >
+                            Temizle
+                        </button>
+                        <button
+                            onClick={() => {
+                                const headers = ['Cari Kodu', 'Ticari Ünvanı', 'Evrak No', 'İşlem Tarihi', 'Borç', 'Alacak', 'Bakiye', 'İşlem Türü', 'Ödeme Tipi', 'Açıklama'];
+                                const data = filteredTransactions.map((tx, idx) => {
+                                    const runningBalance = filteredTransactions.slice(0, idx + 1).reduce((acc, t) => acc + t.debtAmount - t.creditAmount, 0);
+                                    return [
+                                        customer.customer_code,
+                                        customer.name,
+                                        tx.sale_code || tx.id?.substring(0, 8),
+                                        formatDate(tx.created_at),
+                                        tx.debtAmount,
+                                        tx.creditAmount,
+                                        Math.abs(runningBalance),
+                                        tx.transactionType,
+                                        (tx.transactionType === 'Satış (Borç)' ? (tx.payment_method || 'Veresiye') : ''),
+                                        tx.description
+                                    ];
+                                });
+                                // Add headers
+                                data.unshift(headers);
+                                const ws = XLSX.utils.aoa_to_sheet(data);
+
+                                // Apply Column Widths
+                                ws['!cols'] = [
+                                    { wch: 15 }, // Cari Kodu
+                                    { wch: 25 }, // Ticari Ünvanı
+                                    { wch: 15 }, // Evrak No
+                                    { wch: 20 }, // Tarih
+                                    { wch: 12 }, // Borç
+                                    { wch: 12 }, // Alacak
+                                    { wch: 12 }, // Bakiye
+                                    { wch: 15 }, // İşlem Türü
+                                    { wch: 15 }, // Ödeme Tipi
+                                    { wch: 40 }  // Açıklama
+                                ];
+
+                                // Apply Styles
+                                const range = XLSX.utils.decode_range(ws['!ref']);
+                                for (let R = 1; R <= range.e.r; ++R) { // Start from R=1 to skip header
+                                    const txIndex = R - 1; // Corresponding transaction index
+                                    if (txIndex < filteredTransactions.length) {
+                                        const tx = filteredTransactions[txIndex];
+                                        let rowStyle = null;
+
+                                        if (tx.transactionType === 'Satış (Borç)') {
+                                            rowStyle = {
+                                                fill: { fgColor: { rgb: "E0F7FA" } }, // Light Cyan
+                                                font: { color: { rgb: "000000" } }
+                                            };
+                                        } else if (tx.transactionType.includes('Ödeme')) {
+                                            rowStyle = {
+                                                fill: { fgColor: { rgb: "FFF9C4" } }, // Light Yellow
+                                                font: { color: { rgb: "000000" } }
+                                            };
+                                        }
+
+                                        if (rowStyle) {
+                                            for (let C = range.s.c; C <= range.e.c; ++C) {
+                                                const cell_address = { c: C, r: R };
+                                                const cell_ref = XLSX.utils.encode_cell(cell_address);
+                                                if (!ws[cell_ref]) continue;
+                                                ws[cell_ref].s = rowStyle;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                const wb = XLSX.utils.book_new();
+                                XLSX.utils.book_append_sheet(wb, ws, "Cari Hareket");
+                                XLSX.writeFile(wb, `${customer.name}_Cari_Hareket_Raporu_${new Date().toLocaleDateString()}.xlsx`);
+                            }}
+                            className="px-3 py-1 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700 transition-colors flex items-center gap-1 h-full"
+                        >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Excel İle Dışarı Aktar
+                        </button>
+                    </div>
+                </div>
+
                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-xs">
                             <thead>
                                 <tr className="bg-blue-600 text-white">
                                     <th className="px-3 py-2 text-left font-semibold border-r border-blue-500">Cari Kodu</th>
@@ -258,16 +428,16 @@ export default function CustomerDetailPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {processedTransactions.length === 0 ? (
+                                {filteredTransactions.length === 0 ? (
                                     <tr>
                                         <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
                                             Bu müşteriye ait hareket bulunmamaktadır.
                                         </td>
                                     </tr>
                                 ) : (
-                                    processedTransactions.map((tx, idx) => {
-                                        // Calculate running balance up to this transaction
-                                        const runningBalance = processedTransactions
+                                    filteredTransactions.map((tx, idx) => {
+                                        // Calculate running balance up to this transaction within the filtered list
+                                        const runningBalance = filteredTransactions
                                             .slice(0, idx + 1)
                                             .reduce((acc, t) => acc + t.debtAmount - t.creditAmount, 0);
 
@@ -275,19 +445,19 @@ export default function CustomerDetailPage() {
                                             <tr
                                                 key={tx.id || idx}
                                                 className={`${tx.rowColor} border-b border-gray-200 hover:opacity-80 cursor-pointer transition-colors`}
-                                                onClick={() => handleTransactionClick(tx)}
-                                                onDoubleClick={() => handlePaymentDoubleClick(tx)}
+                                                onClick={() => { }} // Single click disabled as per request (focus on double click)
+                                                onDoubleClick={() => handleRowDoubleClick(tx)}
                                             >
-                                                <td className="px-3 py-2 border-r border-gray-200 font-medium">
+                                                <td className="px-2 py-1 border-r border-gray-200 font-medium">
                                                     {customer.customer_code}
                                                 </td>
-                                                <td className="px-3 py-2 border-r border-gray-200">
+                                                <td className="px-2 py-1 border-r border-gray-200">
                                                     {customer.name}
                                                 </td>
-                                                <td className="px-3 py-2 border-r border-gray-200 font-mono text-xs">
+                                                <td className="px-2 py-1 border-r border-gray-200 font-mono text-[10px]">
                                                     {tx.sale_code || tx.id?.substring(0, 8) || '-'}
                                                 </td>
-                                                <td className="px-3 py-2 border-r border-gray-200 whitespace-nowrap">
+                                                <td className="px-2 py-1 border-r border-gray-200 whitespace-nowrap">
                                                     {formatDate(tx.created_at)}
                                                 </td>
                                                 <td className="px-3 py-2 border-r border-gray-200 text-right font-medium">
@@ -296,25 +466,38 @@ export default function CustomerDetailPage() {
                                                 <td className="px-3 py-2 border-r border-gray-200 text-right font-medium">
                                                     {tx.creditAmount > 0 ? formatCurrency(tx.creditAmount) : ''}
                                                 </td>
-                                                <td className="px-3 py-2 border-r border-gray-200 text-right font-bold">
+                                                <td className="px-2 py-1 border-r border-gray-200 text-right font-bold">
                                                     {formatCurrency(Math.abs(runningBalance))}
                                                 </td>
-                                                <td className={`px-3 py-2 border-r border-gray-200 text-center font-bold ${runningBalance > 0 ? 'text-red-600' : runningBalance < 0 ? 'text-green-600' : 'text-gray-600'
+                                                <td className={`px-2 py-1 border-r border-gray-200 text-center font-bold ${runningBalance > 0 ? 'text-red-600' : runningBalance < 0 ? 'text-green-600' : 'text-gray-600'
                                                     }`}>
                                                     {runningBalance > 0 ? 'Borç' : runningBalance < 0 ? 'Alacak' : 'Sıfır'}
                                                 </td>
-                                                <td className={`px-3 py-2 border-r border-gray-200 text-center font-semibold ${tx.transactionType === 'Fatura' ? 'text-blue-600' :
+                                                <td className={`px-2 py-1 border-r border-gray-200 text-center font-semibold ${tx.transactionType === 'Fatura' ? 'text-blue-600' :
                                                     tx.transactionType === 'Nakit' ? 'text-green-600' :
                                                         tx.transactionType === 'Ödeme' ? 'text-purple-600' : 'text-gray-600'
                                                     }`}>
                                                     {tx.transactionType}
+                                                    {tx.transactionType === 'Satış (Borç)' && (
+                                                        <div className="text-[10px] text-gray-500 font-normal mt-0.5">
+                                                            {tx.payment_method || 'Veresiye'}
+                                                        </div>
+                                                    )}
                                                 </td>
-                                                <td className="px-3 py-2 text-left max-w-md truncate border-r border-gray-200">
-                                                    <span className="truncate" title={tx.description || ''}>
-                                                        {(tx.items || tx.products)?.map(p => p.name).join(', ') || tx.description || '-'}
-                                                    </span>
+                                                <td className="px-2 py-1 text-left max-w-md border-r border-gray-200">
+                                                    <div className="flex flex-col">
+                                                        <span className="truncate" title={tx.description || ''}>
+                                                            {tx.description || '-'}
+                                                        </span>
+                                                        {/* Display Product Names in Small Font */}
+                                                        {((tx.items || tx.products) && (tx.items || tx.products).length > 0) && (
+                                                            <span className="text-[10px] text-gray-500 leading-tight mt-0.5">
+                                                                {(tx.items || tx.products).map(p => p.name).join(', ')}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
-                                                <td className="px-3 py-2 text-center">
+                                                <td className="px-2 py-1 text-center">
                                                     {tx.transactionType === 'Ödeme' && (
                                                         <button
                                                             onClick={(e) => handleDeletePayment(e, tx)}
@@ -331,25 +514,25 @@ export default function CustomerDetailPage() {
                                 )}
 
                                 {/* Totals Row */}
-                                {processedTransactions.length > 0 && (
-                                    <tr className={`font-bold text-base ${netBalance > 0 ? 'bg-red-200' : netBalance < 0 ? 'bg-green-200' : 'bg-gray-200'}`}>
-                                        <td colSpan={4} className="px-3 py-3 border-r border-gray-300 text-right uppercase">
+                                {filteredTransactions.length > 0 && (
+                                    <tr className={`font-bold text-sm ${netBalance > 0 ? 'bg-red-200' : netBalance < 0 ? 'bg-green-200' : 'bg-gray-200'}`}>
+                                        <td colSpan={4} className="px-2 py-2 border-r border-gray-300 text-right uppercase">
                                             Toplam:
                                         </td>
-                                        <td className="px-3 py-3 border-r border-gray-300 text-right text-red-700">
+                                        <td className="px-2 py-2 border-r border-gray-300 text-right text-red-700">
                                             {formatCurrency(totals.debt)}
                                         </td>
-                                        <td className="px-3 py-3 border-r border-gray-300 text-right text-green-700">
+                                        <td className="px-2 py-2 border-r border-gray-300 text-right text-green-700">
                                             {formatCurrency(totals.credit)}
                                         </td>
-                                        <td className="px-3 py-3 border-r border-gray-300 text-right">
+                                        <td className="px-2 py-2 border-r border-gray-300 text-right">
                                             {formatCurrency(Math.abs(netBalance))}
                                         </td>
-                                        <td className={`px-3 py-3 border-r border-gray-300 text-center ${netBalance > 0 ? 'text-red-700' : netBalance < 0 ? 'text-green-700' : ''
+                                        <td className={`px-2 py-2 border-r border-gray-300 text-center ${netBalance > 0 ? 'text-red-700' : netBalance < 0 ? 'text-green-700' : ''
                                             }`}>
                                             {netBalance > 0 ? 'YÜKSEL' : netBalance < 0 ? 'ALACAK' : 'SIFIR'}
                                         </td>
-                                        <td colSpan={3} className="px-3 py-3"></td>
+                                        <td colSpan={3} className="px-2 py-2"></td>
                                     </tr>
                                 )}
                             </tbody>

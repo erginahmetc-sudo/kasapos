@@ -1,244 +1,226 @@
 import { useState, useEffect, useRef } from 'react';
-import defaultTemplate from '../../data/default_receipt_template.json';
-import template80mm from '../../data/receipt_template_80mm.json';
-import template58mm from '../../data/receipt_template_58mm.json';
 
 const PAPER_SIZES = {
-    'A5 (148x210mm)': { width: 420, height: 595 },
-    'A4 (210x297mm)': { width: 595, height: 842 },
-    'Termal 80mm': { width: 280, height: 400 },
-    'Termal 58mm': { width: 200, height: 400 },
+    'A5 (148x210mm)': { width: '148mm', height: '210mm' },
 };
 
-// Get default template by paper size
-const getDefaultTemplateForSize = (paperSize) => {
-    switch (paperSize) {
-        case 'Termal 80mm':
-            return { ...template80mm };
-        case 'Termal 58mm':
-            return { ...template58mm };
-        case 'A4 (210x297mm)':
-        case 'A5 (148x210mm)':
-        default:
-            return { ...defaultTemplate };
-    }
-};
-
-const AVAILABLE_VARIABLES = [
-    { key: '{{TARIH}}', label: 'Tarih' },
-    { key: '{{SAAT}}', label: 'Saat' },
-    { key: '{{FIS_NO}}', label: 'Fiş No' },
-    { key: '{{MUSTERI_ADI}}', label: 'Musteri Adi' },
-    { key: '{{ODEME_TIPI}}', label: 'Ödeme Tipi' },
-    { key: '{{URUN_ADI}}', label: 'Urun Adi' },
-    { key: '{{MIKTAR}}', label: 'Miktar' },
-    { key: '{{FIYAT}}', label: 'Fiyat' },
-    { key: '{{ISKONTO}}', label: 'İskonto' },
-    { key: '{{SATIR_TOPLAM}}', label: 'Satir Toplam' },
-    { key: '{{GENEL_TOPLAM}}', label: 'Genel Toplam' },
-    { key: '{{ESKI_BAKIYE}}', label: 'Eski Bakiye' },
-    { key: '{{YENI_BAKIYE}}', label: 'Yeni Bakiye' },
-];
-
-export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize }) {
-    const [template, setTemplate] = useState(null);
-    const [selectedItem, setSelectedItem] = useState(null);
-    const [draggedItem, setDraggedItem] = useState(null);
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [showBalance, setShowBalance] = useState(() => {
-        return localStorage.getItem('receipt_show_balance') === 'true';
+export default function ReceiptDesignerModal({ isOpen, onClose }) {
+    const [companyInfo, setCompanyInfo] = useState({
+        name: 'ERCAN YAPI MARKET',
+        address: 'Fatih Mh. Mücahitler Cd. 151/C Seyhan/Adana',
+        phone: '0553 878 58 85',
+        logo_text: 'E'
     });
-    const canvasRef = useRef(null);
+
+    const [showWatermark, setShowWatermark] = useState(true);
 
     useEffect(() => {
         if (isOpen) {
-            // Load from localStorage or use default based on initialPaperSize
-            const savedKey = `receipt_design_template_${initialPaperSize || 'default'}`;
-            const saved = localStorage.getItem(savedKey);
-            if (saved) {
+            // Load saved config
+            const savedConfig = localStorage.getItem('receipt_design_config');
+            if (savedConfig) {
                 try {
-                    setTemplate(JSON.parse(saved));
-                } catch {
-                    setTemplate(getDefaultTemplateForSize(initialPaperSize || 'Termal 80mm'));
+                    const parsed = JSON.parse(savedConfig);
+                    setCompanyInfo(prev => ({ ...prev, ...parsed }));
+                    if (parsed.showWatermark !== undefined) setShowWatermark(parsed.showWatermark);
+                } catch (e) {
+                    console.error("Error loading receipt config", e);
                 }
-            } else {
-                setTemplate(getDefaultTemplateForSize(initialPaperSize || 'Termal 80mm'));
             }
         }
-    }, [isOpen, initialPaperSize]);
-
-    if (!isOpen || !template) return null;
-
-    const paperSize = PAPER_SIZES[template.paper_size] || PAPER_SIZES['A5 (148x210mm)'];
+    }, [isOpen]);
 
     const handleSave = () => {
-        // Always save with the paper size that was selected in Settings
-        const savedKey = `receipt_design_template_${initialPaperSize || template.paper_size}`;
-        localStorage.setItem(savedKey, JSON.stringify(template));
-        localStorage.setItem('receipt_show_balance', showBalance);
-        alert(`${initialPaperSize || template.paper_size} için tasarım kaydedildi!`);
-    };
-
-    const handleReset = () => {
-        if (confirm('Varsayilan tasarima donmek istediginize emin misiniz?')) {
-            setTemplate(getDefaultTemplateForSize(template.paper_size));
-            setSelectedItem(null);
-        }
-    };
-
-    const handlePaperSizeChange = (newSize) => {
-        if (confirm(`Kagit boyutunu "${newSize}" olarak degistirmek istediginize emin misiniz? Bu, mevcut tasarimi sifirlar.`)) {
-            setTemplate(getDefaultTemplateForSize(newSize));
-            setSelectedItem(null);
-        }
-    };
-
-    const handleAddText = () => {
-        const newItem = {
-            type: 'text',
-            id: `metin_${Date.now()}`,
-            x: 50,
-            y: 50,
-            text: 'Yeni Metin',
-            font_family: 'Inter',
-            font_size: 12,
-            font_bold: false,
-            color: '#000000',
-            text_width: 100,
-            text_height: 20,
-            text_align: 'left',
+        const config = {
+            ...companyInfo,
+            showWatermark,
+            type: 'custom_html_a5'
         };
-        setTemplate(prev => ({
-            ...prev,
-            items: [...prev.items, newItem]
-        }));
-        setSelectedItem(newItem.id);
+        localStorage.setItem('receipt_design_config', JSON.stringify(config));
+        // Also ensure we set the flag for printing logic to know to use this
+        localStorage.setItem('receipt_template_type', 'custom_html_a5');
+        alert('Tasarım ayarları kaydedildi!');
     };
 
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (file.size > 2 * 1024 * 1024) { // 2MB limit
-            alert('Resim boyutu 2MB\'dan kucuk olmalidir.');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const newItem = {
-                type: 'image',
-                id: `resim_${Date.now()}`,
-                x: 50,
-                y: 50,
-                width: 100,
-                height: 100,
-                src: event.target.result,
-                is_dynamic_footer: false
-            };
-            setTemplate(prev => ({
-                ...prev,
-                items: [...prev.items, newItem]
-            }));
-            setSelectedItem(newItem.id);
+    const getPreviewHTML = () => {
+        const saleData = {
+            customer: 'Örnek Müşteri T.',
+            items: []
         };
-        reader.readAsDataURL(file);
-    };
 
-    const handleAddShape = () => {
-        const newItem = {
-            type: 'shape',
-            id: `sekil_${Date.now()}`,
-            x: 50,
-            y: 50,
-            width: 100,
-            height: 30,
-            fill_color: '#e5e7eb',
-            border: {
-                sides: { top: true, bottom: true, left: true, right: true },
-                thickness: 1,
-                color: '#000000'
-            },
-            is_dynamic_footer: false
-        };
-        setTemplate(prev => ({
-            ...prev,
-            items: [...prev.items, newItem]
-        }));
-        setSelectedItem(newItem.id);
-    };
-
-    const handleDeleteItem = () => {
-        if (!selectedItem) return;
-        if (confirm('Bu elementi silmek istediginize emin misiniz?')) {
-            setTemplate(prev => ({
-                ...prev,
-                items: prev.items.filter(item => item.id !== selectedItem)
-            }));
-            setSelectedItem(null);
+        return `
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Preview</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <style type="text/tailwindcss">
+        :root {
+            --primary-color: #000000;
+            --print-width: 148mm;
+            --print-height: 210mm;
         }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .a5-container {
+            width: 148mm;
+            min-height: 210mm;
+            background-color: white;
+            position: relative;
+            overflow: hidden;
+            padding: 5mm 5mm;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+        }
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 180px;
+            color: rgba(249, 115, 22, 0.03);
+            pointer-events: none;
+            user-select: none;
+            z-index: 0;
+            display: ${showWatermark ? 'block' : 'none'};
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .receipt-table th {
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            letter-spacing: 0.05em;
+            color: #000000;
+            border: 1px solid #000000;
+            padding: 4px 4px;
+        }
+        .receipt-table td {
+            padding: 4px 4px;
+            border-bottom: 1px solid #000000;
+            border-top: 1px solid #000000;
+        }
+        .receipt-table td:first-child {
+            border-left: 1px solid #000000;
+        }
+        .receipt-table td:last-child {
+            border-right: 1px solid #000000;
+        }
+    </style>
+</head>
+<body class="bg-white overflow-hidden m-0 p-0">
+    <div class="a5-container relative flex flex-col">
+        <div class="watermark">
+            <span class="material-symbols-outlined text-[300px]">construction</span>
+        </div>
+        <header class="relative z-10 flex justify-between items-start mb-0.5 px-2 pt-0">
+            <!-- Left: Date/Time -->
+            <div class="w-[15%] text-left">
+                <div class="flex flex-col items-center w-fit">
+                    <div class="text-lg font-bold text-black tracking-tighter leading-none">24.05.2024</div>
+                    <div class="text-lg font-bold text-black tracking-tighter leading-none">14:32</div>
+                </div>
+            </div>
+
+            <!-- Center: Logo & Company Info -->
+            <div class="w-[70%] flex flex-col items-center text-center">
+                ${companyInfo.logo_url
+                ? `<div class="mb-1 h-9 flex items-center justify-center overflow-hidden"><img src="${companyInfo.logo_url}" class="h-full object-contain" /></div>`
+                : `<div class="mb-1 bg-[var(--primary-color)] text-white p-1 rounded-lg font-extrabold text-base flex items-center justify-center w-9 h-9 shadow-sm">${companyInfo.logo_text}</div>`
+            }
+                <h1 class="font-black text-base tracking-tight leading-none text-black uppercase mb-0">${companyInfo.name}</h1>
+                <p class="text-xs text-black font-bold uppercase tracking-normal leading-tight whitespace-nowrap mt-1">
+                    ${companyInfo.address}<br/>
+                    İletişim: ${companyInfo.phone}
+                </p>
+            </div>
+
+            <!-- Right: Customer Info -->
+            <div class="w-[15%] text-right flex flex-col items-end">
+                ${!saleData.customer || saleData.customer === 'Misafir' || saleData.customer === 'Misafir Müşteri' || saleData.customer === 'Toptan Satış' ? '' : `
+                <div class="border-2 border-black p-2 font-bold text-black text-sm uppercase whitespace-nowrap overflow-hidden">
+                    ${saleData.customer.slice(0, 12)}
+                </div>
+                `}
+            </div>
+        </header>
+        <main class="relative z-10 mb-1">
+            <table class="w-full receipt-table text-left">
+                <thead>
+                    <tr>
+                        <th class="w-1/2 text-center">Ürün Adı</th>
+                        <th class="text-center">Miktar</th>
+                        <th class="text-right">Birim Fiyat</th>
+                        <th class="text-right">Toplam</th>
+                    </tr>
+                </thead>
+                <tbody class="text-xs">
+                    <tr>
+                        <td class="font-medium text-black">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center text-black">
+                                    <span class="material-symbols-outlined text-[16px]">image</span>
+                                </div>
+                                <span class="truncate block">{'Örnek Ürün - Matkap Ucu'.substring(0, 36)}</span>
+                            </div>
+                        </td>
+                        <td class="text-center text-black">1 Ad.</td>
+                        <td class="text-right text-black">245.00 TL</td>
+                        <td class="text-right font-bold text-black">245.00 TL</td>
+                    </tr>
+                    <tr>
+                        <td class="font-medium text-black">
+                             <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 bg-white border border-black rounded flex items-center justify-center text-black">
+                                    <span class="material-symbols-outlined text-[16px]">image</span>
+                                </div>
+                                <span>Örnek Ürün - Boya</span>
+                            </div>
+                        </td>
+                        <td class="text-center text-black">2 Ad.</td>
+                        <td class="text-right text-black">850.00 TL</td>
+                        <td class="text-right font-bold text-black">1,700.00 TL</td>
+                    </tr>
+                </tbody>
+            </table>
+        </main>
+        <footer class="relative z-10 pt-2 border-t border-slate-100">
+            <div class="flex justify-end items-end">
+                <div class="bg-slate-50 rounded-xl p-2 border border-slate-100 shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <span class="text-xs text-black font-bold uppercase tracking-wider">GENEL TOPLAM</span>
+                        <span class="text-2xl font-black text-black">1,945.00 TL</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>
+        `;
     };
 
-    const updateSelectedItem = (field, value) => {
-        if (!selectedItem) return;
-        setTemplate(prev => ({
-            ...prev,
-            items: prev.items.map(item =>
-                item.id === selectedItem ? { ...item, [field]: value } : item
-            )
-        }));
-    };
-
-    const getSelectedItemData = () => {
-        return template.items.find(item => item.id === selectedItem);
-    };
-
-    // Mouse handlers for drag
-    const handleMouseDown = (e, item) => {
-        e.stopPropagation();
-        setSelectedItem(item.id);
-        setDraggedItem(item.id);
-        const rect = canvasRef.current.getBoundingClientRect();
-        setDragOffset({
-            x: e.clientX - rect.left - item.x,
-            y: e.clientY - rect.top - item.y
-        });
-    };
-
-    const handleMouseMove = (e) => {
-        if (!draggedItem) return;
-        const rect = canvasRef.current.getBoundingClientRect();
-        const newX = Math.max(0, Math.min(paperSize.width - 20, e.clientX - rect.left - dragOffset.x));
-        const newY = Math.max(0, Math.min(paperSize.height - 20, e.clientY - rect.top - dragOffset.y));
-
-        setTemplate(prev => ({
-            ...prev,
-            items: prev.items.map(item =>
-                item.id === draggedItem ? { ...item, x: Math.round(newX), y: Math.round(newY) } : item
-            )
-        }));
-    };
-
-    const handleMouseUp = () => {
-        setDraggedItem(null);
-    };
-
-    const selectedItemData = getSelectedItemData();
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-7xl h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="bg-white rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl overflow-hidden">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between">
+                <div className="bg-gradient-to-r from-orange-500 to-red-600 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            <span className="material-symbols-outlined text-white text-2xl">receipt_long</span>
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">Fis Tasarimcisi</h2>
-                            <p className="text-white/70 text-sm">Satis sonrasi fis gorunumunu ozellestin</p>
+                            <h2 className="text-xl font-bold text-white">Fiş Tasarımcısı (A5)</h2>
+                            <p className="text-white/70 text-sm">A5 Fiş şablonunu özelleştirin</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
@@ -250,337 +232,96 @@ export default function ReceiptDesignerModal({ isOpen, onClose, initialPaperSize
 
                 {/* Content */}
                 <div className="flex-1 flex overflow-hidden">
-                    {/* Left Panel - Tools */}
-                    <div className="w-64 bg-slate-50 border-r border-slate-200 p-4 flex flex-col gap-4 overflow-y-auto">
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Kagit Boyutu</h3>
-                            <div className="w-full px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg text-sm font-semibold text-blue-700">
-                                {initialPaperSize || template.paper_size}
-                            </div>
-                            <p className="text-xs text-slate-500 mt-1">Ayarlar sayfasindan degistirilebilir</p>
-                        </div>
+                    {/* Left Panel - Settings */}
+                    <div className="w-80 bg-slate-50 border-r border-slate-200 p-6 flex flex-col gap-6 overflow-y-auto">
 
                         <div>
-                            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Element Ekle</h3>
-                            <div className="space-y-2">
-                                <button
-                                    onClick={handleAddText}
-                                    className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors flex items-center gap-2"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Metin Ekle
-                                </button>
-                                <button
-                                    onClick={handleAddShape}
-                                    className="w-full px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors flex items-center gap-2"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z" />
-                                    </svg>
-                                    Sekil Ekle
-                                </button>
-                                <label className="w-full px-4 py-2 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors flex items-center gap-2 cursor-pointer">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    Resim Ekle
-                                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                                </label>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Degiskenler</h3>
-                            <div className="space-y-1 max-h-40 overflow-y-auto">
-                                {AVAILABLE_VARIABLES.map(v => (
-                                    <div key={v.key} className="text-xs bg-white px-2 py-1.5 rounded border border-slate-200 flex justify-between items-center">
-                                        <span className="text-slate-600">{v.label}</span>
-                                        <code className="bg-slate-100 px-1 rounded text-[10px]">{v.key}</code>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">Tasarım Ayarları</h3>
-                            <label className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                                <span className="text-xs font-semibold text-slate-700">Tasarımda Bakiyeler Görünsün</span>
-                                <div className={`relative w-9 h-5 rounded-full transition-colors ${showBalance ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-4">Firma Bilgileri</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Firma Adı</label>
                                     <input
-                                        type="checkbox"
-                                        checked={showBalance}
-                                        onChange={(e) => setShowBalance(e.target.checked)}
-                                        className="sr-only"
+                                        type="text"
+                                        value={companyInfo.name}
+                                        onChange={(e) => setCompanyInfo({ ...companyInfo, name: e.target.value })}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                                        placeholder="Firma Adı"
                                     />
-                                    <div className={`absolute top-1 left-1 bg-white w-3 h-3 rounded-full transition-transform ${showBalance ? 'translate-x-4' : 'translate-x-0'}`} />
                                 </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Adres</label>
+                                    <textarea
+                                        value={companyInfo.address}
+                                        onChange={(e) => setCompanyInfo({ ...companyInfo, address: e.target.value })}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                                        rows={3}
+                                        placeholder="Adres Bilgisi"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Telefon</label>
+                                    <input
+                                        type="text"
+                                        value={companyInfo.phone}
+                                        onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                                        placeholder="İletişim No"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Logo Harfi/Sembol</label>
+                                    <input
+                                        type="text"
+                                        maxLength={2}
+                                        value={companyInfo.logo_text}
+                                        onChange={(e) => setCompanyInfo({ ...companyInfo, logo_text: e.target.value })}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                                        placeholder="E"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-4">Görünüm</h3>
+                            <label className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-orange-500 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={showWatermark}
+                                    onChange={(e) => setShowWatermark(e.target.checked)}
+                                    className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                                />
+                                <span className="text-sm font-medium text-slate-700">Fonda Filigran Göster</span>
                             </label>
                         </div>
 
-                        <div className="mt-auto space-y-2">
+                        <div className="mt-auto">
                             <button
                                 onClick={handleSave}
-                                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors"
+                                className="w-full px-4 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors shadow-lg shadow-orange-200 flex items-center justify-center gap-2"
                             >
-                                Kaydet
-                            </button>
-                            <button
-                                onClick={handleReset}
-                                className="w-full px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-300 transition-colors"
-                            >
-                                Varsayilana Don
+                                <span className="material-symbols-outlined">save</span>
+                                Ayarları Kaydet
                             </button>
                         </div>
                     </div>
 
-                    {/* Canvas Area */}
-                    <div className="flex-1 bg-slate-200 p-6 overflow-auto flex items-start justify-center">
-                        <div
-                            ref={canvasRef}
-                            className="bg-white shadow-xl relative"
-                            style={{
-                                width: paperSize.width,
-                                height: paperSize.height,
-                                minWidth: paperSize.width,
-                                backgroundColor: '#ffffff',
-                                backgroundImage: 'linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px)',
-                                backgroundSize: '20px 20px'
-                            }}
-                            onMouseMove={handleMouseMove}
-                            onMouseUp={handleMouseUp}
-                            onMouseLeave={handleMouseUp}
-                            onClick={() => setSelectedItem(null)}
-                        >
-                            {template.items.map(item => (
-                                <div
-                                    key={item.id}
-                                    className={`absolute cursor-move ${selectedItem === item.id ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+                    {/* Right Panel - Preview */}
+                    <div className="flex-1 bg-slate-200/50 p-4 flex items-start justify-center overflow-auto">
+                        <div className="shadow-2xl rounded-sm bg-white overflow-hidden" style={{ width: '133.2mm', height: '189mm' }}>
+                            <div style={{ width: '148mm', height: '210mm', transform: 'scale(0.9)', transformOrigin: '0 0' }}>
+                                <iframe
+                                    srcDoc={getPreviewHTML()}
                                     style={{
-                                        left: item.x,
-                                        top: item.y,
-                                        width: item.type === 'text' ? item.text_width : item.width,
-                                        height: item.type === 'text' ? item.text_height : item.height,
-                                        backgroundColor: item.type === 'shape' ? item.fill_color : 'transparent',
-                                        border: item.border ? `${item.border.thickness}px solid ${item.border.color}` : 'none',
-                                        fontFamily: item.font_family,
-                                        fontSize: item.font_size,
-                                        fontWeight: item.font_bold ? 'bold' : 'normal',
-                                        color: item.color,
-                                        textAlign: item.text_align,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: item.text_align === 'center' ? 'center' : item.text_align === 'right' ? 'flex-end' : 'flex-start',
-                                        overflow: 'hidden',
-                                        whiteSpace: 'nowrap',
+                                        width: '100%',
+                                        height: '100%',
+                                        border: 'none',
+                                        backgroundColor: 'white'
                                     }}
-                                    onMouseDown={(e) => handleMouseDown(e, item)}
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    {item.type === 'text' && <span>{item.text}</span>}
-                                    {item.type === 'image' && (
-                                        <img
-                                            src={item.src}
-                                            alt="Item"
-                                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                            draggable={false}
-                                        />
-                                    )}
-                                </div>
-                            ))}
+                                    title="Receipt Preview"
+                                />
+                            </div>
                         </div>
-                    </div>
-
-                    {/* Right Panel - Properties */}
-                    <div className="w-72 bg-slate-50 border-l border-slate-200 p-4 overflow-y-auto">
-                        {selectedItemData ? (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide">Ozellikler</h3>
-                                    <button
-                                        onClick={handleDeleteItem}
-                                        className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                                        title="Elementi Sil"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </div>
-
-                                <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                                    <label className="flex items-start gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedItemData.is_dynamic_footer || false}
-                                            onChange={(e) => updateSelectedItem('is_dynamic_footer', e.target.checked)}
-                                            className="mt-1 rounded"
-                                        />
-                                        <div>
-                                            <span className="text-sm font-bold text-blue-900 block">Urun Listesi Altinda Goster</span>
-                                            <span className="text-xs text-blue-700 block mt-0.5">Bu secenek acildiginda, oge urun listesinin bittigi yerden sonra konumlanir.</span>
-                                        </div>
-                                    </label>
-                                </div>
-
-                                <div className="text-xs text-slate-500 bg-white px-3 py-2 rounded-lg border border-slate-200">
-                                    ID: <code className="bg-slate-100 px-1 rounded">{selectedItemData.id}</code>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">X</label>
-                                        <input
-                                            type="number"
-                                            value={selectedItemData.x}
-                                            onChange={(e) => updateSelectedItem('x', parseInt(e.target.value) || 0)}
-                                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Y</label>
-                                        <input
-                                            type="number"
-                                            value={selectedItemData.y}
-                                            onChange={(e) => updateSelectedItem('y', parseInt(e.target.value) || 0)}
-                                            className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm"
-                                        />
-                                    </div>
-                                </div>
-
-                                {selectedItemData.type === 'text' && (
-                                    <>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metin</label>
-                                            <input
-                                                type="text"
-                                                value={selectedItemData.text}
-                                                onChange={(e) => updateSelectedItem('text', e.target.value)}
-                                                className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm"
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Font Boyutu</label>
-                                                <input
-                                                    type="number"
-                                                    value={selectedItemData.font_size}
-                                                    onChange={(e) => updateSelectedItem('font_size', parseInt(e.target.value) || 10)}
-                                                    className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Renk</label>
-                                                <input
-                                                    type="color"
-                                                    value={selectedItemData.color}
-                                                    onChange={(e) => updateSelectedItem('color', e.target.value)}
-                                                    className="w-full h-8 bg-white border border-slate-200 rounded cursor-pointer"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedItemData.font_bold}
-                                                    onChange={(e) => updateSelectedItem('font_bold', e.target.checked)}
-                                                    className="rounded"
-                                                />
-                                                <span className="text-sm font-bold">Kalin</span>
-                                            </label>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Hizalama</label>
-                                            <select
-                                                value={selectedItemData.text_align}
-                                                onChange={(e) => updateSelectedItem('text_align', e.target.value)}
-                                                className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm"
-                                            >
-                                                <option value="left">Sol</option>
-                                                <option value="center">Orta</option>
-                                                <option value="right">Sag</option>
-                                            </select>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Genislik</label>
-                                                <input
-                                                    type="number"
-                                                    value={selectedItemData.text_width}
-                                                    onChange={(e) => updateSelectedItem('text_width', parseInt(e.target.value) || 50)}
-                                                    className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Yukseklik</label>
-                                                <input
-                                                    type="number"
-                                                    value={selectedItemData.text_height}
-                                                    onChange={(e) => updateSelectedItem('text_height', parseInt(e.target.value) || 20)}
-                                                    className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm"
-                                                />
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                {(selectedItemData.type === 'shape' || selectedItemData.type === 'image') && (
-                                    <>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Genislik</label>
-                                                <input
-                                                    type="number"
-                                                    value={selectedItemData.width}
-                                                    onChange={(e) => updateSelectedItem('width', parseInt(e.target.value) || 50)}
-                                                    className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Yukseklik</label>
-                                                <input
-                                                    type="number"
-                                                    value={selectedItemData.height}
-                                                    onChange={(e) => updateSelectedItem('height', parseInt(e.target.value) || 20)}
-                                                    className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm"
-                                                />
-                                            </div>
-                                        </div>
-                                        {selectedItemData.type === 'shape' && (
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dolgu Rengi</label>
-                                                <input
-                                                    type="color"
-                                                    value={selectedItemData.fill_color === '#00000000' ? '#ffffff' : selectedItemData.fill_color}
-                                                    onChange={(e) => updateSelectedItem('fill_color', e.target.value)}
-                                                    className="w-full h-8 bg-white border border-slate-200 rounded cursor-pointer"
-                                                />
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-
-                                {/* Large Delete Button */}
-                                <button
-                                    onClick={handleDeleteItem}
-                                    className="w-full mt-4 px-4 py-3 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                    Bu Öğeyi Sil
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="text-center text-slate-400 py-8">
-                                <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-                                </svg>
-                                <p className="text-sm">Duzenlemek icin bir element secin</p>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>

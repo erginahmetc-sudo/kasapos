@@ -9,7 +9,7 @@ const menuItems = [
     { path: '/customers', label: 'Bakiyeler', icon: 'groups', permission: 'can_view_customers' },
     { path: '/sales', label: 'Satışlar', icon: 'receipt_long', permission: 'can_view_sales' },
     { path: '/invoices', label: 'Faturalar', icon: 'description', permission: 'can_view_invoices' },
-    { path: '/reports', label: 'Raporlar', icon: 'analytics', permission: 'can_view_sales' },
+
     { path: '/settings', label: 'Ayarlar', icon: 'settings', permission: 'can_view_users' },
 ];
 

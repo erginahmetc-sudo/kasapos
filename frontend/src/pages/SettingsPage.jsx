@@ -45,10 +45,24 @@ export default function SettingsPage() {
                 if (data['sales_edit_password']) setEditSalePassword(data['sales_edit_password']);
                 if (data['sales_show_total_sales'] !== undefined) setShowTotalSales(data['sales_show_total_sales']);
                 if (data['sales_show_total_revenue'] !== undefined) setShowTotalRevenue(data['sales_show_total_revenue']);
-                if (data['invoices_show_total'] !== undefined) setShowInvoiceTotal(data['invoices_show_total']);
+
+                if (data['invoices_show_total'] !== undefined) {
+                    setShowInvoiceTotal(data['invoices_show_total']);
+                    localStorage.setItem('invoices_show_total', data['invoices_show_total']);
+                }
+
                 if (data['integration_send_sales_to_birfatura'] !== undefined) setSendSalesToBirFatura(data['integration_send_sales_to_birfatura']);
-                if (data['receipt_auto_print'] !== undefined) setAutoPrintReceipt(data['receipt_auto_print']);
-                if (data['receipt_paper_size']) setReceiptPaperSize(data['receipt_paper_size']);
+
+                // Sync to localStorage
+                if (data['receipt_auto_print'] !== undefined) {
+                    setAutoPrintReceipt(data['receipt_auto_print']);
+                    localStorage.setItem('receipt_auto_print', data['receipt_auto_print']);
+                }
+
+                if (data['receipt_paper_size']) {
+                    setReceiptPaperSize(data['receipt_paper_size']);
+                    localStorage.setItem('receipt_paper_size', data['receipt_paper_size']);
+                }
 
                 if (data['secret_token']) setSecretToken(data['secret_token']);
             }
@@ -62,6 +76,10 @@ export default function SettingsPage() {
     const updateSetting = async (key, value) => {
         try {
             await settingsAPI.set(key, value);
+            // Sync specific keys to localStorage
+            if (key === 'receipt_auto_print') localStorage.setItem(key, value);
+            if (key === 'receipt_paper_size') localStorage.setItem(key, value);
+            if (key === 'invoices_show_total') localStorage.setItem(key, value);
         } catch (err) {
             console.error(`Failed to save setting ${key}:`, err);
             alert("Ayar kaydedilemedi.");

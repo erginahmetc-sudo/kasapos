@@ -132,6 +132,14 @@ export default function NewPOSPage() {
             } catch (error) {
                 console.error("Error loading settings", error);
             }
+
+            // Sync auto print setting
+            try {
+                const res = await settingsAPI.get('receipt_auto_print');
+                if (res.data !== undefined) {
+                    localStorage.setItem('receipt_auto_print', res.data);
+                }
+            } catch (e) { console.error("Error syncing auto print", e); }
         };
         loadCompanySettings();
     }, []);
@@ -1336,7 +1344,7 @@ export default function NewPOSPage() {
                                         </div>
                                     </div>
                                     <div className="flex-1 min-w-0 pl-0.5">
-                                        <h4 className="text-lg font-bold text-slate-800 line-clamp-1 leading-tight">{item.name}</h4>
+                                        <h4 className="text-sm font-bold text-slate-800 line-clamp-1 leading-tight">{item.name}</h4>
                                         <div className="flex items-center gap-1 flex-wrap">
                                             {item.discount_rate > 0 ? (
                                                 <div className="flex flex-col leading-none">

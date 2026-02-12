@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { salesAPI, productsAPI } from '../services/api';
+import { salesAPI, productsAPI, settingsAPI } from '../services/api';
 
 export default function SalesPage() {
     const [sales, setSales] = useState([]);
@@ -42,9 +42,26 @@ export default function SalesPage() {
     const [tempQty, setTempQty] = useState(1);
     const [selectedProductToAdd, setSelectedProductToAdd] = useState(null);
 
+    // Visibility Settings
+    const [showTotalSales, setShowTotalSales] = useState(true);
+    const [showTotalRevenue, setShowTotalRevenue] = useState(true);
+
     useEffect(() => {
         loadSales();
+        loadSettings();
     }, [showDeleted]);
+
+    const loadSettings = async () => {
+        try {
+            const sRes = await settingsAPI.get('sales_show_total_sales');
+            const rRes = await settingsAPI.get('sales_show_total_revenue');
+
+            if (sRes.data !== undefined) setShowTotalSales(sRes.data === 'true' || sRes.data === true);
+            if (rRes.data !== undefined) setShowTotalRevenue(rRes.data === 'true' || rRes.data === true);
+        } catch (e) {
+            console.error("Error loading sales settings", e);
+        }
+    };
 
     const loadSales = async () => {
         setLoading(true);
@@ -738,12 +755,20 @@ export default function SalesPage() {
                     <div>
                         <h1 className="text-2xl font-bold text-slate-800">Satışlar</h1>
                         <p className="text-slate-500 text-sm mt-0.5">
-                            <span className="font-bold text-slate-900">{filteredSales.length}</span> işlem bulundu
+                            {showTotalSales ? (
+                                <><span className="font-bold text-slate-900">{filteredSales.length}</span> işlem bulundu</>
+                            ) : (
+                                <span className="text-slate-400">*** işlem</span>
+                            )}
                         </p>
                     </div>
                     <div className="text-right">
                         <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">TOPLAM CİRO</p>
-                        <p className="text-2xl font-extrabold text-emerald-600">₺{totalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</p>
+                        {showTotalRevenue ? (
+                            <p className="text-2xl font-extrabold text-emerald-600">₺{totalRevenue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</p>
+                        ) : (
+                            <p className="text-2xl font-extrabold text-slate-300">*******</p>
+                        )}
                     </div>
                 </header>
 

@@ -74,12 +74,21 @@ export default function InvoicesPage() {
         loadInvoices();
         // Load visibility setting from DB
         const loadVisibility = async () => {
+            // Priority 1: Check LocalStorage (Fastest & Synced from Settings)
+            const localVal = localStorage.getItem('invoices_show_total');
+            if (localVal !== null) {
+                setShowTotal(localVal === 'true' || localVal === true);
+                return;
+            }
+
+            // Priority 2: Fetch from API (Robust fallback using getAll like SettingsPage)
             try {
-                const res = await settingsAPI.get('invoices_show_total');
-                if (res.data !== null && res.data !== undefined) {
-                    // Handle boolean or string 'true'/'false'
-                    const val = res.data;
+                const res = await settingsAPI.getAll();
+                if (res.data && res.data['invoices_show_total'] !== undefined) {
+                    const val = res.data['invoices_show_total'];
                     setShowTotal(val === true || val === 'true');
+                    // Update local storage to avoid future calls
+                    localStorage.setItem('invoices_show_total', val);
                 }
             } catch (e) {
                 console.error("Error loading settings", e);

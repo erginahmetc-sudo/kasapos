@@ -12,6 +12,7 @@ import CustomerFormModal from '../components/modals/CustomerFormModal';
 import PaymentFormModal from '../components/modals/PaymentFormModal';
 import ProductSelectionModal from '../components/modals/ProductSelectionModal';
 import StatusModal from '../components/modals/StatusModal';
+import ReturnModal from '../components/modals/ReturnModal';
 
 // Mobile detection hook
 function useMobileRedirect() {
@@ -96,8 +97,10 @@ export default function NewPOSPage() {
     const [showWaitlistModal, setShowWaitlistModal] = useState(false);
     const [displayLimit, setDisplayLimit] = useState(() => localStorage.getItem('pos_display_limit') || '100');
     const [currentPage, setCurrentPage] = useState(1);
+    const [loading, setLoading] = useState(true); // Initial loading state
 
     const [heldSales, setHeldSales] = useState([]);
+    const [showReturnModal, setShowReturnModal] = useState(false);
     const [shortcuts, setShortcuts] = useState([]);
     const searchInputRef = useRef(null);
     const [keyboardShortcuts, setKeyboardShortcuts] = useState({});
@@ -205,13 +208,20 @@ export default function NewPOSPage() {
 
     // Load Data
     useEffect(() => {
-        loadProducts();
-        loadCustomers();
-        loadHeldSales();
-        loadShortcuts();
-        loadSettings();
+        const init = async () => {
+            setLoading(true);
+            await Promise.all([
+                loadProducts(),
+                loadCustomers(),
+                loadHeldSales(),
+                loadShortcuts(),
+                loadSettings()
+            ]);
+            setTimeout(() => setLoading(false), 300); // 300ms buffer for smooth transition
+        };
+        init();
 
-        // Load Shortcuts
+        // Load Shortcuts Logic (unchanged below)
         const defaultShortcuts = {
             'miktar_duzenle': 'F2',
             'iskonto_ekle': 'F3',
@@ -1322,7 +1332,38 @@ export default function NewPOSPage() {
     };
 
     return (
-        <div className="h-full flex flex-col overflow-hidden bg-slate-100" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <div className="h-full flex flex-col overflow-hidden bg-slate-100 relative" style={{ fontFamily: "'Manrope', sans-serif" }}>
+
+            {/* Modern Loading Screen - Variant 2 */}
+            {loading && (
+                <div className="absolute inset-0 z-[100] bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center overflow-hidden font-fashion transition-all duration-500">
+                    <div className="relative w-full max-w-[430px] flex flex-col items-center justify-center animate-fade-in-up">
+                        <div className="relative mb-12">
+                            <div className="absolute inset-0 bg-blue-600/20 rounded-full blur-2xl animate-pulse-glow"></div>
+                            <div className="relative w-24 h-24 flex items-center justify-center border border-slate-100 dark:border-slate-800 rounded-full bg-white/50 dark:bg-white/5 backdrop-blur-sm shadow-sm">
+                                <span className="material-symbols-outlined text-4xl text-blue-600 font-extralight scale-125">
+                                    shopping_bag
+                                </span>
+                            </div>
+                        </div>
+                        <h1 className="text-2xl font-light tracking-[0.3em] uppercase mb-4 text-center leading-relaxed text-slate-900 dark:text-slate-100">
+                            Ürünler <br />
+                            <span className="font-medium">Yükleniyor</span>
+                        </h1>
+                        <p className="text-sm font-light text-slate-400 dark:text-slate-500 tracking-wider h-5 typewriter-cursor animate-typewriter">
+                            Lütfen bekleyiniz...
+                        </p>
+
+                        <div className="w-full max-w-[280px] mt-12">
+                            <div className="relative h-[2px] w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                                <div className="absolute top-0 h-full bg-blue-600 animate-progress shadow-[0_0_10px_#2563eb]"></div>
+                                <div className="absolute top-[-2px] h-[6px] bg-blue-600/30 blur-sm animate-progress w-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header removed - using Global Layout Header */}
 
             <div className="flex flex-1 overflow-hidden">
@@ -1619,6 +1660,13 @@ export default function NewPOSPage() {
                             >
                                 <span className="material-symbols-outlined text-[16px]">add_box</span>
                                 Yeni Ürün
+                            </button>
+                            <button
+                                onClick={() => setShowReturnModal(true)}
+                                className="px-3 py-2 bg-red-700 text-white rounded-lg font-bold text-xs hover:bg-red-800 transition-all shadow-sm flex items-center gap-1.5"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">assignment_return</span>
+                                İade Yap
                             </button>
                             <button
                                 onClick={() => setShowNewCustomerModal(true)}
@@ -2273,6 +2321,15 @@ export default function NewPOSPage() {
                 isOpen={showDebtLimitAlert}
                 onClose={() => setShowDebtLimitAlert(false)}
                 data={debtLimitAlertData}
+            />
+
+            <ReturnModal
+                isOpen={showReturnModal}
+                onClose={() => setShowReturnModal(false)}
+                onSuccess={() => {
+                    loadProducts();
+                    loadCustomers();
+                }}
             />
 
         </div>

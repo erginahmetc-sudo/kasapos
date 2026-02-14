@@ -41,6 +41,22 @@
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
   --radius-3xl: 1.5rem;
+
+  /* Vizon Theme Colors */
+  --color-vizon: #A28C7E;
+  --color-vizon-light: #D7CCC8;
+  --color-gold: #C5A059;
+  --color-charcoal-deep: #2D2926;
+  --color-bronze: #8D6E63;
+
+  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+
+  /* Vizon Animations */
+  --animate-liquid-progress: liquid 3s ease-in-out infinite;
+  --animate-soft-pulse: softPulse 3s ease-in-out infinite;
+  --animate-aura-rotate: auraRotate 8s linear infinite;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-bg-motion: bgMotion 15s linear infinite;
 }
 
 /* Base Styles */
@@ -133,7 +149,199 @@ body {
   display: none;
 }
 
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Custom Loading Screen Animations */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
+.font-fashion {
+  font-family: "Playfair Display", serif;
+}
+
+@keyframes progress {
+  0% {
+    width: 0%;
+    left: 0%;
+  }
+
+  50% {
+    width: 70%;
+    left: 15%;
+  }
+
+  100% {
+    width: 0%;
+    left: 100%;
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes typewriter {
+
+  0%,
+  10% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes pulseGlow {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+.animate-progress {
+  animation: progress 2s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.animate-typewriter {
+  animation: typewriter 2.5s steps(20) infinite alternate;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.typewriter-cursor::after {
+  content: "|";
+  animation: blink 0.8s infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Vizon Theme Keyframes */
+@keyframes liquid {
+  0% {
+    width: 0%;
+    opacity: 0.8;
+  }
+
+  50% {
+    width: 70%;
+    opacity: 1;
+  }
+
+  100% {
+    width: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes softPulse {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes auraRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes bgMotion {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  100% {
+    background-position: 100% 100%;
+  }
+}
+
+/* Vizon Theme Utilities */
+.bg-vizon-radial {
+  background: radial-gradient(circle at center, #FDFBF9 0%, #E8E2DE 100%);
+}
+
+.vizon-glow {
+  filter: drop-shadow(0 0 15px rgba(162, 140, 126, 0.3));
+}
+
+.gold-chrome {
+  background: linear-gradient(135deg, #C5A059 0%, #F9F1DC 45%, #8D6E63 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  /* Fallback */
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.geometric-lines {
+  background-image: linear-gradient(30deg, #A28C7E 12%, transparent 12.5%, transparent 87%, #A28C7E 87.5%, #A28C7E),
+    linear-gradient(150deg, #A28C7E 12%, transparent 12.5%, transparent 87%, #A28C7E 87.5%, #A28C7E),
+    linear-gradient(30deg, #A28C7E 12%, transparent 12.5%, transparent 87%, #A28C7E 87.5%, #A28C7E),
+    linear-gradient(150deg, #A28C7E 12%, transparent 12.5%, transparent 87%, #A28C7E 87.5%, #A28C7E),
+    linear-gradient(60deg, #D7CCC8 25%, transparent 25.5%, transparent 75%, #D7CCC8 75%, #D7CCC8),
+    linear-gradient(60deg, #D7CCC8 25%, transparent 25.5%, transparent 75%, #D7CCC8 75%, #D7CCC8);
+  background-size: 80px 140px;
+  background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
 }

@@ -70,7 +70,7 @@ export default function CustomersPage() {
         } catch (error) {
             console.error('Müşteriler yüklenirken hata:', error);
         } finally {
-            setLoading(false);
+            setTimeout(() => setLoading(false), 300);
         }
     };
 
@@ -319,16 +319,40 @@ export default function CustomersPage() {
         return new Date(dateStr).toLocaleString('tr-TR');
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
+
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col">
+        <div className="min-h-screen bg-gray-100 flex flex-col relative">
+
+            {/* Modern Loading Screen - Variant 2 */}
+            {loading && (
+                <div className="absolute inset-0 z-[100] bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center overflow-hidden font-fashion transition-all duration-500">
+                    <div className="relative w-full max-w-[430px] flex flex-col items-center justify-center animate-fade-in-up">
+                        <div className="relative mb-12">
+                            <div className="absolute inset-0 bg-blue-600/20 rounded-full blur-2xl animate-pulse-glow"></div>
+                            <div className="relative w-24 h-24 flex items-center justify-center border border-slate-100 dark:border-slate-800 rounded-full bg-white/50 dark:bg-white/5 backdrop-blur-sm shadow-sm">
+                                <span className="material-symbols-outlined text-4xl text-blue-600 font-extralight scale-125">
+                                    account_balance_wallet
+                                </span>
+                            </div>
+                        </div>
+                        <h1 className="text-2xl font-light tracking-[0.3em] uppercase mb-4 text-center leading-relaxed text-slate-900 dark:text-slate-100">
+                            Bakiyeler <br />
+                            <span className="font-medium">Yükleniyor</span>
+                        </h1>
+                        <p className="text-sm font-light text-slate-400 dark:text-slate-500 tracking-wider h-5 typewriter-cursor animate-typewriter">
+                            Lütfen bekleyiniz...
+                        </p>
+
+                        <div className="w-full max-w-[280px] mt-12">
+                            <div className="relative h-[2px] w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                                <div className="absolute top-0 h-full bg-blue-600 animate-progress shadow-[0_0_10px_#2563eb]"></div>
+                                <div className="absolute top-[-2px] h-[6px] bg-blue-600/30 blur-sm animate-progress w-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <header className="bg-gradient-to-r from-slate-50 via-white to-blue-50/30 px-6 py-5 shadow-sm border-b border-gray-100 sticky top-0 z-20">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -1304,8 +1328,8 @@ export default function CustomersPage() {
                                     loadCustomers();
                                 }}
                                 className={`flex-[2] py-4 text-lg font-bold text-white rounded-2xl transition-all ${excelPreview.length === 0 || excelImporting
-                                        ? 'bg-gray-300 cursor-not-allowed'
-                                        : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-xl shadow-emerald-500/30 hover:scale-[1.01]'
+                                    ? 'bg-gray-300 cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-xl shadow-emerald-500/30 hover:scale-[1.01]'
                                     }`}
                             >
                                 {excelImporting ? 'Yükleniyor...' : `✓ ${excelPreview.length} Müşteri Yükle`}

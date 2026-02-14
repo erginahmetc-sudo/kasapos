@@ -139,21 +139,27 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
 
     if (!sale) return null;
 
+    const isReturn = sale.sale_code?.startsWith('RET');
+
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
                 {/* Header */}
-                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-10 py-8">
+                <div className={`${isReturn ? 'bg-gradient-to-br from-red-600 via-rose-600 to-red-700' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'} px-10 py-8`}>
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                            <div className={`w-14 h-14 ${isReturn ? 'bg-white/20' : 'bg-gradient-to-br from-emerald-400 to-teal-500'} rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30`}>
                                 <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    {isReturn ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    )}
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-3xl font-bold text-white tracking-tight">Satış Detayı</h3>
-                                <p className="text-slate-400 text-base font-mono mt-1">{sale.sale_code}</p>
+                                <h3 className="text-3xl font-bold text-white tracking-tight">{isReturn ? 'İade Detayı' : 'Satış Detayı'}</h3>
+                                <p className={isReturn ? 'text-red-100' : 'text-slate-400 text-base font-mono mt-1'}>{sale.sale_code}</p>
                             </div>
                         </div>
                         <button
@@ -183,8 +189,8 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                             <p className="text-slate-500 text-sm font-medium mb-1">Tarih</p>
                             <p className="font-bold text-slate-800 text-lg">{formatDate(sale.date)}</p>
                         </div>
-                        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-xl shadow-emerald-500/30">
-                            <p className="text-emerald-100 text-sm font-medium mb-1">Toplam</p>
+                        <div className={`${isReturn ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-500/30' : 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/30'} rounded-2xl p-5 text-white shadow-xl`}>
+                            <p className={`${isReturn ? 'text-red-100' : 'text-emerald-100'} text-sm font-medium mb-1`}>{isReturn ? 'İade Tutarı' : 'Toplam'}</p>
                             <p className="text-3xl font-bold">₺{calculateTotal().toFixed(2)}</p>
                         </div>
                     </div>
@@ -192,15 +198,17 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                     {/* Products Table */}
                     <div className="mb-6 flex justify-between items-center">
                         <h3 className="font-bold text-slate-800 text-xl">Ürünler</h3>
-                        <button
-                            onClick={openAddProductModal}
-                            className="px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            Ürün Ekle
-                        </button>
+                        {!isReturn && (
+                            <button
+                                onClick={openAddProductModal}
+                                className="px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Ürün Ekle
+                            </button>
+                        )}
                     </div>
 
                     <div className="bg-white rounded-2xl border-2 border-slate-100 shadow-sm overflow-hidden">
@@ -228,9 +236,11 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                                     type="number"
                                                     value={p.quantity}
                                                     onChange={(e) => handleUpdateProduct(i, 'quantity', parseFloat(e.target.value) || 0)}
-                                                    className="w-full px-2 py-1.5 text-center border border-gray-200  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full px-2 py-1.5 text-center border border-gray-200  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
                                                     min="0"
                                                     step="0.01"
+                                                    readOnly={isReturn}
+                                                    disabled={isReturn}
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
@@ -238,9 +248,11 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                                     type="number"
                                                     value={p.price}
                                                     onChange={(e) => handleUpdateProduct(i, 'price', parseFloat(e.target.value) || 0)}
-                                                    className="w-full px-2 py-1.5 text-center border border-gray-200  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full px-2 py-1.5 text-center border border-gray-200  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
                                                     min="0"
                                                     step="0.01"
+                                                    readOnly={isReturn}
+                                                    disabled={isReturn}
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
@@ -248,21 +260,25 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                                                     type="number"
                                                     value={p.discount_rate || 0}
                                                     onChange={(e) => handleUpdateProduct(i, 'discount_rate', parseFloat(e.target.value) || 0)}
-                                                    className="w-full px-2 py-1.5 text-center border border-gray-200  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    className="w-full px-2 py-1.5 text-center border border-gray-200  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
                                                     min="0"
                                                     max="100"
+                                                    readOnly={isReturn}
+                                                    disabled={isReturn}
                                                 />
                                             </td>
                                             <td className="px-4 py-3 text-right font-semibold text-gray-800">₺{lineTotal.toFixed(2)}</td>
                                             <td className="px-4 py-3 text-center">
-                                                <button
-                                                    onClick={() => handleDeleteProduct(i)}
-                                                    className="p-2 text-red-500 hover:bg-red-50  transition-colors"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
+                                                {!isReturn && (
+                                                    <button
+                                                        onClick={() => handleDeleteProduct(i)}
+                                                        className="p-2 text-red-500 hover:bg-red-50  transition-colors"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -280,7 +296,7 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/80">
                     <div className="flex items-center justify-between gap-4">
-                        {!sale.is_deleted && (
+                        {!isReturn && !sale.is_deleted && (
                             <button
                                 onClick={handleDeleteSale}
                                 className="px-6 py-3 bg-red-50 text-red-600  font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
@@ -294,29 +310,31 @@ export default function SaleDetailModal({ sale, onClose, onUpdate, onDelete }) {
                         <div className="flex-1"></div>
                         <button
                             onClick={onClose}
-                            className="px-6 py-3 bg-gray-200 text-gray-700  font-bold hover:bg-gray-300 transition-colors"
+                            className={`px-6 py-3 ${isReturn ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'} font-bold transition-colors rounded-xl`}
                         >
-                            İptal
+                            {isReturn ? 'Kapat' : 'İptal'}
                         </button>
-                        <button
-                            onClick={handleSaveChanges}
-                            disabled={saving}
-                            className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white  font-bold hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/30 flex items-center gap-2 disabled:opacity-50"
-                        >
-                            {saving ? (
-                                <>
-                                    <div className="w-5 h-5 border-2 border-white border-t-transparent -full animate-spin" />
-                                    Kaydediliyor...
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Değişiklikleri Kaydet
-                                </>
-                            )}
-                        </button>
+                        {!isReturn && (
+                            <button
+                                onClick={handleSaveChanges}
+                                disabled={saving}
+                                className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white  font-bold hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/30 flex items-center gap-2 disabled:opacity-50 rounded-xl"
+                            >
+                                {saving ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent -full animate-spin" />
+                                        Kaydediliyor...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Değişiklikleri Kaydet
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

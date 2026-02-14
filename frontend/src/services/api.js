@@ -390,8 +390,8 @@ export const customersAPI = {
             type: 'payment',
             total: Math.abs(p.amount), // Store absolute value, sign indicates direction
             payment_method: p.payment_type?.toLowerCase() || 'nakit',
-            // Extract sale_code from description if present (e.g., "Satış - SLS-123")
-            sale_code: p.description?.match(/SLS-\d+/)?.[0] || p.description?.match(/Alacak.*-(SLS-\d+)/)?.[1] || null
+            // Extract sale_code from description if present (e.g., "Satış - SLS-123" or "İade - RET-123")
+            sale_code: p.description?.match(/(SLS|RET)-\d+/)?.[0] || p.description?.match(/Alacak.*-(SLS-\d+)/)?.[1] || null
         }));
 
         return response({ success: true, transactions: allTransactions }, null);
@@ -724,6 +724,85 @@ export const salesAPI = {
         }
 
         return response({ success: true, sales }, error);
+    },
+    createReturn: async (originalSale, returnedItems) => {
+        const companyCode = getCurrentCompanyCode();
+        // 1. Calculate Refund Total
+        const refundTotal = returnedItems.reduce((sum, item) => {
+            const price = parseFloat(item.price) || 0;
+            const discount = parseFloat(item.discount_rate) || 0;
+            const qty = parseFloat(item.return_quantity) || 0;
+            return sum + (price * qty * (1 - discount / 100));
+        }, 0);
+
+        // 2. Prepare Return Sale Record
+        // We embed the original sale code in the return code for tracking
+        // Return code format: RET-[OriginalCode]-[TimestampSuffix]
+        // Example: RET-SLS-1715-9384
+        const timestampSuffix = Date.now().toString().slice(-4);
+        // Ensure we don't double-prefix if original is already malformed, but assume original is SLS-xxx
+        // If original is manual (S-xxx), it works too.
+        const returnSaleCode = `RET-${originalSale.sale_code}-${timestampSuffix}`;
+
+        const returnSale = {
+            sale_code: returnSaleCode, // NEW Linked Code
+            items: returnedItems.map(i => ({ ...i, quantity: i.return_quantity, original_sale_code: originalSale.sale_code })),
+            total: -refundTotal, // NEGATIVE TOTAL
+            payment_method: 'İade', // Explicit type
+            customer_id: originalSale.customer_id,
+            customer_name: originalSale.customer_name || originalSale.customer || 'Misafir',
+            date: new Date().toISOString(),
+            company_code: companyCode,
+            is_deleted: false
+        };
+
+        // 3. Insert Return Sale
+        const { data: saleData, error: saleError } = await supabase
+            .from('sales')
+            .insert([returnSale])
+            .select()
+            .single();
+
+        if (saleError) throw { response: { data: { message: 'İade kaydı oluşturulamadı: ' + saleError.message } } };
+
+        // 4. Update Stock (Increase)
+        for (const item of returnedItems) {
+            if (!item.stock_code) continue;
+
+            // Fetch current stock first to be safe
+            const { data: currentProd } = await supabase
+                .from('products')
+                .select('stock')
+                .eq('stock_code', item.stock_code)
+                .eq('company_code', companyCode)
+                .single();
+
+            if (currentProd) {
+                const newStock = (currentProd.stock || 0) + parseFloat(item.return_quantity);
+                await supabase
+                    .from('products')
+                    .update({ stock: newStock })
+                    .eq('stock_code', item.stock_code)
+                    .eq('company_code', companyCode);
+            }
+        }
+
+        // 5. Update Customer Balance
+        // Logic:
+        // - We create a "Sale Debit" logic with NEGATIVE amount (which means Credit).
+        // - customersAPI.addSaleDebit expects 'amount'. Logic inside: balance + amount.
+        // - If we pass -100: balance + (-100) = balance - 100.
+        // - This reduces the Debt. Correct.
+        if (returnSale.customer_id) {
+            await customersAPI.addPayment({
+                customer_id: returnSale.customer_id,
+                amount: refundTotal, // Positive amount for Payment/Credit
+                payment_type: 'İade', // Explicit type
+                description: `İade - ${returnSale.sale_code}`
+            });
+        }
+
+        return response({ success: true, message: 'İade işlemi tamamlandı.' });
     },
     complete: async (sale) => {
         // Prepare items for JSON storage

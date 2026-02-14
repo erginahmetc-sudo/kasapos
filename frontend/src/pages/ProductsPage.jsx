@@ -89,7 +89,7 @@ export default function ProductsPage() {
         } catch (error) {
             console.error('Ürünler yüklenirken hata:', error);
         } finally {
-            setLoading(false);
+            setTimeout(() => setLoading(false), 300);
         }
     };
 
@@ -318,16 +318,40 @@ export default function ProductsPage() {
         return 'text-gray-800';
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96 transition-all duration-300">
-                <div className="spinner" />
-            </div>
-        );
-    }
+
 
     return (
-        <div className="flex min-h-screen transition-all duration-300">
+        <div className="flex min-h-screen transition-all duration-300 relative">
+
+            {/* Modern Loading Screen - Variant 2 */}
+            {loading && (
+                <div className="absolute inset-0 z-[100] bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center overflow-hidden font-fashion transition-all duration-500">
+                    <div className="relative w-full max-w-[430px] flex flex-col items-center justify-center animate-fade-in-up">
+                        <div className="relative mb-12">
+                            <div className="absolute inset-0 bg-blue-600/20 rounded-full blur-2xl animate-pulse-glow"></div>
+                            <div className="relative w-24 h-24 flex items-center justify-center border border-slate-100 dark:border-slate-800 rounded-full bg-white/50 dark:bg-white/5 backdrop-blur-sm shadow-sm">
+                                <span className="material-symbols-outlined text-4xl text-blue-600 font-extralight scale-125">
+                                    shopping_bag
+                                </span>
+                            </div>
+                        </div>
+                        <h1 className="text-2xl font-light tracking-[0.3em] uppercase mb-4 text-center leading-relaxed text-slate-900 dark:text-slate-100">
+                            Ürünler <br />
+                            <span className="font-medium">Yükleniyor</span>
+                        </h1>
+                        <p className="text-sm font-light text-slate-400 dark:text-slate-500 tracking-wider h-5 typewriter-cursor animate-typewriter">
+                            Lütfen bekleyiniz...
+                        </p>
+
+                        <div className="w-full max-w-[280px] mt-12">
+                            <div className="relative h-[2px] w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                                <div className="absolute top-0 h-full bg-blue-600 animate-progress shadow-[0_0_10px_#2563eb]"></div>
+                                <div className="absolute top-[-2px] h-[6px] bg-blue-600/30 blur-sm animate-progress w-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Sidebar Overlay (Mobile) */}
             {filterOpen && (
                 <div
